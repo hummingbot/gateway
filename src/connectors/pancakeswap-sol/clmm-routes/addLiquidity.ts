@@ -1,16 +1,14 @@
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
+import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
 import { buildAddLiquidityTransaction } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmAddLiquidityRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
@@ -111,78 +109,39 @@ export async function addLiquidity(
       quoteToken.address,
     ]);
 
-    const baseTokenChange = balanceChanges[0];
-    const quoteTokenChange = balanceChanges[1];
+    // Adding to a position can still create accounts — a wrapped-SOL account the wallet
+    // did not have, a tick array this range is first to touch — and their rent rides on
+    // the native side of the balance change without being liquidity.
+    const { opened } = accountLifecycleSol(txData);
+    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), opened);
+    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), opened);
 
     logger.info(`Liquidity added successfully. Signature: ${signature}`);
     logger.info(
-      `Added ${Math.abs(baseTokenChange).toFixed(4)} ${baseToken.symbol}, ${Math.abs(quoteTokenChange).toFixed(4)} ${quoteToken.symbol}`,
+      `Added ${baseTokenChange.toFixed(4)} ${baseToken.symbol}, ${quoteTokenChange.toFixed(4)} ${quoteToken.symbol}`,
     );
 
     return {
       signature,
       status: 1, // CONFIRMED
       data: {
+        // The pool this position belongs to, already loaded here. The unified route is
+        // position-addressed and never receives it, so this is the only place it can
+        // come from without a second lookup.
+        poolAddress: positionInfo.poolAddress,
         fee: totalFee / 1e9,
-        baseTokenAmountAdded: Math.abs(baseTokenChange),
-        quoteTokenAmountAdded: Math.abs(quoteTokenChange),
+        baseTokenAmountAdded: baseTokenChange,
+        quoteTokenAmountAdded: quoteTokenChange,
       },
     };
   }
+
+  // A landed-but-failed transaction is terminal: fail loudly instead of returning
+  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
+  await solana.throwIfLandedWithError(signature, txData);
 
   return {
     signature,
     status: 0, // PENDING
   };
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof PancakeswapSolClmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to an existing PancakeSwap Solana CLMM position',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        return await addLiquidity(
-          network,
-          walletAddress!,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Add liquidity error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to add liquidity';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

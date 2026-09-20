@@ -41,7 +41,7 @@ const TEMPLATE_PATH = path.join(__dirname, '../src/templates/pools/pancakeswap.j
 
 async function fetchPancakeswapPoolInfo(
   poolAddress: string,
-  type: 'amm' | 'clmm'
+  type: 'amm' | 'clmm',
 ): Promise<{
   baseTokenAddress: string;
   quoteTokenAddress: string;

@@ -1,8 +1,8 @@
 import { PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { logger } from '../../../services/logger';
-import { WrapRequestSchema, WrapResponseSchema, WrapRequestType, WrapResponseType } from '../schemas';
+import { WrapResponseType } from '../schemas';
 import { Solana } from '../solana';
 import { handleSolanaTransactionError } from '../solana-errors';
 import { SolanaLedger } from '../solana-ledger';
@@ -98,28 +98,3 @@ export async function wrapSolana(
     handleSolanaTransactionError(fastify, error, 'wrap SOL to WSOL');
   }
 }
-
-export const wrapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: WrapRequestType;
-    Reply: WrapResponseType;
-  }>(
-    '/wrap',
-    {
-      schema: {
-        description: 'Wrap SOL to WSOL (Wrapped SOL)',
-        tags: ['/chain/solana'],
-        body: WrapRequestSchema,
-        response: {
-          200: WrapResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const { network, address, amount } = request.body;
-      return await wrapSolana(fastify, network, address, amount);
-    },
-  );
-};
-
-export default wrapRoute;

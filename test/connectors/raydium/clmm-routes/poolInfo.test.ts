@@ -1,5 +1,6 @@
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/connectors/raydium/raydium');
 jest.mock('../../../../src/chains/solana/solana');
@@ -16,8 +17,8 @@ jest.mock('../../../../src/connectors/raydium/raydium.utils', () => {
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { poolInfoRoute } = await import('../../../../src/connectors/raydium/clmm-routes/poolInfo');
-  await server.register(poolInfoRoute);
+  const { poolsRoute } = await import('../../../../src/trading/clmm/pools');
+  await server.register(poolsRoute);
   return server;
 };
 
@@ -78,10 +79,10 @@ describe('GET /pool-info (raydium clmm)', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/pool-info',
-      query: { network: 'mainnet-beta', poolAddress: mockPoolAddress },
+      query: { chainNetwork: 'solana-mainnet-beta', connector: 'raydium', poolAddress: mockPoolAddress },
     });
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toEqual(
       expect.objectContaining({
         address: mockPoolAddress,
@@ -101,7 +102,7 @@ describe('GET /pool-info (raydium clmm)', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/pool-info',
-      query: { network: 'mainnet-beta', poolAddress: mockPoolAddress },
+      query: { chainNetwork: 'solana-mainnet-beta', connector: 'raydium', poolAddress: mockPoolAddress },
     });
     expect(response.statusCode).toBe(404);
   });
@@ -120,10 +121,10 @@ describe('GET /pool-info (raydium clmm)', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/pool-info',
-        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress },
+        query: { chainNetwork: 'solana-mainnet-beta', connector: 'raydium', poolAddress: mockPoolAddress },
       });
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.body).bins).toBeUndefined();
+      expect(parseWire(response.body).bins).toBeUndefined();
       expect(computeRaydiumBinDistribution).not.toHaveBeenCalled();
     });
 
@@ -132,10 +133,10 @@ describe('GET /pool-info (raydium clmm)', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/pool-info',
-        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress, binCount: 0 },
+        query: { chainNetwork: 'solana-mainnet-beta', connector: 'raydium', poolAddress: mockPoolAddress, binCount: 0 },
       });
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.body).bins).toBeUndefined();
+      expect(parseWire(response.body).bins).toBeUndefined();
       expect(computeRaydiumBinDistribution).not.toHaveBeenCalled();
     });
 
@@ -145,10 +146,15 @@ describe('GET /pool-info (raydium clmm)', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/pool-info',
-        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress, binCount: 11 },
+        query: {
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'raydium',
+          poolAddress: mockPoolAddress,
+          binCount: 11,
+        },
       });
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
       expect(Array.isArray(body.bins)).toBe(true);
       expect(body.bins).toHaveLength(11);
       expect(body.bins[0]).toEqual(
@@ -170,7 +176,12 @@ describe('GET /pool-info (raydium clmm)', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/pool-info',
-        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress, binCount: 999 },
+        query: {
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'raydium',
+          poolAddress: mockPoolAddress,
+          binCount: 999,
+        },
       });
       expect(response.statusCode).toBe(400);
     });

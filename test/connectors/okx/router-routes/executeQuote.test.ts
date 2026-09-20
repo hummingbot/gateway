@@ -2,6 +2,7 @@ import { Solana } from '../../../../src/chains/solana/solana';
 import { Okx } from '../../../../src/connectors/okx/okx';
 import { quoteCache } from '../../../../src/services/quote-cache';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/okx/okx');
@@ -9,7 +10,7 @@ jest.mock('../../../../src/connectors/okx/okx');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { executeQuoteRoute } = await import('../../../../src/connectors/okx/router-routes/executeQuote');
+  const { executeQuoteRoute } = await import('../../../../src/trading/trading-router-routes/executeQuote');
   await server.register(executeQuoteRoute);
   return server;
 };
@@ -29,6 +30,7 @@ const confirmedResult = {
     fee: 0.000005,
     baseTokenBalanceChange: -0.1,
     quoteTokenBalanceChange: 15,
+    slippagePct: 0.5,
   },
 };
 
@@ -53,6 +55,7 @@ describe('POST /execute-quote (okx)', () => {
     const mockSolanaInstance = {
       sendAndConfirmTransactionForWallet,
       connection: { getTransaction: jest.fn(async () => ({ meta: {} })) },
+      getConfirmedTransactionData: jest.fn(async () => ({ meta: {} })),
       handleConfirmation: jest.fn(async () => confirmedResult),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
@@ -75,11 +78,14 @@ describe('POST /execute-quote (okx)', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/execute-quote',
-      body: { walletAddress: WALLET, network: 'mainnet-beta', quoteId: 'okx-quote-1' },
+      body: { walletAddress: WALLET, chainNetwork: 'solana-mainnet-beta', connector: 'okx', quoteId: 'okx-quote-1' },
     });
 
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body)).toMatchObject({ signature: 'okx-sig', status: 1 });
+    const body = parseWire(response.body);
+    expect(body).toMatchObject({ signature: 'okx-sig', status: 1 });
+    // The applied slippage survives the SwapExecuteResponse serializer.
+    expect(Number(body.data.slippagePct)).toBe(0.5);
     // The route is re-fetched with the executing wallet and the cached parameters.
     expect(getSwapTransaction).toHaveBeenCalledWith(
       WALLET,
@@ -90,6 +96,18 @@ describe('POST /execute-quote (okx)', () => {
       0.5,
     );
     expect(sendAndConfirmTransactionForWallet).toHaveBeenCalledWith(unsignedTx, WALLET);
+    // The confirmation helper receives the retry-fetched txData and the applied slippage
+    // so it can decide the status (never `txData !== null`) and echo slippagePct.
+    expect(mockSolanaInstance.getConfirmedTransactionData).toHaveBeenCalledWith('okx-sig');
+    expect(mockSolanaInstance.handleConfirmation).toHaveBeenCalledWith(
+      'okx-sig',
+      { meta: {} },
+      mockSOL.address,
+      mockUSDC.address,
+      WALLET,
+      undefined,
+      0.5,
+    );
     expect(quoteCache.get('okx-quote-1')).toBeNull();
   });
 
@@ -97,10 +115,10 @@ describe('POST /execute-quote (okx)', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/execute-quote',
-      body: { walletAddress: WALLET, network: 'mainnet-beta', quoteId: 'missing-quote' },
+      body: { walletAddress: WALLET, chainNetwork: 'solana-mainnet-beta', connector: 'okx', quoteId: 'missing-quote' },
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toContain('Quote not found or expired');
+    expect(parseWire(response.body).message).toContain('Quote not found or expired');
   });
 });

@@ -1,16 +1,12 @@
-import { Static } from '@sinclair/typebox';
-import { PublicKey, VersionedTransaction } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
+import { ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
-import { MIN_SQRT_PRICE_X64, MAX_SQRT_PRICE_X64 } from '../pancakeswap-sol.parser';
 import { buildSwapTransaction } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmExecuteSwapRequest, PancakeswapSolClmmExecuteSwapRequestType } from '../schemas';
 
 /**
  * Execute a swap on PancakeSwap Solana CLMM
@@ -20,16 +16,26 @@ import { PancakeswapSolClmmExecuteSwapRequest, PancakeswapSolClmmExecuteSwapRequ
 export async function executeSwap(
   network: string,
   walletAddress: string,
+  poolAddress: string,
   baseTokenSymbol: string,
-  quoteTokenSymbol: string,
-  amount: number,
   side: 'BUY' | 'SELL',
-  poolAddress?: string,
+  amount: number,
   slippagePct?: number,
 ): Promise<ExecuteSwapResponseType> {
+  // Standardized: quote token is derived from the pool given poolAddress + baseToken.
+  const { getRawSwapQuote, resolveCounterToken } = await import('./quoteSwap');
+  const quoteTokenSymbol = await resolveCounterToken(network, poolAddress, baseTokenSymbol);
+
   // Get quote first - this contains all the slippage calculations and pool lookup
-  const { quoteSwap } = await import('./quoteSwap');
-  const quote = await quoteSwap(network, baseTokenSymbol, quoteTokenSymbol, amount, side, poolAddress, slippagePct);
+  const quote = await getRawSwapQuote(
+    network,
+    baseTokenSymbol,
+    quoteTokenSymbol,
+    amount,
+    side,
+    poolAddress,
+    slippagePct,
+  );
 
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
@@ -53,7 +59,6 @@ export async function executeSwap(
 
   // Validate pool contains the requested tokens
   const poolTokens = new Set([poolInfo.baseTokenAddress, poolInfo.quoteTokenAddress]);
-  const requestedTokens = new Set([baseToken.address, quoteToken.address]);
 
   if (!poolTokens.has(baseToken.address) || !poolTokens.has(quoteToken.address)) {
     throw httpErrors.badRequest(
@@ -64,8 +69,6 @@ export async function executeSwap(
   }
 
   // Determine if baseToken matches pool's base or quote
-  const isBaseTokenFirst = poolInfo.baseTokenAddress === baseToken.address;
-  const currentPrice = isBaseTokenFirst ? poolInfo.price : 1 / poolInfo.price;
 
   logger.info(
     `Token addresses - base: ${baseToken.address}, quote: ${quoteToken.address}, pool base: ${poolInfo.baseTokenAddress}, pool quote: ${poolInfo.quoteTokenAddress}`,
@@ -155,7 +158,6 @@ export async function executeSwap(
       walletAddress,
       baseToken,
       quoteToken,
-      totalFee,
     );
 
     return {
@@ -169,66 +171,17 @@ export async function executeSwap(
         fee: totalFee / 1e9,
         baseTokenBalanceChange: baseTokenChange,
         quoteTokenBalanceChange: quoteTokenChange,
+        slippagePct: quote.slippagePct,
       },
     };
   } else {
-    // Transaction pending
+    // A landed-but-failed transaction is terminal: fail loudly instead of returning
+    // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
+    await solana.throwIfLandedWithError(signature, txData);
+
     return {
       signature,
       status: 0, // PENDING
     };
   }
 }
-
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: PancakeswapSolClmmExecuteSwapRequestType;
-    Reply: ExecuteSwapResponseType;
-  }>(
-    '/execute-swap',
-    {
-      schema: {
-        description: 'Execute a swap on PancakeSwap Solana CLMM',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmExecuteSwapRequest,
-        response: { 200: ExecuteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          walletAddress,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-        } = request.body;
-
-        return await executeSwap(
-          network,
-          walletAddress!,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          poolAddress,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Execute swap error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to execute swap';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default executeSwapRoute;

@@ -2,6 +2,7 @@ import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/uniswap/uniswap');
@@ -10,8 +11,8 @@ jest.mock('../../../../src/connectors/uniswap/uniswap.utils');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { poolInfoRoute } = await import('../../../../src/connectors/uniswap/clmm-routes/poolInfo');
-  await server.register(poolInfoRoute);
+  const { poolsRoute } = await import('../../../../src/trading/clmm/pools');
+  await server.register(poolsRoute);
   return server;
 };
 
@@ -116,17 +117,17 @@ describe('GET /pool-info (Uniswap CLMM)', () => {
     const response = await server.inject({
       method: 'GET',
       url: '/pool-info',
-      query: { network: 'mainnet', poolAddress: POOL_ADDRESS },
+      query: { chainNetwork: 'ethereum-mainnet', connector: 'uniswap', poolAddress: POOL_ADDRESS },
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     // Pool metadata still surfaced from the V3 pool object.
     expect(body.address).toBe(POOL_ADDRESS);
     expect(body.baseTokenAddress).toBe(USDM1.address);
     expect(body.quoteTokenAddress).toBe(USDC.address);
-    expect(body.feePct).toBeCloseTo(0.01, 6);
+    expect(Number(body.feePct)).toBeCloseTo(0.01, 6);
     expect(body.binStep).toBe(1);
     expect(body.activeBinId).toBe(-276211);
     expect(body.price).toBeCloseTo(1.01146, 4);
@@ -192,14 +193,14 @@ describe('GET /pool-info (Uniswap CLMM)', () => {
     const response = await server.inject({
       method: 'GET',
       url: '/pool-info',
-      query: { network: 'mainnet', poolAddress: POOL_ADDRESS },
+      query: { chainNetwork: 'ethereum-mainnet', connector: 'uniswap', poolAddress: POOL_ADDRESS },
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     // Base is USDC now → base amount should be the USDC balance.
-    expect(body.baseTokenAmount).toBeCloseTo(182100, 0);
+    expect(Number(body.baseTokenAmount)).toBeCloseTo(182100, 0);
     expect(body.quoteTokenAmount).toBeCloseTo(167600, 0);
     // Price flips correspondingly (USDC per USDM1 was 1.01146; USDM1 per USDC ≈ 0.98867).
     expect(body.price).toBeCloseTo(0.98867, 4);
@@ -264,10 +265,10 @@ describe('GET /pool-info (Uniswap CLMM)', () => {
       const response = await server.inject({
         method: 'GET',
         url: '/pool-info',
-        query: { network: 'mainnet', poolAddress: POOL_ADDRESS },
+        query: { chainNetwork: 'ethereum-mainnet', connector: 'uniswap', poolAddress: POOL_ADDRESS },
       });
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.body).bins).toBeUndefined();
+      expect(parseWire(response.body).bins).toBeUndefined();
       expect(computeUniswapBinDistribution).not.toHaveBeenCalled();
     });
 
@@ -277,10 +278,10 @@ describe('GET /pool-info (Uniswap CLMM)', () => {
       const response = await server.inject({
         method: 'GET',
         url: '/pool-info',
-        query: { network: 'mainnet', poolAddress: POOL_ADDRESS, binCount: 0 },
+        query: { chainNetwork: 'ethereum-mainnet', connector: 'uniswap', poolAddress: POOL_ADDRESS, binCount: 0 },
       });
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.body).bins).toBeUndefined();
+      expect(parseWire(response.body).bins).toBeUndefined();
       expect(computeUniswapBinDistribution).not.toHaveBeenCalled();
     });
 
@@ -291,10 +292,10 @@ describe('GET /pool-info (Uniswap CLMM)', () => {
       const response = await server.inject({
         method: 'GET',
         url: '/pool-info',
-        query: { network: 'mainnet', poolAddress: POOL_ADDRESS, binCount: 11 },
+        query: { chainNetwork: 'ethereum-mainnet', connector: 'uniswap', poolAddress: POOL_ADDRESS, binCount: 11 },
       });
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
       expect(Array.isArray(body.bins)).toBe(true);
       expect(body.bins).toHaveLength(11);
       expect(body.bins[0]).toEqual(
@@ -317,7 +318,7 @@ describe('GET /pool-info (Uniswap CLMM)', () => {
       const response = await server.inject({
         method: 'GET',
         url: '/pool-info',
-        query: { network: 'mainnet', poolAddress: POOL_ADDRESS, binCount: 999 },
+        query: { chainNetwork: 'ethereum-mainnet', connector: 'uniswap', poolAddress: POOL_ADDRESS, binCount: 999 },
       });
       expect(response.statusCode).toBe(400);
     });

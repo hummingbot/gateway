@@ -1,20 +1,13 @@
-import { PriceMath } from '@orca-so/whirlpools-sdk';
+import { sqrtPriceToPrice } from '@orca-so/whirlpools-core';
 import { PublicKey } from '@solana/web3.js';
 import { fetchAllMint } from '@solana-program/token-2022';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { PoolInfo } from '../../../schemas/clmm-schema';
-import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { computeOrcaBinDistribution } from '../orca.utils';
-import {
-  OrcaClmmGetPoolInfoRequest,
-  OrcaClmmGetPoolInfoRequestType,
-  OrcaPoolInfo,
-  OrcaPoolInfoSchema,
-} from '../schemas';
-
+import { OrcaPoolInfo } from '../schemas';
 export async function getPoolInfo(
   fastify: FastifyInstance,
   network: string,
@@ -47,7 +40,7 @@ export async function getPoolInfo(
   const [mintA, mintB] = await fetchAllMint(orca.solanaKitRpc, [whirlpool.tokenMintA, whirlpool.tokenMintB]);
 
   // Calculate price from on-chain sqrtPrice (real-time)
-  const price = PriceMath.sqrtPriceX64ToPrice(whirlpool.sqrtPrice, mintA.data.decimals, mintB.data.decimals);
+  const price = sqrtPriceToPrice(whirlpool.sqrtPrice, mintA.data.decimals, mintB.data.decimals);
 
   // Fetch vault balances for token amounts
   const [vaultA, vaultB] = await Promise.all([
@@ -68,7 +61,7 @@ export async function getPoolInfo(
     quoteTokenAddress: whirlpool.tokenMintB.toString(),
     binStep: whirlpool.tickSpacing,
     feePct,
-    price: price.toNumber(), // Real-time from on-chain sqrtPrice
+    price, // Real-time from on-chain sqrtPrice
     baseTokenAmount: Number(vaultA.value.amount) / Math.pow(10, mintA.data.decimals),
     quoteTokenAmount: Number(vaultB.value.amount) / Math.pow(10, mintB.data.decimals),
     activeBinId: whirlpool.tickCurrentIndex, // Real-time from on-chain
@@ -94,41 +87,9 @@ export async function getPoolInfo(
       decimalsA: mintA.data.decimals,
       decimalsB: mintB.data.decimals,
       binCount,
+      programAddress: orca.deployment.programId,
     });
   }
 
   return poolInfo;
 }
-
-export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: OrcaClmmGetPoolInfoRequestType;
-    Reply: OrcaPoolInfo;
-  }>(
-    '/pool-info',
-    {
-      schema: {
-        description: 'Get pool information for a Orca pool',
-        tags: ['/connector/orca'],
-        querystring: OrcaClmmGetPoolInfoRequest,
-        response: {
-          200: OrcaPoolInfoSchema,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { poolAddress, binCount = 0, network } = request.query;
-        return (await getPoolInfo(fastify, network, poolAddress, binCount)) as OrcaPoolInfo;
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default poolInfoRoute;

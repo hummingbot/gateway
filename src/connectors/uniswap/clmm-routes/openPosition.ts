@@ -2,19 +2,14 @@ import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount, Percent } from '@uniswap/sdk-core';
 import { Position, NonfungiblePositionManager, MintOptions, nearestUsableTick } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 // Default gas limit for CLMM open position operations
 const CLMM_OPEN_POSITION_GAS_LIMIT = 600000;
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  OpenPositionRequestType,
-  OpenPositionRequest,
-  OpenPositionResponseType,
-  OpenPositionResponse,
-} from '../../../schemas/clmm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
+import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -235,11 +230,15 @@ export async function openPosition(
   }
 
   // Wait for transaction confirmation
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — there is no mint log to read yet, so no positionAddress and no amounts.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
   // Find the NFT ID from the transaction logs
   let positionId = '';
-  for (const log of receipt.logs) {
+  for (const log of outcome.receipt.logs) {
     if (
       log.address.toLowerCase() === positionManagerAddress.toLowerCase() &&
       log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' &&
@@ -250,8 +249,15 @@ export async function openPosition(
     }
   }
 
-  // Calculate gas fee
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
+  if (!positionId) {
+    // The transaction confirmed but no NFT-mint Transfer log was found. Returning a CONFIRMED
+    // response with an empty positionAddress would have the caller record a position it can
+    // never address — fail loudly, naming the transaction so the position stays recoverable.
+    throw httpErrors.internalServerError(
+      `Position opened in transaction ${outcome.signature} but no position NFT mint was found in its logs. ` +
+        `Inspect the transaction to recover the position ID.`,
+    );
+  }
 
   // For position rent, we're using the estimated gas cost since Ethereum doesn't have rent like Solana
   const positionRent = 0;
@@ -265,10 +271,10 @@ export async function openPosition(
   const quoteAmountUsed = isBaseToken0 ? actualToken1Amount : actualToken0Amount;
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      fee: outcome.fee,
       positionAddress: positionId,
       positionRent,
       baseTokenAmountAdded: baseAmountUsed,
@@ -276,99 +282,3 @@ export async function openPosition(
     },
   };
 }
-
-export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.post<{
-    Body: OpenPositionRequestType;
-    Reply: OpenPositionResponseType;
-  }>(
-    '/open-position',
-    {
-      schema: {
-        description: 'Open a new liquidity position in a Uniswap V3 pool',
-        tags: ['/connector/uniswap'],
-        body: {
-          ...OpenPositionRequest,
-          properties: {
-            ...OpenPositionRequest.properties,
-            network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            lowerPrice: { type: 'number', examples: [1000] },
-            upperPrice: { type: 'number', examples: [4000] },
-            poolAddress: { type: 'string', examples: ['0xd0b53d9277642d899df5c87a3966a349a798f224'] },
-            baseTokenAmount: { type: 'number', examples: [0.001] },
-            quoteTokenAmount: { type: 'number', examples: [3] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
-        response: {
-          200: OpenPositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          walletAddress: requestedWalletAddress,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        // Get wallet address - either from request or first available
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const uniswap = await Uniswap.getInstance(network);
-          walletAddress = await uniswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-          logger.info(`Using first available wallet address: ${walletAddress}`);
-        }
-
-        return await openPosition(
-          network,
-          walletAddress,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Failed to open position:', e);
-
-        // If error already has statusCode, re-throw it
-        if (e.statusCode) {
-          throw e;
-        }
-
-        // Check for specific error types
-        if (e.code === 'CALL_EXCEPTION') {
-          throw httpErrors.badRequest(
-            'Transaction failed. Please check token balances, approvals, and position parameters.',
-          );
-        }
-
-        // Handle insufficient funds errors
-        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
-          throw httpErrors.badRequest('Insufficient funds to complete the transaction');
-        }
-
-        // Generic error
-        throw httpErrors.internalServerError('Failed to open position');
-      }
-    },
-  );
-};
-
-export default openPositionRoute;

@@ -1,18 +1,14 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { getEthereumChainConfig } from '../../../chains/ethereum/ethereum.config';
-import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Pancakeswap } from '../pancakeswap';
 import { PancakeswapConfig } from '../pancakeswap.config';
-import { PancakeswapQuoteSwapRequest, PancakeswapQuoteSwapResponse } from '../schemas';
-
+import { PancakeswapQuoteSwapResponse } from '../schemas';
 async function quoteSwap(
   network: string,
   walletAddress: string | undefined,
@@ -136,51 +132,3 @@ async function quoteSwap(
 }
 
 export { quoteSwap };
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  const chainConfig = getEthereumChainConfig();
-
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: Static<typeof PancakeswapQuoteSwapResponse>;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get an executable swap quote from Pancakeswap Universal Router',
-        tags: ['/connector/pancakeswap'],
-        querystring: PancakeswapQuoteSwapRequest,
-        response: { 200: PancakeswapQuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = chainConfig.defaultNetwork,
-          walletAddress = chainConfig.defaultWallet,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          slippagePct,
-        } = request.query as typeof PancakeswapQuoteSwapRequest._type;
-
-        return await quoteSwap(
-          network,
-          walletAddress,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-        );
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error getting quote:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;

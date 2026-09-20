@@ -1,43 +1,74 @@
-import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk';
-import { BigNumber, Contract, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
-import { re } from 'mathjs';
+import { BigNumber, Contract, providers, utils } from 'ethers';
 
-import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { Ethereum, EthereumTransactionOutcome } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
-import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
+import { SwapExecuteResponseType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { UniswapExecuteSwapRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV3SwapRouter02Address, ISwapRouter02ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
-import { getUniswapClmmQuote } from './quoteSwap';
+import { getUniswapClmmQuote, resolveCounterToken } from './quoteSwap';
 
 // Default gas limit for CLMM swap operations
 const CLMM_SWAP_GAS_LIMIT = 350000;
 
+// Uniswap V3 pool `Swap` event. Its two amounts are signed from the pool's point of
+// view — positive is what the pool took in, negative what it paid out — which
+// identifies the input and output sides without needing token0/token1 ordering.
+const SWAP_EVENT_TOPIC = utils.id('Swap(address,address,int256,int256,uint160,uint128,int24)');
+const SWAP_EVENT_TYPES = ['int256', 'int256', 'uint160', 'uint128', 'int24'];
+
+/**
+ * Read what the swap actually moved, from the receipt.
+ *
+ * The quote is an estimate taken before the transaction lands, and the fill can differ
+ * from it — the pool moves under the trade, or the trade is sandwiched. Those are
+ * exactly the cases a caller needs to see, so the executed amounts come from the pool's
+ * own event rather than from the quote. Returns null if the event is absent.
+ */
+function readExecutedAmounts(
+  receipt: providers.TransactionReceipt,
+  poolAddress: string,
+  inputDecimals: number,
+  outputDecimals: number,
+): { amountIn: number; amountOut: number } | null {
+  const swapLog = receipt.logs.find(
+    (log) => log.address.toLowerCase() === poolAddress.toLowerCase() && log.topics[0] === SWAP_EVENT_TOPIC,
+  );
+  if (!swapLog) {
+    return null;
+  }
+
+  const [amount0, amount1] = utils.defaultAbiCoder.decode(SWAP_EVENT_TYPES, swapLog.data) as BigNumber[];
+  const rawIn = amount0.isNegative() ? amount1 : amount0;
+  const rawOut = amount0.isNegative() ? amount0 : amount1;
+
+  return {
+    amountIn: Number(utils.formatUnits(rawIn, inputDecimals)),
+    amountOut: Number(utils.formatUnits(rawOut.mul(-1), outputDecimals)),
+  };
+}
+
 export async function executeClmmSwap(
-  walletAddress: string,
   network: string,
+  walletAddress: string,
+  poolAddress: string,
   baseToken: string,
-  quoteToken: string,
-  amount: number,
   side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
 
-  const uniswap = await Uniswap.getInstance(network);
+  await Uniswap.getInstance(network);
 
-  // Find pool address
-  const poolAddress = await uniswap.findDefaultPool(baseToken, quoteToken, 'clmm');
-  if (!poolAddress) {
-    throw httpErrors.notFound(`No CLMM pool found for pair ${baseToken}-${quoteToken}`);
-  }
+  // Standardized: quote token is derived from the pool given poolAddress + baseToken.
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
 
   // Get quote using the shared quote function
   const { quote } = await getUniswapClmmQuote(network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
@@ -99,13 +130,16 @@ export async function executeClmmSwap(
     amountOut: 0,
     amountInMaximum: 0,
     amountOutMinimum: 0,
-    sqrtPriceLimitX96: encodeSqrtRatioX96(
-      quote.trade.executionPrice.numerator,
-      quote.trade.executionPrice.denominator,
-    ).toString(),
+    // No price limit: slippage protection comes from amountOutMinimum /
+    // amountInMaximum (set from the quote below). Encoding the trade's
+    // *average* execution price here makes any swap whose ending price
+    // crosses its own average partial-fill at the limit and revert with
+    // "Too little received" — near-guaranteed on thin pools or any size
+    // with more than ~a tick of impact.
+    sqrtPriceLimitX96: '0',
   };
 
-  let receipt;
+  let outcome: EthereumTransactionOutcome;
 
   try {
     if (isHardwareWallet) {
@@ -182,7 +216,7 @@ export async function executeClmmSwap(
       logger.info(`Transaction sent: ${txResponse.hash}`);
 
       // Wait for confirmation with timeout
-      receipt = await ethereum.handleTransactionExecution(txResponse);
+      outcome = await ethereum.handleTransactionConfirmation(txResponse);
     } else {
       // Regular wallet flow
       let wallet;
@@ -244,49 +278,57 @@ export async function executeClmmSwap(
       logger.info(`Transaction sent: ${tx.hash}`);
 
       // Wait for transaction confirmation
-      receipt = await ethereum.handleTransactionExecution(tx);
+      outcome = await ethereum.handleTransactionConfirmation(tx);
     }
 
-    // Check if the transaction was successful
-    if (receipt.status === 0) {
-      logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(receipt)}`);
-      throw httpErrors.internalServerError(
-        'Transaction reverted on-chain. This could be due to slippage, insufficient funds, or other blockchain issues.',
+    // A revert threw out of the confirmation helper as a 400 TRANSACTION_FAILED. What is left
+    // is a transaction that is still pending after the extended poll: report it as PENDING
+    // with its hash rather than dereferencing a null receipt and losing the hash to a 500.
+    if (!outcome.confirmed) {
+      return { signature: outcome.signature, status: TransactionStatus.PENDING };
+    }
+
+    logger.info(`Transaction confirmed: ${outcome.signature}`);
+    logger.info(`Gas used: ${outcome.receipt.gasUsed.toString()}`);
+
+    // Report what the swap moved, not what the quote predicted. Falling back to the
+    // quote is a last resort rather than the default: a settled swap must still return
+    // its hash, so an undecodable receipt is logged loudly instead of thrown.
+    const executed = readExecutedAmounts(
+      outcome.receipt,
+      poolAddress,
+      quote.inputToken.decimals,
+      quote.outputToken.decimals,
+    );
+    if (!executed) {
+      logger.warn(
+        `No Swap event for pool ${poolAddress} in ${outcome.signature}: reporting quoted ` +
+          'amounts, which may not match the fill.',
       );
     }
-
-    logger.info(`Transaction confirmed: ${receipt.transactionHash}`);
-    logger.info(`Gas used: ${receipt.gasUsed.toString()}`);
-
-    // Calculate amounts using quote values
-    const amountIn = quote.estimatedAmountIn;
-    const amountOut = quote.estimatedAmountOut;
+    const amountIn = executed ? executed.amountIn : quote.estimatedAmountIn;
+    const amountOut = executed ? executed.amountOut : quote.estimatedAmountOut;
 
     // Calculate balance changes as numbers
     const baseTokenBalanceChange = side === 'BUY' ? amountOut : -amountIn;
     const quoteTokenBalanceChange = side === 'BUY' ? -amountIn : amountOut;
-
-    // Calculate gas fee (formatTokenAmount already returns a number)
-    const gasFee = formatTokenAmount(
-      receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(),
-      18, // ETH has 18 decimals
-    );
 
     // Determine token addresses for computed fields
     const tokenIn = quote.inputToken.address;
     const tokenOut = quote.outputToken.address;
 
     return {
-      signature: receipt.transactionHash,
-      status: receipt.status,
+      signature: outcome.signature,
+      status: TransactionStatus.CONFIRMED,
       data: {
         tokenIn,
         tokenOut,
         amountIn,
         amountOut,
-        fee: gasFee,
+        fee: outcome.fee,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
+        slippagePct,
       },
     };
   } catch (error) {
@@ -320,44 +362,5 @@ export async function executeClmmSwap(
   }
 }
 
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: ExecuteSwapRequestType;
-    Reply: SwapExecuteResponseType;
-  }>(
-    '/execute-swap',
-    {
-      schema: {
-        description: 'Execute a swap on Uniswap V3 CLMM using SwapRouter02',
-        tags: ['/connector/uniswap'],
-        body: UniswapExecuteSwapRequest,
-        response: { 200: SwapExecuteResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress, network, baseToken, quoteToken, amount, side, slippagePct } =
-          request.body as typeof UniswapExecuteSwapRequest._type;
-
-        return await executeClmmSwap(
-          walletAddress,
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-        );
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error executing swap:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
 // Export executeSwap alias for uniform chain route imports
 export { executeClmmSwap as executeSwap };
-
-export default executeSwapRoute;

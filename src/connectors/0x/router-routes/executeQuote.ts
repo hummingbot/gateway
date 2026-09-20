@@ -1,21 +1,13 @@
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
+import { SwapExecuteResponseType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { ZeroX } from '../0x';
-import { ZeroXExecuteQuoteRequest } from '../schemas';
 
-async function executeQuote(
-  walletAddress: string,
-  network: string,
-  quoteId: string,
-  gasPrice?: string,
-  maxGas?: number,
-): Promise<SwapExecuteResponseType> {
+async function executeQuote(walletAddress: string, network: string, quoteId: string): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote from global cache
   const quote = quoteCache.get(quoteId);
   if (!quote) {
@@ -56,8 +48,7 @@ async function executeQuote(
     to: quote.to,
     data: quote.data,
     value: quote.value,
-    gasLimit: maxGas || parseInt(quote.estimatedGas || quote.gas),
-    ...(gasPrice && { gasPrice: BigNumber.from(gasPrice) }),
+    gasLimit: parseInt(quote.estimatedGas || quote.gas),
   };
 
   const txResponse = await wallet.sendTransaction(txData);
@@ -82,6 +73,9 @@ async function executeQuote(
     quote.buyTokenAddress,
     expectedAmountIn,
     expectedAmountOut,
+    undefined,
+    undefined,
+    quoteCache.getRequest(quoteId)?.slippagePct,
   );
 
   // Handle different transaction states
@@ -108,34 +102,3 @@ async function executeQuote(
 }
 
 export { executeQuote };
-
-export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: ExecuteQuoteRequestType;
-    Reply: SwapExecuteResponseType;
-  }>(
-    '/execute-quote',
-    {
-      schema: {
-        description: 'Execute a previously fetched quote from 0x',
-        tags: ['/connector/0x'],
-        body: ZeroXExecuteQuoteRequest,
-        response: { 200: SwapExecuteResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress, network, quoteId, gasPrice, maxGas } =
-          request.body as typeof ZeroXExecuteQuoteRequest._type;
-
-        return await executeQuote(walletAddress, network, quoteId, gasPrice, maxGas);
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error executing 0x quote:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
-export default executeQuoteRoute;

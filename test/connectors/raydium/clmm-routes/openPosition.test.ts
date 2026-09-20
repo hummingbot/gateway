@@ -3,16 +3,22 @@ import { Keypair, VersionedTransaction, MessageV0 } from '@solana/web3.js';
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/raydium/raydium');
 jest.mock('../../../../src/chains/solana/solana.utils', () => ({
+  // Spread the real module: only the network lookup needs standing in for, and the
+  // arithmetic beside it (liquidityWithoutRent) is what the amounts below assert.
+  ...jest.requireActual('../../../../src/chains/solana/solana.utils'),
   getAvailableSolanaNetworks: jest.fn().mockReturnValue(['mainnet-beta', 'devnet']),
 }));
 jest.mock('../../../../src/services/config-manager-v2', () => ({
   ConfigManagerV2: {
     getInstance: jest.fn().mockReturnValue({
       get: jest.fn().mockReturnValue(1), // Default slippage
+      // Read at import time by the trading routes to build the chainNetwork enum.
+      getSupportedChainNetworks: jest.fn().mockReturnValue(['solana-devnet', 'solana-mainnet-beta']),
     }),
   },
 }));
@@ -48,7 +54,7 @@ jest.mock('@raydium-io/raydium-sdk-v2', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { openPositionRoute } = await import('../../../../src/connectors/raydium/clmm-routes/openPosition');
+  const { openPositionRoute } = await import('../../../../src/trading/trading-clmm-routes/open');
   await server.register(openPositionRoute);
   return server;
 };
@@ -109,13 +115,19 @@ const buildSolanaMock = (overrides: Record<string, any> = {}) => ({
   connection: {
     getTransaction: jest.fn().mockResolvedValue(mockTxData),
   },
+  getConfirmedTransactionData: jest.fn().mockResolvedValue(mockTxData),
   extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
     balanceChanges: [-0.002, -1, -150],
   }),
   extractClmmBalanceChanges: jest.fn().mockResolvedValue({
     baseTokenChange: -1,
     quoteTokenChange: -150,
-    rent: 0.002,
+    // What the accounts this transaction created cost, and the rent share of it. Read
+    // from the transaction rather than assumed: opening a CLMM position creates the
+    // position, its NFT account, the shared protocol position and sometimes a tick
+    // array, which is why a fixed 0.00204928 was never the right number.
+    rent: 0.0132,
+    accountSol: 0.0132,
   }),
   getPositionCache: jest.fn().mockReturnValue({
     get: jest.fn(),
@@ -182,9 +194,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         lowerPrice: 140,
@@ -196,7 +209,7 @@ describe('POST /open-position', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     // The SDK owner is set to the wallet's public key (wallet-type-agnostic).
     expect(mockRaydiumInstance.setOwner).toHaveBeenCalledTimes(1);
@@ -207,19 +220,23 @@ describe('POST /open-position', () => {
       mockWalletAddress,
       mockSigners,
     );
-    expect(mockSolanaInstance.connection.getTransaction).toHaveBeenCalledWith(
-      'mock-signature',
-      expect.objectContaining({ commitment: 'confirmed', maxSupportedTransactionVersion: 0 }),
-    );
+    expect(mockSolanaInstance.getConfirmedTransactionData).toHaveBeenCalledWith('mock-signature');
 
     // Verify the response
     expect(body).toHaveProperty('signature', 'mock-signature');
     expect(body).toHaveProperty('status', 1);
     expect(body.data).toHaveProperty('positionAddress', mockPositionNftMint);
     expect(body.data).toHaveProperty('fee');
-    expect(body.data).toHaveProperty('positionRent');
-    expect(body.data).toHaveProperty('baseTokenAmountAdded');
-    expect(body.data).toHaveProperty('quoteTokenAmountAdded');
+    expect(Number(body.data.positionRent)).toBe(0.0132);
+
+    // The values, not just the keys. The mocked wallet deltas are -1 SOL and -150 USDC
+    // with 0.0132 SOL locked across the accounts the open created, and an open reports
+    // what the position holds: magnitudes, with those lamports — which the chain returns
+    // on close, so they are locked rather than deposited — backed off the native side
+    // only. Asserting the keys existed accepted both the negative and the rent counted as
+    // liquidity.
+    expect(body.data.baseTokenAmountAdded).toBeCloseTo(0.9868, 9);
+    expect(body.data.quoteTokenAmountAdded).toBeCloseTo(150, 9);
   });
 
   it('should set the owner before pool operations', async () => {
@@ -260,9 +277,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         lowerPrice: 140,
@@ -299,9 +317,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: 'invalid-wallet',
         poolAddress: mockPoolAddress,
         lowerPrice: 140,
@@ -336,9 +355,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: 'invalid-pool',
         lowerPrice: 140,
@@ -377,9 +397,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         lowerPrice: 160, // Lower price is higher than upper price
@@ -423,9 +444,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         lowerPrice: 140,

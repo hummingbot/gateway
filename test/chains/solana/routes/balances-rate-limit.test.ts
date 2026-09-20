@@ -112,7 +112,9 @@ describe('Solana Balances Route - Rate Limit Handling', () => {
       const body = JSON.parse(response.body);
       expect(body).toMatchObject({
         statusCode: 500,
-        error: 'Internal Server Error',
+        // The unified chain routes surface errors through the same helper the trading
+        // routes use, so the envelope's `error` is the error name, not the status text.
+        error: 'InternalServerError',
       });
     });
 

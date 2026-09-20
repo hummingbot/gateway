@@ -18,6 +18,11 @@
       "type": "string",
       "description": "CoinGecko API key for price data (https://www.coingecko.com/en/api/pricing)"
     },
+    "coingeckoPlan": {
+      "type": "string",
+      "enum": ["", "demo", "pro"],
+      "description": "Which CoinGecko plan apiKeys.coingecko belongs to. Demo and Pro keys use different hosts and headers; leave blank to detect on first use."
+    },
     "etherscan": {
       "type": "string",
       "description": "Etherscan API key for gas prices (https://etherscan.io/myapikey)"

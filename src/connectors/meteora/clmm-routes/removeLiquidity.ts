@@ -1,21 +1,13 @@
 import { BN } from '@coral-xyz/anchor';
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  RemoveLiquidityResponse,
-  RemoveLiquidityRequestType,
-  RemoveLiquidityResponseType,
-} from '../../../schemas/clmm-schema';
+import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
-import { MeteoraClmmRemoveLiquidityRequest } from '../schemas';
 
 // Using centralized error handling
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 
 export async function removeLiquidity(
   network: string,
@@ -97,10 +89,9 @@ export async function removeLiquidity(
   const fee = totalFee;
 
   // Get transaction data for confirmation
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   const confirmed = txData !== null;
 
@@ -131,6 +122,10 @@ export async function removeLiquidity(
       signature,
       status: 1, // CONFIRMED
       data: {
+        // The pool this position belongs to, already loaded here. The unified route is
+        // position-addressed and never receives it, so this is the only place it can
+        // come from without a second lookup.
+        poolAddress: info.publicKey.toBase58(),
         fee,
         baseTokenAmountRemoved: tokenXRemovedAmount,
         quoteTokenAmountRemoved: tokenYRemovedAmount,
@@ -143,41 +138,3 @@ export async function removeLiquidity(
     };
   }
 }
-
-export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
-  fastify.post<{
-    Body: Static<typeof MeteoraClmmRemoveLiquidityRequest>;
-    Reply: RemoveLiquidityResponseType;
-  }>(
-    '/remove-liquidity',
-    {
-      schema: {
-        description: 'Remove liquidity from a Meteora position',
-        tags: ['/connector/meteora'],
-        body: MeteoraClmmRemoveLiquidityRequest,
-        response: {
-          200: RemoveLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, positionAddress, liquidityPct } = request.body;
-
-        const networkToUse = network;
-
-        return await removeLiquidity(networkToUse, walletAddress, positionAddress, liquidityPct);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default removeLiquidityRoute;

@@ -1,20 +1,13 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  RemoveLiquidityResponse,
-  RemoveLiquidityRequestType,
-  RemoveLiquidityResponseType,
-} from '../../../schemas/clmm-schema';
-import { httpErrors } from '../../../services/error-handler';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
+import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
-import { RaydiumClmmRemoveLiquidityRequest } from '../schemas';
 
 export async function removeLiquidity(
   network: string,
@@ -76,10 +69,9 @@ export async function removeLiquidity(
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
   // simulates internally).
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
   const confirmed = txData !== null;
 
   // Return with status
@@ -93,11 +85,23 @@ export async function removeLiquidity(
       tokenBInfo?.address || poolInfo.mintB.address,
     ]);
 
-    const baseTokenBalanceChange = balanceChanges[0];
-    const quoteTokenBalanceChange = balanceChanges[1];
+    // A 100% removal closes the position and its NFT account in the same transaction, so
+    // their rent comes back inside the native side of this change. It is not liquidity.
+    // A partial removal closes nothing and this is a no-op.
+    const { closed } = accountLifecycleSol(txData);
+    const baseTokenBalanceChange = liquidityWithoutRent(
+      balanceChanges[0],
+      new PublicKey(tokenAInfo?.address || poolInfo.mintA.address),
+      closed,
+    );
+    const quoteTokenBalanceChange = liquidityWithoutRent(
+      balanceChanges[1],
+      new PublicKey(tokenBInfo?.address || poolInfo.mintB.address),
+      closed,
+    );
 
     logger.info(
-      `Liquidity removed from position ${positionAddress}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${poolInfo.mintA.symbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${poolInfo.mintB.symbol}`,
+      `Liquidity removed from position ${positionAddress}: ${baseTokenBalanceChange.toFixed(4)} ${poolInfo.mintA.symbol}, ${quoteTokenBalanceChange.toFixed(4)} ${poolInfo.mintB.symbol}`,
     );
 
     const totalFee = txData.meta.fee;
@@ -105,9 +109,13 @@ export async function removeLiquidity(
       signature,
       status: 1, // CONFIRMED
       data: {
+        // The pool this position belongs to, already loaded here. The unified route is
+        // position-addressed and never receives it, so this is the only place it can
+        // come from without a second lookup.
+        poolAddress: positionInfo.poolId.toBase58(),
         fee: totalFee / 1e9,
-        baseTokenAmountRemoved: Math.abs(baseTokenBalanceChange),
-        quoteTokenAmountRemoved: Math.abs(quoteTokenBalanceChange),
+        baseTokenAmountRemoved: baseTokenBalanceChange,
+        quoteTokenAmountRemoved: quoteTokenBalanceChange,
       },
     };
   } else {
@@ -118,35 +126,3 @@ export async function removeLiquidity(
     };
   }
 }
-
-export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof RaydiumClmmRemoveLiquidityRequest>;
-    Reply: RemoveLiquidityResponseType;
-  }>(
-    '/remove-liquidity',
-    {
-      schema: {
-        description: 'Remove liquidity from Raydium CLMM position',
-        tags: ['/connector/raydium'],
-        body: RaydiumClmmRemoveLiquidityRequest,
-        response: {
-          200: RemoveLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, positionAddress, percentageToRemove } = request.body;
-
-        return await removeLiquidity(network, walletAddress, positionAddress, percentageToRemove, false);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default removeLiquidityRoute;

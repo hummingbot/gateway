@@ -13,8 +13,5 @@
       "type": "string"
     }
   },
-  "required": [
-    "nodeURL",
-    "nativeCurrencySymbol"
-  ]
+  "required": ["nodeURL", "nativeCurrencySymbol"]
 }

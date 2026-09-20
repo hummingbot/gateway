@@ -4,3 +4,4 @@ certs
 coverage
 dist
 vendor
+openapi.json

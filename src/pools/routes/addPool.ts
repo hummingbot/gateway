@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { parseChainNetwork } from '../../services/chain-network';
 import { PoolService } from '../../services/pool-service';
 import { fetchPoolInfo, resolveTokenSymbols } from '../pool-info-helpers';
 import { PoolAddRequestSchema, PoolSuccessResponseSchema } from '../schemas';
@@ -15,21 +16,14 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
         body: PoolAddRequestSchema,
         response: {
           200: PoolSuccessResponseSchema,
-          400: {
-            type: 'object',
-            properties: {
-              message: { type: 'string' },
-            },
-          },
         },
       },
     },
     async (request) => {
       const {
-        chain,
+        chainNetwork,
         connector,
         type,
-        network,
         address,
         baseSymbol,
         quoteSymbol,
@@ -37,6 +31,7 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
         quoteTokenAddress,
         feePct,
       } = request.body;
+      const { chain, network } = parseChainNetwork(chainNetwork);
 
       const poolService = PoolService.getInstance();
 

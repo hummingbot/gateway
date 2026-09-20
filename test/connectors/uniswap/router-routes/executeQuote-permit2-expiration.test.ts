@@ -31,7 +31,7 @@ const mockWETH = {
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { executeQuoteRoute } = await import('../../../../src/connectors/uniswap/router-routes/executeQuote');
+  const { executeQuoteRoute } = await import('../../../../src/trading/trading-router-routes/executeQuote');
   await server.register(executeQuoteRoute);
   return server;
 };
@@ -114,7 +114,8 @@ describe('POST /execute-quote — Permit2 expiration handling', () => {
       method: 'POST',
       url: '/execute-quote',
       payload: {
-        network: 'robinhoodchain',
+        chainNetwork: 'ethereum-robinhoodchain',
+        connector: 'uniswap',
         walletAddress: '0xDA50C69342216b538Daf06FfECDa7363E0B96684',
         quoteId: 'test-quote-id',
       },

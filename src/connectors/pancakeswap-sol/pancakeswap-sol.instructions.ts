@@ -3,20 +3,9 @@ import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  NATIVE_MINT,
   getAssociatedTokenAddressSync,
-  createAssociatedTokenAccountInstruction,
 } from '@solana/spl-token';
-import {
-  PublicKey,
-  TransactionInstruction,
-  SystemProgram,
-  SYSVAR_RENT_PUBKEY,
-  ComputeBudgetProgram,
-  TransactionMessage,
-  VersionedTransaction,
-  Keypair,
-} from '@solana/web3.js';
+import { PublicKey, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY, Keypair } from '@solana/web3.js';
 import BN from 'bn.js';
 
 import { Solana } from '../../chains/solana/solana';
@@ -32,6 +21,88 @@ import {
 } from './pancakeswap-sol.parser';
 
 const clmmIdl = require('./idl/clmm.json') as Idl;
+
+/**
+ * Build the `create_pool` instruction for the PancakeSwap Solana CLMM program.
+ *
+ * The program has no external SDK, so the instruction is assembled manually from the bundled IDL.
+ * All PDAs and account ordering are taken verbatim from the `create_pool` instruction definition in
+ * idl/clmm.json:
+ *   - pool_state:        seeds ["pool", amm_config, token_mint_0, token_mint_1]
+ *   - token_vault_0:     seeds ["pool_vault", pool_state, token_mint_0]
+ *   - token_vault_1:     seeds ["pool_vault", pool_state, token_mint_1]
+ *   - observation_state: seeds ["observation", pool_state]
+ *   - tick_array_bitmap: seeds ["pool_tick_array_bitmap_extension", pool_state]
+ *
+ * Args: sqrt_price_x64 (u128), open_time (u64). sqrt_price_x64 is sqrt(amount_token_1/amount_token_0)
+ * as a Q64.64, so `mint0`/`mint1` MUST already be canonically ordered (mint0 < mint1 by bytes) and the
+ * price used to compute it must be expressed as mint1-per-mint0.
+ *
+ * Returns the instruction plus the derived pool_state address (the new pool address).
+ */
+export function buildCreatePoolInstruction(
+  poolCreator: PublicKey,
+  ammConfig: PublicKey,
+  tokenMint0: PublicKey,
+  tokenMint1: PublicKey,
+  tokenProgram0: PublicKey,
+  tokenProgram1: PublicKey,
+  sqrtPriceX64: BN,
+  openTime: BN,
+): { instruction: TransactionInstruction; poolState: PublicKey } {
+  const [poolState] = PublicKey.findProgramAddressSync(
+    [Buffer.from('pool'), ammConfig.toBuffer(), tokenMint0.toBuffer(), tokenMint1.toBuffer()],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  const [tokenVault0] = PublicKey.findProgramAddressSync(
+    [Buffer.from('pool_vault'), poolState.toBuffer(), tokenMint0.toBuffer()],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  const [tokenVault1] = PublicKey.findProgramAddressSync(
+    [Buffer.from('pool_vault'), poolState.toBuffer(), tokenMint1.toBuffer()],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  const [observationState] = PublicKey.findProgramAddressSync(
+    [Buffer.from('observation'), poolState.toBuffer()],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  const [tickArrayBitmap] = PublicKey.findProgramAddressSync(
+    [Buffer.from('pool_tick_array_bitmap_extension'), poolState.toBuffer()],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  const coder = new BorshCoder(clmmIdl);
+  const instructionData = coder.instruction.encode('create_pool', {
+    sqrt_price_x64: sqrtPriceX64,
+    open_time: openTime,
+  });
+
+  const instruction = new TransactionInstruction({
+    programId: PANCAKESWAP_CLMM_PROGRAM_ID,
+    keys: [
+      { pubkey: poolCreator, isSigner: true, isWritable: true }, // pool_creator
+      { pubkey: ammConfig, isSigner: false, isWritable: false }, // amm_config
+      { pubkey: poolState, isSigner: false, isWritable: true }, // pool_state (PDA)
+      { pubkey: tokenMint0, isSigner: false, isWritable: false }, // token_mint_0
+      { pubkey: tokenMint1, isSigner: false, isWritable: false }, // token_mint_1
+      { pubkey: tokenVault0, isSigner: false, isWritable: true }, // token_vault_0 (PDA)
+      { pubkey: tokenVault1, isSigner: false, isWritable: true }, // token_vault_1 (PDA)
+      { pubkey: observationState, isSigner: false, isWritable: true }, // observation_state (PDA)
+      { pubkey: tickArrayBitmap, isSigner: false, isWritable: true }, // tick_array_bitmap (PDA)
+      { pubkey: tokenProgram0, isSigner: false, isWritable: false }, // token_program_0
+      { pubkey: tokenProgram1, isSigner: false, isWritable: false }, // token_program_1
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }, // rent
+    ],
+    data: instructionData,
+  });
+
+  return { instruction, poolState };
+}
 
 export async function buildSwapV2Instruction(
   solana: Solana,
@@ -518,7 +589,19 @@ export async function buildOpenPositionWithToken22NftInstruction(
   amount0Max: BN,
   amount1Max: BN,
   withMetadata: boolean,
-  baseFlag: boolean,
+  /**
+   * Which side the *program* should size liquidity from, or null to use the `liquidity`
+   * argument and treat the maxes as the ceilings they are named for.
+   *
+   * null is what the open route sends. Handing the program a side makes that side's
+   * max both the amount to size from and the ceiling to check against, so the check has
+   * no headroom by construction: it computes the deposit that liquidity requires,
+   * rounds it up in the pool's favour, and asserts it against the number it started
+   * from. One unit of rounding fails the whole transaction, and a wider slippagePct
+   * cannot help — a larger bound is simply a larger deposit.
+   */
+  baseFlag: boolean | null,
+  liquidity: BN = new BN(0),
 ): Promise<TransactionInstruction> {
   // Get pool data
   const poolAccountInfo = await solana.connection.getAccountInfo(poolAddress);
@@ -612,11 +695,15 @@ export async function buildOpenPositionWithToken22NftInstruction(
     tick_upper_index: tickUpperIndex,
     tick_array_lower_start_index: tickArrayLowerStartIndex,
     tick_array_upper_start_index: tickArrayUpperStartIndex,
-    liquidity: new BN(0), // Let program calculate from amounts
+    liquidity,
     amount_0_max: amount0Max,
     amount_1_max: amount1Max,
     with_metadata: withMetadata,
-    base_flag: baseFlag ? { some: true } : { some: false },
+    // The plain value, not `{ some: ... }`. Borsh encodes an Option as "0x00" for null
+    // or "0x01" + the value, and its bool layout is `value ? 1 : 0` — so an object is
+    // truthy and `{ some: false }` encoded as Some(TRUE). Every request that meant
+    // "size from the quote side" told the program to size from the base side instead.
+    base_flag: baseFlag,
   });
 
   logger.info(`Instruction Data (hex): ${instructionData.toString('hex')}`);

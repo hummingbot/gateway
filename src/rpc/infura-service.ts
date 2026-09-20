@@ -2,7 +2,7 @@ import { providers } from 'ethers';
 
 import { logger } from '../services/logger';
 
-import { createRateLimitAwareEthereumProvider } from './rpc-connection-interceptor';
+import { createRateLimitAwareEthereumProvider, rateLimitAwareConnection } from './rpc-connection-interceptor';
 import { RPCProvider, RPCProviderConfig, NetworkInfo } from './rpc-provider-base';
 
 /**
@@ -52,16 +52,14 @@ export class InfuraService extends RPCProvider {
   private initializeHttpProvider(): void {
     const httpUrl = this.getHttpUrl();
 
-    // Initialize HTTP provider with rate limit detection. throttleLimit: 1 disables
-    // ethers' built-in 429 retry so the interceptor is the single retry layer.
+    // Initialize HTTP provider with rate limit detection. rateLimitAwareConnection keeps
+    // ethers from retrying 429s, so the interceptor is the single retry layer, while
+    // preserving the status it needs to see them.
     this.provider = createRateLimitAwareEthereumProvider(
-      new providers.JsonRpcProvider(
-        { url: httpUrl, throttleLimit: 1 },
-        {
-          name: this.getInfuraNetworkName(),
-          chainId: this.networkInfo.chainId,
-        },
-      ),
+      new providers.JsonRpcProvider(rateLimitAwareConnection(httpUrl), {
+        name: this.getInfuraNetworkName(),
+        chainId: this.networkInfo.chainId,
+      }),
       httpUrl,
     );
   }

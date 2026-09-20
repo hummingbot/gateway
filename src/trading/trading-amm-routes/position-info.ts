@@ -1,0 +1,70 @@
+import { Type, Static } from '@sinclair/typebox';
+import { FastifyPluginAsync } from 'fastify';
+
+import { getPositionInfo as meteoraGetPositionInfo } from '../../connectors/meteora/amm-routes/positionInfo';
+import { getPositionInfo as pancakeswapGetPositionInfo } from '../../connectors/pancakeswap/amm-routes/positionInfo';
+import { getPositionInfo as raydiumGetPositionInfo } from '../../connectors/raydium/amm-routes/positionInfo';
+import { getPositionInfo as uniswapGetPositionInfo } from '../../connectors/uniswap/amm-routes/positionInfo';
+import { PositionInfo, PositionInfoSchema } from '../../schemas/amm-schema';
+import { httpErrors } from '../../services/error-handler';
+import {
+  AMM_CONNECTORS,
+  chainNetworkField,
+  connectorField,
+  resolveWalletAddress,
+  walletAddressField,
+  resolveChainNetwork,
+  rethrowRouteError,
+} from '../common';
+
+export const UnifiedAmmPositionInfoRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
+    poolAddress: Type.String({ description: 'Pool contract address' }),
+    walletAddress: walletAddressField('Wallet address'),
+  },
+  { $id: 'AmmPositionInfoRequest', additionalProperties: false },
+);
+
+export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
+  fastify.get<{
+    Querystring: Static<typeof UnifiedAmmPositionInfoRequest>;
+    Reply: PositionInfo;
+  }>(
+    '/position-info',
+    {
+      schema: {
+        description: "Get a wallet's aggregated AMM liquidity in a pool from any supported connector",
+        tags: ['/trading/amm'],
+        querystring: UnifiedAmmPositionInfoRequest,
+        response: { 200: PositionInfoSchema },
+      },
+    },
+    async (request) => {
+      try {
+        const { connector, chainNetwork, poolAddress, walletAddress: requestedWallet } = request.query;
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
+        switch (connector) {
+          case 'meteora':
+            return await meteoraGetPositionInfo(network, poolAddress, walletAddress);
+          case 'raydium':
+            return await raydiumGetPositionInfo(network, poolAddress, walletAddress);
+          case 'uniswap':
+            return await uniswapGetPositionInfo(network, poolAddress, walletAddress);
+          case 'pancakeswap':
+            return await pancakeswapGetPositionInfo(network, poolAddress, walletAddress);
+          default:
+            throw httpErrors.badRequest(
+              `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
+            );
+        }
+      } catch (e: any) {
+        rethrowRouteError(e, 'Failed to get AMM position info');
+      }
+    },
+  );
+};
+
+export default positionInfoRoute;

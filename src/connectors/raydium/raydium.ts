@@ -5,6 +5,7 @@ import {
   ApiV3PoolInfoStandardItemCpmm,
   PositionInfoLayout,
   CLMM_PROGRAM_ID,
+  DEVNET_PROGRAM_ID,
   getPdaPersonalPositionAddress,
   PositionUtils,
   TickUtils,
@@ -14,7 +15,9 @@ import {
   AmmV4Keys,
   AmmV5Keys,
 } from '@raydium-io/raydium-sdk-v2';
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
+import bs58 from 'bs58';
 
 import { Solana } from '../../chains/solana/solana';
 import { PoolInfo as AmmPoolInfo } from '../../schemas/amm-schema';
@@ -29,6 +32,29 @@ import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils';
 interface InternalAmmPoolInfo extends AmmPoolInfo {
   poolType?: 'amm' | 'cpmm';
 }
+
+// SPL token account layout: mint at 0..32, owner at 32..64, amount (u64 LE) at 64..72.
+const TOKEN_ACCOUNT_OWNER_OFFSET = 32;
+const TOKEN_ACCOUNT_AMOUNT_OFFSET = 64;
+
+/** Return only the mint, so a wallet's whole token ledger does not come back. */
+const MINT_SLICE = { offset: 0, length: 32 };
+
+/** Base58 of a u64 little-endian 1 — the balance an NFT holding carries. */
+const AMOUNT_ONE_BASE58 = bs58.encode(Buffer.from([1, 0, 0, 0, 0, 0, 0, 0]));
+
+/**
+ * Accounts that `walletAddress` owns holding exactly one unit.
+ *
+ * This is deliberately looser than the old check, which also required the mint to have
+ * zero decimals and so meant reading every mint. Letting through a dust balance of one
+ * raw unit costs nothing: the personal-position PDA lookup below is what decides whether
+ * a mint is really a Raydium position.
+ */
+const nftHoldingFilters = (walletAddress: string) => [
+  { memcmp: { offset: TOKEN_ACCOUNT_OWNER_OFFSET, bytes: walletAddress } },
+  { memcmp: { offset: TOKEN_ACCOUNT_AMOUNT_OFFSET, bytes: AMOUNT_ONE_BASE58 } },
+];
 
 export class Raydium {
   private static _instances: { [name: string]: Raydium };
@@ -188,9 +214,19 @@ export class Raydium {
     }
   }
 
+  /**
+   * The CLMM program that owns this network's positions.
+   *
+   * Personal-position PDAs are derived from it, so using the mainnet id on devnet
+   * derives addresses that do not exist and silently reports no positions.
+   */
+  private get clmmProgramId(): PublicKey {
+    return this.solana.network === 'mainnet-beta' ? CLMM_PROGRAM_ID : DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID;
+  }
+
   async getClmmPosition(positionAddress: string): Promise<any> {
     const positionNftMint = new PublicKey(positionAddress);
-    const positionPubKey = getPdaPersonalPositionAddress(CLMM_PROGRAM_ID, positionNftMint).publicKey;
+    const positionPubKey = getPdaPersonalPositionAddress(this.clmmProgramId, positionNftMint).publicKey;
     const positionAccount = await this.solana.connection.getAccountInfo(new PublicKey(positionPubKey));
 
     if (!positionAccount) {
@@ -220,7 +256,7 @@ export class Raydium {
       }
 
       const poolIdString = position.poolId.toBase58();
-      const [poolInfo, poolKeys] = await this.getClmmPoolfromAPI(poolIdString);
+      const [poolInfo] = await this.getClmmPoolfromAPI(poolIdString);
 
       const epochInfo = await this.solana.connection.getEpochInfo();
 
@@ -264,6 +300,82 @@ export class Raydium {
       logger.error('Error in getPositionInfo:', error);
       return null;
     }
+  }
+
+  /**
+   * Lists the CLMM positions held by an arbitrary wallet address.
+   *
+   * Read-only: it enumerates the owner's position NFTs on-chain rather than going
+   * through the SDK's `owner`, so the address does not have to be a wallet that
+   * Gateway has stored.
+   */
+  async getPositionsForWalletAddress(walletAddress: string): Promise<PositionInfo[]> {
+    // Validates the address and normalises it to the canonical base58 the memcmp wants.
+    const owner = new PublicKey(walletAddress).toBase58();
+
+    // Raydium position NFTs are minted under either the SPL Token or Token-2022 program.
+    //
+    // The filtering happens on the node, not here. Asking for the owner's token accounts
+    // and sifting them locally means the node ships every account the address holds:
+    // `getParsedTokenAccountsByOwner` renders each as verbose JSON and an exchange-scale
+    // address produces ~200MB, which times out; the unparsed form is about a tenth of that
+    // and still overflowed V8's maximum string length on the same address. A memcmp on the
+    // balance asks the node for only the NFT-shaped accounts, and dataSlice trims each
+    // reply to the mint — 1011 accounts in ~3s for that same address. The filters are what
+    // keep this affordable, and both the default public endpoint and the paid providers
+    // serve it; it is an unfiltered getProgramAccounts on the token program that they
+    // refuse.
+    const [splTokenAccounts, token2022Accounts] = await Promise.all([
+      this.solana.connection.getProgramAccounts(TOKEN_PROGRAM_ID, {
+        dataSlice: MINT_SLICE,
+        // Classic token accounts are always exactly 165 bytes.
+        filters: [{ dataSize: 165 }, ...nftHoldingFilters(owner)],
+      }),
+      this.solana.connection.getProgramAccounts(TOKEN_2022_PROGRAM_ID, {
+        dataSlice: MINT_SLICE,
+        // No dataSize here: Token-2022 accounts grow past 165 bytes with each extension,
+        // so pinning the size would silently skip every position NFT that carries one.
+        filters: nftHoldingFilters(owner),
+      }),
+    ]);
+
+    // dataSlice left exactly the mint in each account's data.
+    const nftMints = [...splTokenAccounts, ...token2022Accounts].map(({ account }) =>
+      new PublicKey(account.data).toBase58(),
+    );
+
+    logger.debug(`Found ${nftMints.length} NFT(s) for wallet ${walletAddress}, checking for Raydium CLMM positions`);
+
+    // Keep only the NFTs whose personal-position PDA actually exists on this
+    // network's CLMM program
+    const positionMints: string[] = [];
+    const chunkSize = 100; // getMultipleAccountsInfo limit
+    for (let i = 0; i < nftMints.length; i += chunkSize) {
+      const chunk = nftMints.slice(i, i + chunkSize);
+      const positionAddresses = chunk.map(
+        (mint) => getPdaPersonalPositionAddress(this.clmmProgramId, new PublicKey(mint)).publicKey,
+      );
+      const accounts = await this.solana.connection.getMultipleAccountsInfo(positionAddresses);
+      accounts.forEach((account, index) => {
+        if (account) {
+          positionMints.push(chunk[index]);
+        }
+      });
+    }
+
+    // Read the positions a few at a time. Each getPositionInfo is several round trips, so
+    // one after another a wallet with many positions spends minutes here; unbounded
+    // Promise.all instead rate-limits the node. Order follows positionMints so the
+    // response does not reshuffle between calls.
+    const positions: PositionInfo[] = [];
+    const readConcurrency = 8;
+    for (let i = 0; i < positionMints.length; i += readConcurrency) {
+      const batch = positionMints.slice(i, i + readConcurrency);
+      const read = await Promise.all(batch.map((mint) => this.getPositionInfo(mint)));
+      positions.push(...read.filter((position): position is PositionInfo => Boolean(position)));
+    }
+
+    return positions;
   }
 
   // General Pool Methods
@@ -323,7 +435,12 @@ export class Raydium {
           address: poolAddress,
           baseTokenAddress: rawPool[poolAddress].baseMint.toString(),
           quoteTokenAddress: rawPool[poolAddress].quoteMint.toString(),
-          feePct: Number(rawPool[poolAddress].tradeFeeNumerator) / Number(rawPool[poolAddress].tradeFeeDenominator),
+          // feePct is a PERCENT on every other surface (getClmmPoolInfo above, Meteora,
+          // Orca), so the numerator/denominator ratio — a fraction — is scaled to match.
+          // Unscaled this reported 0.0025 for a pool charging 0.25%, and consumers render
+          // the field literally.
+          feePct:
+            (Number(rawPool[poolAddress].tradeFeeNumerator) / Number(rawPool[poolAddress].tradeFeeDenominator)) * 100,
           price: Number(rawPool[poolAddress].poolPrice),
           baseTokenAmount: Number(rawPool[poolAddress].mintAAmount) / 10 ** Number(rawPool[poolAddress].baseDecimal),
           quoteTokenAmount: Number(rawPool[poolAddress].mintBAmount) / 10 ** Number(rawPool[poolAddress].quoteDecimal),
@@ -337,7 +454,9 @@ export class Raydium {
           address: poolAddress,
           baseTokenAddress: rawPool[poolAddress].mintA.toString(),
           quoteTokenAddress: rawPool[poolAddress].mintB.toString(),
-          feePct: Number(rawPool[poolAddress].configInfo?.tradeFeeRate || 0),
+          // CPMM's tradeFeeRate is in millionths (2500 = 0.25%); /10000 yields the percent,
+          // the same conversion getClmmPoolInfo applies to the CLMM config's rate.
+          feePct: Number(rawPool[poolAddress].configInfo?.tradeFeeRate || 0) / 10000,
           price: Number(rawPool[poolAddress].poolPrice),
           baseTokenAmount: Number(rawPool[poolAddress].baseReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalA),
           quoteTokenAmount: Number(rawPool[poolAddress].quoteReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalB),

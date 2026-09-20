@@ -1,18 +1,73 @@
 import { Contract } from '@ethersproject/contracts';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  GetPositionInfoRequestType,
-  GetPositionInfoRequest,
-  PositionInfo,
-  PositionInfoSchema,
-} from '../../../schemas/amm-schema';
-import { logger } from '../../../services/logger';
+import { PositionInfo } from '../../../schemas/amm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { Uniswap } from '../uniswap';
 import { IUniswapV2PairABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
+
+/**
+ * Standard AMM position-info entry point (network-based) — consumed by the unified /trading/amm
+ * dispatcher. V2 positions are fungible LP tokens; base/quote follow the pair's token0/token1.
+ */
+export async function getPositionInfo(
+  network: string,
+  poolAddress: string,
+  walletAddress: string,
+): Promise<PositionInfo> {
+  if (!poolAddress) throw httpErrors.badRequest('Pool address is required');
+
+  const uniswap = await Uniswap.getInstance(network);
+  const ethereum = await Ethereum.getInstance(network);
+
+  const pairContract = new Contract(poolAddress, IUniswapV2PairABI.abi, ethereum.provider);
+  const lpBalance = await pairContract.balanceOf(walletAddress);
+  const [token0, token1] = await Promise.all([pairContract.token0(), pairContract.token1()]);
+
+  const baseTokenObj = await uniswap.getToken(token0);
+  const quoteTokenObj = await uniswap.getToken(token1);
+  if (!baseTokenObj || !quoteTokenObj) {
+    throw httpErrors.badRequest('Token information not found for pool');
+  }
+
+  if (lpBalance.isZero()) {
+    return {
+      poolAddress,
+      walletAddress,
+      baseTokenAddress: baseTokenObj.address,
+      quoteTokenAddress: quoteTokenObj.address,
+      lpTokenAmount: 0,
+      baseTokenAmount: 0,
+      quoteTokenAmount: 0,
+      price: 0,
+    };
+  }
+
+  const [totalSupply, reserves] = await Promise.all([pairContract.totalSupply(), pairContract.getReserves()]);
+  const token0IsBase = token0.toLowerCase() === baseTokenObj.address.toLowerCase();
+  const baseTokenReserve = token0IsBase ? reserves[0] : reserves[1];
+  const quoteTokenReserve = token0IsBase ? reserves[1] : reserves[0];
+
+  const userBaseTokenAmount = baseTokenReserve.mul(lpBalance).div(totalSupply);
+  const userQuoteTokenAmount = quoteTokenReserve.mul(lpBalance).div(totalSupply);
+
+  const baseTokenAmountFloat = formatTokenAmount(baseTokenReserve.toString(), baseTokenObj.decimals);
+  const quoteTokenAmountFloat = formatTokenAmount(quoteTokenReserve.toString(), quoteTokenObj.decimals);
+  const price = baseTokenAmountFloat > 0 ? quoteTokenAmountFloat / baseTokenAmountFloat : 0;
+
+  return {
+    poolAddress,
+    walletAddress,
+    baseTokenAddress: baseTokenObj.address,
+    quoteTokenAddress: quoteTokenObj.address,
+    lpTokenAmount: formatTokenAmount(lpBalance.toString(), 18),
+    baseTokenAmount: formatTokenAmount(userBaseTokenAmount.toString(), baseTokenObj.decimals),
+    quoteTokenAmount: formatTokenAmount(userQuoteTokenAmount.toString(), quoteTokenObj.decimals),
+    price,
+  };
+}
 
 export async function checkLPAllowance(
   ethereum: any,
@@ -35,145 +90,3 @@ export async function checkLPAllowance(
     );
   }
 }
-
-export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.get<{
-    Querystring: GetPositionInfoRequestType;
-    Reply: PositionInfo;
-  }>(
-    '/position-info',
-    {
-      schema: {
-        description: 'Get position information for a Uniswap V2 pool',
-        tags: ['/connector/uniswap'],
-        querystring: {
-          ...GetPositionInfoRequest,
-          properties: {
-            network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            poolAddress: {
-              type: 'string',
-              examples: [''],
-            },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-          },
-        },
-        response: {
-          200: PositionInfoSchema,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, poolAddress, walletAddress: requestedWalletAddress } = request.query;
-
-        const networkToUse = network;
-
-        // Validate essential parameters
-        if (!poolAddress) {
-          throw fastify.httpErrors.badRequest('Pool address is required');
-        }
-
-        // Get Uniswap and Ethereum instances
-        const uniswap = await Uniswap.getInstance(networkToUse);
-        const ethereum = await Ethereum.getInstance(networkToUse);
-
-        // Get wallet address - either from request or first available
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          walletAddress = await uniswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-          logger.info(`Using first available wallet address: ${walletAddress}`);
-        }
-
-        // Get the pair contract
-        const pairContract = new Contract(poolAddress, IUniswapV2PairABI.abi, ethereum.provider);
-
-        // Get LP token balance for the wallet
-        const lpBalance = await pairContract.balanceOf(walletAddress);
-
-        // Get token addresses from the pair
-        const [token0, token1] = await Promise.all([pairContract.token0(), pairContract.token1()]);
-
-        // Get token objects by address
-        const baseTokenObj = await uniswap.getToken(token0);
-        const quoteTokenObj = await uniswap.getToken(token1);
-
-        if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest('Token information not found for pool');
-        }
-
-        // If no position, return early
-        if (lpBalance.isZero()) {
-          return {
-            poolAddress,
-            walletAddress,
-            baseTokenAddress: baseTokenObj.address,
-            quoteTokenAddress: quoteTokenObj.address,
-            lpTokenAmount: 0,
-            baseTokenAmount: 0,
-            quoteTokenAmount: 0,
-            price: 0,
-          };
-        }
-
-        // Get total supply and reserves
-        const [totalSupply, reserves] = await Promise.all([pairContract.totalSupply(), pairContract.getReserves()]);
-
-        // Determine which token is base and which is quote
-        const token0IsBase = token0.toLowerCase() === baseTokenObj.address.toLowerCase();
-
-        // Calculate user's share of the pool
-        const userShare = lpBalance.mul(10000).div(totalSupply).toNumber() / 10000; // Convert to percentage
-
-        // Calculate token amounts
-        const baseTokenReserve = token0IsBase ? reserves[0] : reserves[1];
-        const quoteTokenReserve = token0IsBase ? reserves[1] : reserves[0];
-
-        const userBaseTokenAmount = baseTokenReserve.mul(lpBalance).div(totalSupply);
-        const userQuoteTokenAmount = quoteTokenReserve.mul(lpBalance).div(totalSupply);
-
-        // Calculate price (quoteToken per baseToken)
-        const baseTokenAmountFloat = formatTokenAmount(baseTokenReserve.toString(), baseTokenObj.decimals);
-        const quoteTokenAmountFloat = formatTokenAmount(quoteTokenReserve.toString(), quoteTokenObj.decimals);
-        const price = quoteTokenAmountFloat / baseTokenAmountFloat;
-
-        // Format for response
-        logger.info(`Raw LP balance: ${lpBalance.toString()}`);
-        logger.info(`Total supply: ${totalSupply.toString()}`);
-
-        const formattedLpAmount = formatTokenAmount(lpBalance.toString(), 18); // LP tokens have 18 decimals
-        const formattedBaseAmount = formatTokenAmount(userBaseTokenAmount.toString(), baseTokenObj.decimals);
-        const formattedQuoteAmount = formatTokenAmount(userQuoteTokenAmount.toString(), quoteTokenObj.decimals);
-
-        logger.info(`Formatted LP amount: ${formattedLpAmount}`);
-        logger.info(`Formatted base amount: ${formattedBaseAmount}`);
-        logger.info(`Formatted quote amount: ${formattedQuoteAmount}`);
-
-        return {
-          poolAddress,
-          walletAddress,
-          baseTokenAddress: baseTokenObj.address,
-          quoteTokenAddress: quoteTokenObj.address,
-          lpTokenAmount: formattedLpAmount,
-          baseTokenAmount: formattedBaseAmount,
-          quoteTokenAmount: formattedQuoteAmount,
-          price,
-        };
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw fastify.httpErrors.internalServerError('Failed to get position info');
-      }
-    },
-  );
-};
-
-export default positionInfoRoute;

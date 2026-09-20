@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { parseChainNetwork } from '../../services/chain-network';
 import { TokenService } from '../../services/token-service';
 import {
   TokenAddRequest,
@@ -23,7 +24,8 @@ export const addTokenRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { chain, network, token } = request.body;
+      const { chainNetwork, token } = request.body;
+      const { chain, network } = parseChainNetwork(chainNetwork);
 
       try {
         const tokenService = TokenService.getInstance();

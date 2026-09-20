@@ -1,19 +1,11 @@
-import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
-
 import { Solana } from '../../../chains/solana/solana';
-import { QuotePositionResponse, QuotePositionResponseType } from '../../../schemas/clmm-schema';
+import { QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
-import {
-  getLiquidityFromAmounts,
-  getLiquidityFromSingleAmount,
-  getAmountsFromLiquidity,
-} from '../pancakeswap-sol.math';
+import { getLiquidityFromSingleAmount, getAmountsFromLiquidity } from '../pancakeswap-sol.math';
 import { priceToTick, roundTickToSpacing, tickToPrice } from '../pancakeswap-sol.parser';
-import { PancakeswapSolClmmQuotePositionRequest } from '../schemas';
 
 /**
  * Quote position with proper CLMM math
@@ -286,56 +278,3 @@ async function quotePosition(
 }
 
 export { quotePosition };
-
-export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: Static<typeof PancakeswapSolClmmQuotePositionRequest>;
-    Reply: QuotePositionResponseType;
-  }>(
-    '/quote-position',
-    {
-      schema: {
-        description: 'Quote position amounts for PancakeSwap Solana CLMM (simplified)',
-        tags: ['/connector/pancakeswap-sol'],
-        querystring: PancakeswapSolClmmQuotePositionRequest,
-        response: {
-          200: QuotePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.query;
-
-        return await quotePosition(
-          network,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Quote position error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to quote position';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default quotePositionRoute;
