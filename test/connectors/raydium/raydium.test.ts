@@ -436,25 +436,17 @@ describe('Raydium', () => {
     const walletAddress = 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF';
     const positionNft = '7YttLkHDoNj9wyDur5pM1ejNaAvT9X4eqaYcHQqtj2G5';
     const plainNft = '8YttLkHDoNj9wyDur5pM1ejNaAvT9X4eqaYcHQqtj2G6';
-    const fungibleMint = 'So11111111111111111111111111111111111111112';
 
-    const tokenAccount = (mint: string, uiAmount: number, decimals: number) => ({
-      account: { data: { parsed: { info: { mint, tokenAmount: { uiAmount, decimals } } } } },
-    });
+    // The connector asks the node for owner-and-balance-filtered accounts and slices the
+    // reply down to the mint, so each account's `data` is exactly the 32-byte mint. The
+    // node does the filtering; a fungible balance never reaches the connector at all.
+    const slicedToMint = (mint: string) => ({ account: { data: Buffer.from(new PublicKey(mint).toBytes()) } });
 
     beforeEach(() => {
-      mockConnection.getParsedTokenAccountsByOwner = jest.fn().mockImplementation(async (_owner, filter) => {
+      mockConnection.getProgramAccounts = jest.fn().mockImplementation(async (programId: PublicKey) => {
         // Only the SPL Token program holds NFTs in this fixture
-        const isSplToken = filter.programId.toBase58() === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
-        return {
-          value: isSplToken
-            ? [
-                tokenAccount(positionNft, 1, 0),
-                tokenAccount(plainNft, 1, 0),
-                tokenAccount(fungibleMint, 12.5, 9), // not an NFT
-              ]
-            : [],
-        };
+        const isSplToken = programId.toBase58() === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+        return isSplToken ? [slicedToMint(positionNft), slicedToMint(plainNft)] : [];
       });
 
       (getPdaPersonalPositionAddress as jest.Mock).mockImplementation((_programId, nftMint) => ({
