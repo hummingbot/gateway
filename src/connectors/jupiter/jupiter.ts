@@ -36,6 +36,13 @@ function isRateLimitError(error: unknown): boolean {
   return /rate limit/i.test(body) || /rate limit/i.test(error.message);
 }
 
+// api.jup.ag answers 401 to a request with no key or a rejected one, and the keyless
+// lite-api.jup.ag, deprecated Dec 31, 2025, has answered the same way since. Neither says
+// anything about the route.
+function isAuthError(error: unknown): error is HttpClientError {
+  return error instanceof HttpClientError && (error.status === 401 || error.status === 403);
+}
+
 // Type definitions for Jupiter API responses
 interface QuoteResponse {
   inAmount: string;
@@ -164,6 +171,21 @@ export class Jupiter {
   }
 
   /**
+   * Rethrow an upstream 401/403 with its own status and a message that names the
+   * API key, instead of letting it fall through to "no route found" - which sent
+   * users to investigate liquidity when the fix was a config line.
+   */
+  private apiKeyError(error: HttpClientError, label: string): Error {
+    const detail = this.hasApiKey
+      ? `Jupiter rejected the configured API key on ${label} (HTTP ${error.status}). ` +
+        `Check jupiter.apiKey against https://portal.jup.ag.`
+      : `Jupiter answered HTTP ${error.status} on ${label}: no API key is configured, and the keyless ` +
+        `endpoint no longer serves requests. Get a free key at https://portal.jup.ag and set jupiter.apiKey.`;
+    logger.error(detail);
+    return httpErrors.createError(error.status, detail);
+  }
+
+  /**
    * Gets a swap quote from Jupiter API for the specified token pair
    * @param inputTokenIdentifier The input token symbol or address
    * @param outputTokenIdentifier The output token symbol or address
@@ -232,6 +254,9 @@ export class Jupiter {
       // caller reports throttling rather than "no route found".
       if (error instanceof Error && (error as any).code === 'RATE_LIMITED') {
         throw error;
+      }
+      if (isAuthError(error)) {
+        throw this.apiKeyError(error, 'quote');
       }
       if (error instanceof HttpClientError) {
         logger.error('Jupiter API error:', error.message);
@@ -311,6 +336,9 @@ export class Jupiter {
         swapObj = response.data;
         break; // Success, exit the retry loop
       } catch (error) {
+        if (isAuthError(error)) {
+          throw this.apiKeyError(error, 'swap'); // another attempt cannot change a rejected key
+        }
         lastError = error instanceof Error ? error : new Error(String(error));
         if (error instanceof HttpClientError) {
           logger.error(`Fetching swap object attempt ${attempt}/${retryCount} failed:`, {
@@ -392,6 +420,9 @@ export class Jupiter {
         swapObj = response.data;
         break; // Success, exit the retry loop
       } catch (error) {
+        if (isAuthError(error)) {
+          throw this.apiKeyError(error, 'swap'); // another attempt cannot change a rejected key
+        }
         lastError = error instanceof Error ? error : new Error(String(error));
         if (error instanceof HttpClientError) {
           logger.error(`Fetching swap object attempt ${attempt}/${retryCount} failed:`, {
