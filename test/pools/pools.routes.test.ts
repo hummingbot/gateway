@@ -260,7 +260,46 @@ describe('Pool Routes Tests', () => {
     });
   });
 
-  describe('GET /pools/:tradingPair', () => {
+  describe('GET /pools/:tradingPairOrAddress', () => {
+    beforeEach(() => {
+      // a trading pair is not a pool address; the address lookup that runs first finds nothing
+      mockPoolService.getPoolByAddress.mockResolvedValue(null);
+    });
+
+    it('should find pool by address, with no type needed', async () => {
+      const mockPool: Pool = {
+        connector: 'raydium',
+        type: 'amm',
+        network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        feePct: 0.25,
+        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+      };
+      mockPoolService.getPoolByAddress.mockResolvedValue(mockPool);
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?chainNetwork=solana-mainnet-beta',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(parseWire(response.payload)).toEqual(mockPool);
+      expect(mockPoolService.getPool).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 for a trading pair without a type', async () => {
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/SOL-USDC?chainNetwork=solana-mainnet-beta',
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(parseWire(response.payload).message).toContain('type (amm or clmm) is required');
+    });
+
     it('should find pool by trading pair', async () => {
       const mockPool: Pool = {
         connector: 'raydium',
@@ -306,7 +345,7 @@ describe('Pool Routes Tests', () => {
 
       expect(response.statusCode).toBe(400);
       expect(parseWire(response.payload)).toHaveProperty('message');
-      expect(parseWire(response.payload).message).toContain('Invalid trading pair format');
+      expect(parseWire(response.payload).message).toContain('not a trading pair either');
     });
   });
 
@@ -406,8 +445,83 @@ describe('Pool Routes Tests', () => {
     });
   });
 
-  describe('DELETE /pools/:address', () => {
+  describe('DELETE /pools/:tradingPairOrAddress', () => {
+    const solUsdc = (connector: string, address: string, feePct: number): Pool => ({
+      connector,
+      type: 'clmm',
+      network: 'mainnet-beta',
+      baseSymbol: 'SOL',
+      quoteSymbol: 'USDC',
+      baseTokenAddress: 'So11111111111111111111111111111111111111112',
+      quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      feePct,
+      address,
+    });
+
+    it('should remove the one pool a trading pair names', async () => {
+      mockPoolService.getPoolByAddress.mockResolvedValue(null);
+      mockPoolService.listPools.mockResolvedValue([solUsdc('raydium', 'PoolAddr1', 0.25)]);
+      mockPoolService.removePool.mockResolvedValue(undefined);
+
+      const response = await fastify.inject({
+        method: 'DELETE',
+        url: '/SOL-USDC?chainNetwork=solana-mainnet-beta&type=clmm&connector=raydium',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(parseWire(response.payload).message).toContain('PoolAddr1');
+      expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', 'raydium', 'clmm');
+      expect(mockPoolService.removePool).toHaveBeenCalledWith('solana', 'mainnet-beta', 'PoolAddr1');
+    });
+
+    it('should refuse to remove by trading pair when several pools match, naming them', async () => {
+      mockPoolService.getPoolByAddress.mockResolvedValue(null);
+      mockPoolService.listPools.mockResolvedValue([
+        solUsdc('raydium', 'PoolAddr1', 0.25),
+        solUsdc('raydium', 'PoolAddr2', 0.01),
+      ]);
+
+      const response = await fastify.inject({
+        method: 'DELETE',
+        url: '/SOL-USDC?chainNetwork=solana-mainnet-beta&type=clmm',
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(parseWire(response.payload).message).toContain('2 pools match SOL-USDC');
+      expect(parseWire(response.payload).message).toContain('PoolAddr2');
+      expect(mockPoolService.removePool).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 for a trading pair without a type', async () => {
+      mockPoolService.getPoolByAddress.mockResolvedValue(null);
+
+      const response = await fastify.inject({
+        method: 'DELETE',
+        url: '/SOL-USDC?chainNetwork=solana-mainnet-beta',
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(mockPoolService.removePool).not.toHaveBeenCalled();
+    });
+
+    it('should not read a three-segment id as the pair of its first two segments', async () => {
+      mockPoolService.getPoolByAddress.mockResolvedValue(null);
+      mockPoolService.listPools.mockResolvedValue([solUsdc('raydium', 'PoolAddr1', 0.25)]);
+
+      const response = await fastify.inject({
+        method: 'DELETE',
+        url: '/SOL-USDC-EXTRA?chainNetwork=solana-mainnet-beta&type=clmm',
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(mockPoolService.listPools).not.toHaveBeenCalled();
+      expect(mockPoolService.removePool).not.toHaveBeenCalled();
+    });
+
     it('should remove pool successfully', async () => {
+      mockPoolService.getPoolByAddress.mockResolvedValue(
+        solUsdc('raydium', '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2', 0.25),
+      );
       mockPoolService.removePool.mockResolvedValue(undefined);
 
       const response = await fastify.inject({
@@ -427,6 +541,7 @@ describe('Pool Routes Tests', () => {
     });
 
     it('should return 404 if pool not found', async () => {
+      mockPoolService.getPoolByAddress.mockResolvedValue(null);
       mockPoolService.removePool.mockRejectedValue(new Error('Pool with address NonExistent not found'));
 
       const response = await fastify.inject({

@@ -209,9 +209,17 @@ describe('Token Routes', () => {
     });
   });
 
-  describe('DELETE /tokens/:address', () => {
+  describe('DELETE /tokens/:symbolOrAddress', () => {
+    const usdc = {
+      symbol: 'USDC',
+      address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      decimals: 6,
+      name: 'USD Coin',
+    };
+
     it('should remove token successfully', async () => {
       const mockService = TokenService.getInstance();
+      (mockService.listTokens as jest.Mock).mockResolvedValue([usdc]);
       (mockService.removeToken as jest.Mock).mockResolvedValue(undefined);
 
       const response = await app.inject({
@@ -222,13 +230,49 @@ describe('Token Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.message).toBe(
-        'Token with address 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 removed successfully from ethereum/mainnet.',
+        'Token USDC (0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48) removed successfully from ethereum/mainnet.',
       );
+      expect(mockService.removeToken).toHaveBeenCalledWith('ethereum', 'mainnet', usdc.address);
+    });
+
+    it('should remove a token named by its symbol, as GET resolves it', async () => {
+      const mockService = TokenService.getInstance();
+      (mockService.listTokens as jest.Mock).mockResolvedValue([usdc]);
+      (mockService.removeToken as jest.Mock).mockResolvedValue(undefined);
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: '/usdc?chainNetwork=ethereum-mainnet',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockService.removeToken).toHaveBeenCalledWith('ethereum', 'mainnet', usdc.address);
+    });
+
+    it('should remove the token at the named address, not one whose symbol equals that address', async () => {
+      // symbols are only required to be non-empty; a delete by address must not be hijacked
+      const impostor = {
+        symbol: usdc.address,
+        address: '0x0000000000000000000000000000000000000bad',
+        decimals: 18,
+        name: 'x',
+      };
+      const mockService = TokenService.getInstance();
+      (mockService.listTokens as jest.Mock).mockResolvedValue([impostor, usdc]);
+      (mockService.removeToken as jest.Mock).mockResolvedValue(undefined);
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/${usdc.address}?chainNetwork=ethereum-mainnet`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockService.removeToken).toHaveBeenCalledWith('ethereum', 'mainnet', usdc.address);
     });
 
     it('should return 404 when token not found', async () => {
       const mockService = TokenService.getInstance();
-      (mockService.removeToken as jest.Mock).mockRejectedValue(new Error('Token 0x123 not found in ethereum/mainnet'));
+      (mockService.listTokens as jest.Mock).mockResolvedValue([usdc]);
 
       const response = await app.inject({
         method: 'DELETE',
@@ -236,6 +280,7 @@ describe('Token Routes', () => {
       });
 
       expect(response.statusCode).toBe(404);
+      expect(mockService.removeToken).not.toHaveBeenCalled();
     });
   });
 });
