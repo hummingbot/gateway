@@ -8,6 +8,7 @@ import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
+import { toRawAmount } from '../../../services/raw-amount';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV3NftManagerAddress, POSITION_MANAGER_ABI, getUniswapV3FactoryAddress } from '../uniswap.contracts';
@@ -69,22 +70,20 @@ export async function addLiquidity(
   let token1Amount = CurrencyAmount.fromRawAmount(token1, 0);
 
   if (baseTokenAmount !== undefined) {
-    const baseAmountRaw = Math.floor(baseTokenAmount * Math.pow(10, isBaseToken0 ? token0.decimals : token1.decimals));
+    const baseAmountRaw = toRawAmount(baseTokenAmount, isBaseToken0 ? token0.decimals : token1.decimals);
     if (isBaseToken0) {
-      token0Amount = CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(baseAmountRaw.toString()));
+      token0Amount = CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(baseAmountRaw));
     } else {
-      token1Amount = CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(baseAmountRaw.toString()));
+      token1Amount = CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(baseAmountRaw));
     }
   }
 
   if (quoteTokenAmount !== undefined) {
-    const quoteAmountRaw = Math.floor(
-      quoteTokenAmount * Math.pow(10, isBaseToken0 ? token1.decimals : token0.decimals),
-    );
+    const quoteAmountRaw = toRawAmount(quoteTokenAmount, isBaseToken0 ? token1.decimals : token0.decimals);
     if (isBaseToken0) {
-      token1Amount = CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(quoteAmountRaw.toString()));
+      token1Amount = CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(quoteAmountRaw));
     } else {
-      token0Amount = CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(quoteAmountRaw.toString()));
+      token0Amount = CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(quoteAmountRaw));
     }
   }
 

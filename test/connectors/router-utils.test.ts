@@ -46,6 +46,19 @@ describe('approximateBuyViaSellLeg', () => {
     expect(getExactInQuote).toHaveBeenCalledTimes(2);
   });
 
+  it('sends the raw sell-leg amount in plain digits when it reaches 1e21', async () => {
+    // a thousand of an 18-decimal token; the old conversion produced "1e+21" here
+    const WETH: RouterToken = { symbol: 'WETH', address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', decimals: 18 };
+    const getExactInQuote = jest
+      .fn()
+      .mockResolvedValueOnce({ inAmount: '1000000000000000000000', outAmount: '3000000000000', quote: {} })
+      .mockResolvedValueOnce({ inAmount: '3000000000000', outAmount: '999000000000000000000', quote: {} });
+
+    await approximateBuyViaSellLeg({ getExactInQuote, baseToken: WETH, quoteToken: USDC, baseAmount: 1000 });
+
+    expect(getExactInQuote.mock.calls[0][2]).toBe('1000000000000000000000');
+  });
+
   it('throws a clear error when the sell leg returns no output', async () => {
     const getExactInQuote = jest.fn().mockResolvedValue({ inAmount: '1', outAmount: '0', quote: {} });
 
