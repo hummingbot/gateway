@@ -8,6 +8,11 @@ jest.mock('../../../src/chains/solana/solana');
 jest.mock('../../../src/chains/solana/solana.utils', () => ({
   getAvailableSolanaNetworks: () => ['mainnet-beta'],
 }));
+jest.mock('../../../src/chains/solana/solana.config', () => ({
+  networks: ['mainnet-beta'],
+  getSolanaChainConfig: () => ({ defaultNetwork: 'mainnet-beta', defaultWallet: 'wallet', rpcProvider: 'url' }),
+  getSolanaNetworkConfig: () => ({ confirmRetryCount: 3, confirmRetryInterval: 1 }),
+}));
 jest.mock('../../../src/services/http-client', () => ({
   createHttpClient: jest.fn(),
   HttpClientError: class HttpClientError extends Error {
@@ -45,18 +50,21 @@ const loadJupiter = async (apiKey: string | undefined) => {
   };
   (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: (path: string) => values[path] });
 
-  const get = jest
-    .fn()
-    .mockRejectedValue(new (HttpClientError as any)('Request failed with status 401', { status: 401 }));
-  (createHttpClient as jest.Mock).mockReturnValue({ get, post: jest.fn() });
+  const unauthorized = () => new (HttpClientError as any)('Request failed with status 401', { status: 401 });
+  const get = jest.fn().mockRejectedValue(unauthorized());
+  const post = jest.fn().mockRejectedValue(unauthorized());
+  (createHttpClient as jest.Mock).mockReturnValue({ get, post });
   (Solana.getInstance as jest.Mock).mockResolvedValue({
     network: 'mainnet-beta',
     getToken: jest.fn(async (id: string) => (id === 'SOL' ? SOL : USDC)),
   });
 
   const { Jupiter } = await import('../../../src/connectors/jupiter/jupiter');
-  return { jupiter: await Jupiter.getInstance('mainnet-beta'), get };
+  return { jupiter: await Jupiter.getInstance('mainnet-beta'), get, post };
 };
+
+const quote: any = { inAmount: '100000000', outAmount: '15000000' };
+const wallet: any = { publicKey: { toBase58: () => 'wallet' } };
 
 describe('Jupiter quote when the API answers 401', () => {
   it('names the missing API key, with the 401, when none is configured', async () => {
@@ -85,5 +93,27 @@ describe('Jupiter quote when the API answers 401', () => {
 
     await expect(jupiter.getQuote('SOL', 'USDC', 0.1)).rejects.toMatchObject({ statusCode: 401 });
     expect(get).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Jupiter swap builders when the API answers 401', () => {
+  it('buildSwapTransaction names the API key, with the 401, and does not spend the retries on it', async () => {
+    const { jupiter, post } = await loadJupiter(undefined);
+
+    await expect(jupiter.buildSwapTransaction(wallet, quote)).rejects.toMatchObject({
+      statusCode: 401,
+      message: expect.stringContaining('no API key is configured'),
+    });
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it('buildSwapTransactionForHardwareWallet does the same', async () => {
+    const { jupiter, post } = await loadJupiter('not-a-real-key');
+
+    await expect(jupiter.buildSwapTransactionForHardwareWallet('wallet', quote)).rejects.toMatchObject({
+      statusCode: 401,
+      message: expect.stringContaining('rejected the configured API key'),
+    });
+    expect(post).toHaveBeenCalledTimes(1);
   });
 });
