@@ -43,7 +43,7 @@ describe('Ethereum.gasLimitWithMargin', () => {
     });
   });
 
-  it('names only the error code, not the transport message, when the node did not answer', async () => {
+  it('answers 503 with only the error code, not the transport message, when the node did not answer', async () => {
     // an ethers SERVER_ERROR carries the request URL, and an Infura URL carries the credential
     const transportError = Object.assign(
       new Error(
@@ -56,9 +56,9 @@ describe('Ethereum.gasLimitWithMargin', () => {
     });
 
     await expect(refusal).rejects.toMatchObject({
-      statusCode: 400,
+      statusCode: 503,
       message:
-        'Could not estimate gas for multicall: the node did not answer (SERVER_ERROR). The transaction was not sent.',
+        'Could not estimate gas for multicall: the node did not answer (SERVER_ERROR). The transaction was not sent; retry.',
     });
     await expect(refusal).rejects.not.toMatchObject({ message: expect.stringContaining('0123456789abcdef') });
   });

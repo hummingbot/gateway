@@ -10,7 +10,7 @@ import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { badRequest, transactionFailed } from '../../services/error-handler';
+import { badRequest, serviceUnavailable, transactionFailed } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
@@ -364,13 +364,17 @@ export class Ethereum {
       // A revert reason is the contract's and safe to pass on. A transport error's message
       // can carry the RPC URL, and an Infura or Chainstack URL carries the credential, so
       // the caller gets the error code only and the log gets the redacted text.
-      const revertReason = error?.reason ?? error?.error?.reason;
-      const reason =
-        typeof revertReason === 'string'
-          ? revertReason
-          : `the node did not answer${error?.code ? ` (${error.code})` : ''}`;
       logger.warn(`Gas estimate for ${method} failed: ${redactUrl(error?.message ?? String(error))}`);
-      throw badRequest(`Could not estimate gas for ${method}: ${reason}. The transaction was not sent.`);
+      const revertReason = error?.reason ?? error?.error?.reason;
+      if (typeof revertReason === 'string') {
+        // the contract refused the call: a 400, the request itself is wrong
+        throw badRequest(`Could not estimate gas for ${method}: ${revertReason}. The transaction was not sent.`);
+      }
+      // the node did not answer: a 503, the same request may go through on a retry
+      throw serviceUnavailable(
+        `Could not estimate gas for ${method}: the node did not answer${error?.code ? ` (${error.code})` : ''}. ` +
+          `The transaction was not sent; retry.`,
+      );
     }
   }
 
