@@ -155,7 +155,8 @@ export async function closePosition(
   );
 
   // Execute the transaction to remove liquidity and burn the position. The fixed limit is a
-  // floor: a close that collects on both sides and burns the token can need more (#629).
+  // floor: a close that collects on both sides and burns the token can need more (#629). A
+  // close the node cannot estimate is refused here, before any fee is paid.
   const txValue = BigNumber.from(value.toString());
   const gasLimit = await ethereum.gasLimitWithMargin(
     positionManagerWithSigner,

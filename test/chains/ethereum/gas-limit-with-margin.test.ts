@@ -8,7 +8,8 @@ jest.mock('../../../src/services/logger', () => ({
 
 // A Uniswap CLMM close on mainnet used 394k of its fixed 400k limit and reverted out of gas,
 // with the fee paid (#629). The limit is now the node's estimate plus a margin, floored at
-// the route's fixed figure; the method is unit-tested here against a stub contract.
+// the route's fixed figure, and a call the node cannot estimate is refused before any fee is
+// paid; the method is unit-tested here against a stub contract.
 const gasLimit = (estimate: () => Promise<BigNumber>, floor = 400000, marginPct?: number) =>
   (Ethereum.prototype as any).gasLimitWithMargin.call(
     {},
@@ -30,12 +31,15 @@ describe('Ethereum.gasLimitWithMargin', () => {
     await expect(gasLimit(async () => BigNumber.from(250000))).resolves.toBe(400000);
   });
 
-  it('keeps the floor when the estimate fails, so the call surfaces its own revert', async () => {
+  it('refuses the call, naming the reason, when the node cannot estimate', async () => {
     await expect(
       gasLimit(async () => {
-        throw new Error('execution reverted');
+        throw Object.assign(new Error('cannot estimate gas'), { reason: 'execution reverted: Not approved' });
       }),
-    ).resolves.toBe(400000);
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: 'Could not estimate gas for multicall: execution reverted: Not approved. The transaction was not sent.',
+    });
   });
 
   it('passes the arguments and overrides to the estimate', async () => {

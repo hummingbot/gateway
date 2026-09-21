@@ -10,7 +10,7 @@ import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { transactionFailed } from '../../services/error-handler';
+import { badRequest, transactionFailed } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
@@ -336,8 +336,9 @@ export class Ethereum {
    * out of gas after paying for every unit up to the limit - a Uniswap CLMM close on mainnet
    * used 394k of its 400k and failed (#629). The margin covers the state moving between the
    * estimate and the block; the floor keeps a low estimate from tightening what worked.
-   * When the estimate itself fails the fixed figure is used, so a call that would revert
-   * anyway still surfaces its own revert rather than an estimation error.
+   * When the node cannot estimate - the call would revert, or the RPC did not answer - the
+   * call is refused with that reason and nothing is sent: a transaction sent blind at the
+   * fixed figure either reverts on-chain with the fee paid, or runs out of gas the same way.
    */
   public async gasLimitWithMargin(
     // the shape both ethers' and @ethersproject/contracts' Contract satisfy
@@ -360,8 +361,9 @@ export class Ethereum {
       }
       return floor;
     } catch (error: any) {
-      logger.warn(`Gas estimate for ${method} failed (${error.message}); using the fixed limit ${floor}`);
-      return floor;
+      const reason = error?.reason ?? error?.error?.message ?? error?.message ?? String(error);
+      logger.warn(`Gas estimate for ${method} failed: ${reason}`);
+      throw badRequest(`Could not estimate gas for ${method}: ${reason}. The transaction was not sent.`);
     }
   }
 

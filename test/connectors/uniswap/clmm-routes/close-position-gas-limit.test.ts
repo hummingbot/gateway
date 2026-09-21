@@ -14,7 +14,7 @@ jest.mock('@ethersproject/contracts');
 // Route-level contract for the gas limit of a Uniswap V3 CLMM close (#629): the estimate is
 // asked for the same multicall, calldata and value that are then sent, and the limit that
 // reaches prepareGasOptions is the estimate with its margin, or the fixed 400k floor when the
-// estimate is lower or fails.
+// estimate is lower; a close the node cannot estimate is refused before anything is sent.
 
 const WETH = new Token(8453, '0x4200000000000000000000000000000000000006', 18, 'WETH', 'Wrapped Ether');
 const USDC = new Token(8453, '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', 6, 'USDC', 'USD Coin');
@@ -145,15 +145,16 @@ describe('POST /close (Uniswap V3 CLMM) — gas limit', () => {
     expect(multicall.mock.calls[0][1].gasLimit).toBe(FIXED_CLOSE_GAS_LIMIT);
   });
 
-  it('keeps the fixed 400k and still sends when the estimate fails', async () => {
+  it('refuses the close, with the reason, and sends nothing when the estimate fails', async () => {
     const { ethereum, multicall } = primeMocks(async () => {
-      throw new Error('execution reverted');
+      throw Object.assign(new Error('cannot estimate gas'), { reason: 'execution reverted: Not approved' });
     });
 
     const response = await close(server);
 
-    expect(response.statusCode).toBe(200);
-    expect(ethereum.prepareGasOptions).toHaveBeenCalledWith(undefined, FIXED_CLOSE_GAS_LIMIT);
-    expect(multicall).toHaveBeenCalledTimes(1);
+    expect(response.statusCode).toBe(400);
+    expect(parseWire(response.body).message).toContain('execution reverted: Not approved');
+    expect(ethereum.prepareGasOptions).not.toHaveBeenCalled();
+    expect(multicall).not.toHaveBeenCalled();
   });
 });
