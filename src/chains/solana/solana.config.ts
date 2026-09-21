@@ -26,11 +26,19 @@ export interface SolanaChainConfig {
 // Export available networks
 export const networks = getAvailableSolanaNetworks();
 
+// A nodeURL saved with surrounding whitespace (a paste into the YAML, or an older
+// /config/update) is rejected by the RPC client at connection time; the value itself is
+// still the one the user meant.
+function trimmedNodeURL(namespaceId: string): string {
+  const nodeURL = ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL');
+  return typeof nodeURL === 'string' ? nodeURL.trim() : nodeURL;
+}
+
 export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
   const namespaceId = `solana-${network}`;
   return {
     chainID: ConfigManagerV2.getInstance().get(namespaceId + '.chainID'),
-    nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
+    nodeURL: trimmedNodeURL(namespaceId),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
     geckoId: ConfigManagerV2.getInstance().get(namespaceId + '.geckoId'),
     swapProvider: ConfigManagerV2.getInstance().get(namespaceId + '.swapProvider'),

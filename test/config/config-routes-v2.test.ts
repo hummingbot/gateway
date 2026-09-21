@@ -166,6 +166,53 @@ describe('Config Routes V2 Tests', () => {
       });
     });
 
+    it('should leave the whitespace of a non-URL string value, such as a passphrase, alone', async () => {
+      mockConfigManager.getNamespace.mockReturnValue({
+        configuration: { apiKey: '', secretKey: '', passphrase: '' },
+      });
+      mockConfigManager.get.mockReturnValue('');
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/update',
+        payload: {
+          namespace: 'okx',
+          path: 'passphrase',
+          value: ' pass phrase ',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(updateConfig).toHaveBeenCalledWith(expect.anything(), 'okx.passphrase', ' pass phrase ');
+    });
+
+    it('should strip surrounding whitespace from a nodeURL before saving it', async () => {
+      mockConfigManager.getNamespace.mockReturnValue({
+        configuration: {
+          nodeURL: 'https://api.mainnet-beta.solana.com',
+          nativeCurrencySymbol: 'SOL',
+        },
+      });
+      mockConfigManager.get.mockReturnValue('https://api.mainnet-beta.solana.com');
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/update',
+        payload: {
+          namespace: 'solana-mainnet-beta',
+          path: 'nodeURL',
+          value: ' https://solana-api.projectserum.com ',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(updateConfig).toHaveBeenCalledWith(
+        expect.anything(),
+        'solana-mainnet-beta.nodeURL',
+        'https://solana-api.projectserum.com',
+      );
+    });
+
     it('should update namespace-level config without network', async () => {
       mockConfigManager.getNamespace.mockReturnValue({
         configuration: {
@@ -239,6 +286,26 @@ describe('Config Routes V2 Tests', () => {
         'server.logColors',
         false, // Converted to boolean
       );
+    });
+
+    it('should convert a padded string boolean by its trimmed text', async () => {
+      mockConfigManager.getNamespace.mockReturnValue({
+        configuration: { logColors: false },
+      });
+      mockConfigManager.get.mockReturnValue(false);
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/update',
+        payload: {
+          namespace: 'server',
+          path: 'logColors',
+          value: ' true ',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(updateConfig).toHaveBeenCalledWith(expect.anything(), 'server.logColors', true);
     });
 
     it('should return 404 for non-existent namespace', async () => {
