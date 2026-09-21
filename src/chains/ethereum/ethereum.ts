@@ -361,8 +361,15 @@ export class Ethereum {
       }
       return floor;
     } catch (error: any) {
-      const reason = error?.reason ?? error?.error?.message ?? error?.message ?? String(error);
-      logger.warn(`Gas estimate for ${method} failed: ${reason}`);
+      // A revert reason is the contract's and safe to pass on. A transport error's message
+      // can carry the RPC URL, and an Infura or Chainstack URL carries the credential, so
+      // the caller gets the error code only and the log gets the redacted text.
+      const revertReason = error?.reason ?? error?.error?.reason;
+      const reason =
+        typeof revertReason === 'string'
+          ? revertReason
+          : `the node did not answer${error?.code ? ` (${error.code})` : ''}`;
+      logger.warn(`Gas estimate for ${method} failed: ${redactUrl(error?.message ?? String(error))}`);
       throw badRequest(`Could not estimate gas for ${method}: ${reason}. The transaction was not sent.`);
     }
   }

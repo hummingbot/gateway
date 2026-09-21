@@ -4,6 +4,7 @@ import { Ethereum } from '../../../src/chains/ethereum/ethereum';
 
 jest.mock('../../../src/services/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+  redactUrl: jest.requireActual('../../../src/services/logger').redactUrl,
 }));
 
 // A Uniswap CLMM close on mainnet used 394k of its fixed 400k limit and reverted out of gas,
@@ -40,6 +41,26 @@ describe('Ethereum.gasLimitWithMargin', () => {
       statusCode: 400,
       message: 'Could not estimate gas for multicall: execution reverted: Not approved. The transaction was not sent.',
     });
+  });
+
+  it('names only the error code, not the transport message, when the node did not answer', async () => {
+    // an ethers SERVER_ERROR carries the request URL, and an Infura URL carries the credential
+    const transportError = Object.assign(
+      new Error(
+        'missing response (requestBody=..., url="https://mainnet.infura.io/v3/0123456789abcdef0123456789abcdef", code=SERVER_ERROR)',
+      ),
+      { code: 'SERVER_ERROR' },
+    );
+    const refusal = gasLimit(async () => {
+      throw transportError;
+    });
+
+    await expect(refusal).rejects.toMatchObject({
+      statusCode: 400,
+      message:
+        'Could not estimate gas for multicall: the node did not answer (SERVER_ERROR). The transaction was not sent.',
+    });
+    await expect(refusal).rejects.not.toMatchObject({ message: expect.stringContaining('0123456789abcdef') });
   });
 
   it('passes the arguments and overrides to the estimate', async () => {
