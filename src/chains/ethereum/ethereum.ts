@@ -329,6 +329,43 @@ export class Ethereum {
   }
 
   /**
+   * A gas limit for one contract call: the node's estimate with a margin, never below the
+   * route's fixed figure.
+   *
+   * The fixed figures were chosen for the common case, and a call that needs more reverts
+   * out of gas after paying for every unit up to the limit - a Uniswap CLMM close on mainnet
+   * used 394k of its 400k and failed (#629). The margin covers the state moving between the
+   * estimate and the block; the floor keeps a low estimate from tightening what worked.
+   * When the estimate itself fails the fixed figure is used, so a call that would revert
+   * anyway still surfaces its own revert rather than an estimation error.
+   */
+  public async gasLimitWithMargin(
+    // the shape both ethers' and @ethersproject/contracts' Contract satisfy
+    contract: { estimateGas: Record<string, (...args: any[]) => Promise<BigNumber>> },
+    method: string,
+    args: unknown[],
+    overrides: Record<string, unknown>,
+    floor: number,
+    marginPct: number = 25,
+  ): Promise<number> {
+    try {
+      const estimate: BigNumber = await contract.estimateGas[method](...args, overrides);
+      const withMargin = estimate
+        .mul(100 + marginPct)
+        .div(100)
+        .toNumber();
+      if (withMargin > floor) {
+        logger.info(`Gas limit for ${method}: ${withMargin} (estimate ${estimate.toString()} +${marginPct}%)`);
+        return withMargin;
+      }
+      return floor;
+    } catch (error: any) {
+      logger.warn(`Gas estimate for ${method} failed (${error.message}); using the fixed limit ${floor}`);
+      return floor;
+    }
+  }
+
+  /**
    * Prepare gas options for a transaction
    * @param gasPrice Gas price in Gwei (optional, uses cached estimate if not provided)
    * @param gasLimit Gas limit (optional, defaults to 300000)
