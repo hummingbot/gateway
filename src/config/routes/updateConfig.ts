@@ -68,10 +68,12 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
         // Type conversion for string inputs
         let processedValue = value;
         if (typeof value === 'string') {
-          // A value pasted with surrounding whitespace passes the JSON schema (type: string)
-          // and is written as-is; a nodeURL of ' https://...' then fails inside the RPC
-          // client, on the first wallet or balance call, rather than here.
-          const text = value.trim();
+          // A nodeURL pasted with surrounding whitespace passes the JSON schema (type:
+          // string) and is written as-is; ' https://...' then fails inside the RPC client,
+          // on the first wallet or balance call, rather than here. Only URL fields are
+          // trimmed: a credential such as an exchange passphrase is sent verbatim, so its
+          // whitespace, if any, is part of the value.
+          const text = path.endsWith('URL') ? value.trim() : value;
           processedValue = text;
           const currentValue = ConfigManagerV2.getInstance().get(fullPath);
 

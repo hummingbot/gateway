@@ -166,7 +166,27 @@ describe('Config Routes V2 Tests', () => {
       });
     });
 
-    it('should strip surrounding whitespace from a string value before saving it', async () => {
+    it('should leave the whitespace of a non-URL string value, such as a passphrase, alone', async () => {
+      mockConfigManager.getNamespace.mockReturnValue({
+        configuration: { apiKey: '', secretKey: '', passphrase: '' },
+      });
+      mockConfigManager.get.mockReturnValue('');
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/update',
+        payload: {
+          namespace: 'okx',
+          path: 'passphrase',
+          value: ' pass phrase ',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(updateConfig).toHaveBeenCalledWith(expect.anything(), 'okx.passphrase', ' pass phrase ');
+    });
+
+    it('should strip surrounding whitespace from a nodeURL before saving it', async () => {
       mockConfigManager.getNamespace.mockReturnValue({
         configuration: {
           nodeURL: 'https://api.mainnet-beta.solana.com',
