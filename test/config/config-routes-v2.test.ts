@@ -288,6 +288,26 @@ describe('Config Routes V2 Tests', () => {
       );
     });
 
+    it('should convert a padded string boolean by its trimmed text', async () => {
+      mockConfigManager.getNamespace.mockReturnValue({
+        configuration: { logColors: false },
+      });
+      mockConfigManager.get.mockReturnValue(false);
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/update',
+        payload: {
+          namespace: 'server',
+          path: 'logColors',
+          value: ' true ',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(updateConfig).toHaveBeenCalledWith(expect.anything(), 'server.logColors', true);
+    });
+
     it('should return 404 for non-existent namespace', async () => {
       mockConfigManager.getNamespace.mockReturnValue(null);
 
