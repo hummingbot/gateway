@@ -361,6 +361,11 @@ export class Ethereum {
       }
       return floor;
     } catch (error: any) {
+      // A throttled RPC is already classified by the provider's interceptor (429 RATE_LIMITED);
+      // it goes up as it is, retry-after and all.
+      if (error?.statusCode === 429 || error?.code === 'RATE_LIMITED') {
+        throw error;
+      }
       // A revert reason is the contract's and safe to pass on. A transport error's message
       // can carry the RPC URL, and an Infura or Chainstack URL carries the credential, so
       // the caller gets the error code only and the log gets the redacted text.

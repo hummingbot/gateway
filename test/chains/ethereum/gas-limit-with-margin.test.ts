@@ -63,6 +63,16 @@ describe('Ethereum.gasLimitWithMargin', () => {
     await expect(refusal).rejects.not.toMatchObject({ message: expect.stringContaining('0123456789abcdef') });
   });
 
+  it('passes a throttled RPC up as the 429 RATE_LIMITED the provider already classified', async () => {
+    const throttled = Object.assign(new Error('Too many requests'), { statusCode: 429, code: 'RATE_LIMITED' });
+
+    await expect(
+      gasLimit(async () => {
+        throw throttled;
+      }),
+    ).rejects.toBe(throttled);
+  });
+
   it('passes the arguments and overrides to the estimate', async () => {
     const estimateGas = { multicall: jest.fn().mockResolvedValue(BigNumber.from(500000)) };
     await (Ethereum.prototype as any).gasLimitWithMargin.call(
