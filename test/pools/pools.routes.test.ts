@@ -504,6 +504,20 @@ describe('Pool Routes Tests', () => {
       expect(mockPoolService.removePool).not.toHaveBeenCalled();
     });
 
+    it('should not read a three-segment id as the pair of its first two segments', async () => {
+      mockPoolService.getPoolByAddress.mockResolvedValue(null);
+      mockPoolService.listPools.mockResolvedValue([solUsdc('raydium', 'PoolAddr1', 0.25)]);
+
+      const response = await fastify.inject({
+        method: 'DELETE',
+        url: '/SOL-USDC-EXTRA?chainNetwork=solana-mainnet-beta&type=clmm',
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(mockPoolService.listPools).not.toHaveBeenCalled();
+      expect(mockPoolService.removePool).not.toHaveBeenCalled();
+    });
+
     it('should remove pool successfully', async () => {
       mockPoolService.getPoolByAddress.mockResolvedValue(
         solUsdc('raydium', '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2', 0.25),

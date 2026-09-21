@@ -46,7 +46,14 @@ export const removeTokenRoute: FastifyPluginAsync = async (fastify) => {
 
       try {
         const tokenService = TokenService.getInstance();
-        const token = await tokenService.getToken(chain, network, symbolOrAddress);
+        // An address is the canonical id and wins over a symbol here: GET resolves a symbol
+        // first, which is the right order for a read, but a delete must never remove a
+        // token whose symbol happens to equal the address of the one that was named.
+        const wanted = symbolOrAddress.toLowerCase();
+        const tokens = await tokenService.listTokens(chain, network);
+        const token =
+          tokens.find((t) => t.address.toLowerCase() === wanted) ??
+          tokens.find((t) => t.symbol.toLowerCase() === wanted);
         if (!token) {
           throw fastify.httpErrors.notFound(`Token ${symbolOrAddress} not found in ${chain}/${network}`);
         }

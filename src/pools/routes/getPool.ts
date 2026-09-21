@@ -50,9 +50,10 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Parse trading pair (e.g., "ETH-USDC" -> ["ETH", "USDC"])
-        const [baseToken, quoteToken] = tradingPairOrAddress.split('-');
+        const parts = tradingPairOrAddress.split('-');
+        const [baseToken, quoteToken] = parts;
 
-        if (!baseToken || !quoteToken) {
+        if (parts.length !== 2 || !baseToken || !quoteToken) {
           throw new Error(
             `${tradingPairOrAddress} is not a pool address on ${chain}/${network}, and not a trading pair either. ` +
               'Expected: BASE-QUOTE (e.g., ETH-USDC)',

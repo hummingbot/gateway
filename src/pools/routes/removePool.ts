@@ -47,10 +47,12 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
         let address = tradingPairOrAddress;
         const byAddress = await poolService.getPoolByAddress(chain, network, tradingPairOrAddress);
         if (!byAddress) {
-          const [baseToken, quoteToken] = tradingPairOrAddress.split('-');
-          if (!baseToken || !quoteToken) {
+          // exactly BASE-QUOTE: a third segment must not be dropped on the way to a delete
+          const parts = tradingPairOrAddress.split('-');
+          if (parts.length !== 2 || !parts[0] || !parts[1]) {
             throw fastify.httpErrors.notFound(`Pool with address ${tradingPairOrAddress} not found`);
           }
+          const [baseToken, quoteToken] = parts;
           if (type !== 'amm' && type !== 'clmm') {
             throw new Error('type (amm or clmm) is required to remove a pool by trading pair');
           }
