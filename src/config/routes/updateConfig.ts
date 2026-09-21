@@ -67,15 +67,20 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
 
         // Type conversion for string inputs
         let processedValue = value;
-        if (typeof processedValue === 'string') {
+        if (typeof value === 'string') {
+          // A value pasted with surrounding whitespace passes the JSON schema (type: string)
+          // and is written as-is; a nodeURL of ' https://...' then fails inside the RPC
+          // client, on the first wallet or balance call, rather than here.
+          const text = value.trim();
+          processedValue = text;
           const currentValue = ConfigManagerV2.getInstance().get(fullPath);
 
           switch (typeof currentValue) {
             case 'number':
-              processedValue = Number(processedValue);
+              processedValue = Number(text);
               break;
             case 'boolean':
-              processedValue = processedValue.toLowerCase() === 'true';
+              processedValue = text.toLowerCase() === 'true';
               break;
           }
         }

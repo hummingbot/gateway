@@ -166,6 +166,33 @@ describe('Config Routes V2 Tests', () => {
       });
     });
 
+    it('should strip surrounding whitespace from a string value before saving it', async () => {
+      mockConfigManager.getNamespace.mockReturnValue({
+        configuration: {
+          nodeURL: 'https://api.mainnet-beta.solana.com',
+          nativeCurrencySymbol: 'SOL',
+        },
+      });
+      mockConfigManager.get.mockReturnValue('https://api.mainnet-beta.solana.com');
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/update',
+        payload: {
+          namespace: 'solana-mainnet-beta',
+          path: 'nodeURL',
+          value: ' https://solana-api.projectserum.com ',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(updateConfig).toHaveBeenCalledWith(
+        expect.anything(),
+        'solana-mainnet-beta.nodeURL',
+        'https://solana-api.projectserum.com',
+      );
+    });
+
     it('should update namespace-level config without network', async () => {
       mockConfigManager.getNamespace.mockReturnValue({
         configuration: {
