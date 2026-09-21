@@ -6,6 +6,7 @@ import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { httpErrors } from '../../services/error-handler';
 import { createHttpClient, HttpClient, HttpClientError } from '../../services/http-client';
 import { logger } from '../../services/logger';
+import { toRawAmount } from '../../services/raw-amount';
 
 import { JupiterConfig } from './jupiter.config';
 
@@ -194,7 +195,7 @@ export class Jupiter {
     const effectiveSlippagePct = slippagePct ?? this.config.slippagePct;
     const slippageBps = Math.round(effectiveSlippagePct * 100);
     const tokenDecimals = swapMode === 'ExactOut' ? outputToken.decimals : inputToken.decimals;
-    const quoteAmount = Math.floor(amount * 10 ** tokenDecimals);
+    const quoteAmount = toRawAmount(amount, tokenDecimals);
 
     logger.info(
       `Jupiter quote: ${inputToken.symbol}->${outputToken.symbol}, amount=${amount}, slippagePct=${effectiveSlippagePct}% (${slippageBps} bps), swapMode=${swapMode}, onlyDirectRoutes=${onlyDirectRoutes}, restrictIntermediateTokens=${restrictIntermediateTokens}`,
@@ -205,7 +206,7 @@ export class Jupiter {
     const params = {
       inputMint: inputToken.address,
       outputMint: outputToken.address,
-      amount: quoteAmount.toString(),
+      amount: quoteAmount,
       slippageBps: slippageBps.toString(),
       swapMode: swapMode,
       onlyDirectRoutes: onlyDirectRoutes.toString(),
