@@ -6,6 +6,7 @@ import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
+import { toRawAmount } from '../../../services/raw-amount';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { approximateBuyViaSellLeg, attemptedRoute } from '../../router-utils';
 import { TitanQuoteSwapResponse } from '../schemas';
@@ -53,7 +54,7 @@ export async function quoteSwap(
   let isApproximation = false;
 
   if (side === 'SELL') {
-    const amountRaw = Math.floor(amount * Math.pow(10, baseTokenInfo.decimals)).toString();
+    const amountRaw = toRawAmount(amount, baseTokenInfo.decimals);
     try {
       swapRoute = await titan.getSwapRoute(inputToken.address, outputToken.address, amountRaw, wallet, slippageBps);
     } catch (error) {
