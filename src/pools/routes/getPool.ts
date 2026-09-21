@@ -6,28 +6,30 @@ import { GetPoolRequestSchema, PoolListResponseSchema } from '../schemas';
 
 export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Params: { tradingPair: string };
+    Params: { tradingPairOrAddress: string };
     Querystring: {
       chainNetwork: string;
-      type: string;
+      type?: string;
       connector?: string;
     };
   }>(
-    '/:tradingPair',
+    // The same path and parameter as DELETE /pools/{tradingPairOrAddress}: a consumer that
+    // reads the route table by path shape sees one resource here, and one it is (#689).
+    '/:tradingPairOrAddress',
     {
       schema: {
-        description: 'Get a specific pool by trading pair',
+        description: 'Get a specific pool by trading pair (with type, and connector to narrow it) or by pool address',
         tags: ['/pools'],
         params: {
           type: 'object',
           properties: {
-            tradingPair: {
+            tradingPairOrAddress: {
               type: 'string',
-              description: 'Trading pair (e.g., SOL-USDC, ETH-USDC)',
+              description: 'Trading pair (e.g., SOL-USDC, ETH-USDC) or pool address',
               examples: ['SOL-USDC', 'ETH-USDC'],
             },
           },
-          required: ['tradingPair'],
+          required: ['tradingPairOrAddress'],
         },
         querystring: GetPoolRequestSchema,
         response: {
@@ -36,32 +38,36 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { tradingPair } = request.params;
+      const { tradingPairOrAddress } = request.params;
       const { chainNetwork, type, connector } = request.query;
       const { chain, network } = parseChainNetwork(chainNetwork);
       const poolService = PoolService.getInstance();
 
       try {
-        // Parse trading pair (e.g., "ETH-USDC" -> ["ETH", "USDC"])
-        const [baseToken, quoteToken] = tradingPair.split('-');
-
-        if (!baseToken || !quoteToken) {
-          throw new Error('Invalid trading pair format. Expected: BASE-QUOTE (e.g., ETH-USDC)');
+        const byAddress = await poolService.getPoolByAddress(chain, network, tradingPairOrAddress);
+        if (byAddress) {
+          return byAddress;
         }
 
-        const pool = await poolService.getPool(
-          chain,
-          network,
-          type as 'amm' | 'clmm',
-          baseToken,
-          quoteToken,
-          connector,
-        );
+        // Parse trading pair (e.g., "ETH-USDC" -> ["ETH", "USDC"])
+        const [baseToken, quoteToken] = tradingPairOrAddress.split('-');
+
+        if (!baseToken || !quoteToken) {
+          throw new Error(
+            `${tradingPairOrAddress} is not a pool address on ${chain}/${network}, and not a trading pair either. ` +
+              'Expected: BASE-QUOTE (e.g., ETH-USDC)',
+          );
+        }
+        if (type !== 'amm' && type !== 'clmm') {
+          throw new Error('type (amm or clmm) is required to look a pool up by trading pair');
+        }
+
+        const pool = await poolService.getPool(chain, network, type, baseToken, quoteToken, connector);
 
         if (!pool) {
           const connectorInfo = connector ? ` (connector: ${connector})` : '';
           throw fastify.httpErrors.notFound(
-            `Pool for ${tradingPair} not found on ${chain}/${network} ${type}${connectorInfo}`,
+            `Pool for ${tradingPairOrAddress} not found on ${chain}/${network} ${type}${connectorInfo}`,
           );
         }
 
@@ -75,3 +81,5 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
     },
   );
 };
+
+export default getPoolRoute;

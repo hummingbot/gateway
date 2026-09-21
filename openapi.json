@@ -4645,6 +4645,91 @@
             }
           }
         }
+      },
+      "delete": {
+        "operationId": "removeToken",
+        "tags": [
+          "/tokens"
+        ],
+        "description": "Remove a token from a token list by symbol or address",
+        "parameters": [
+          {
+            "schema": {
+              "enum": [
+                "ethereum-arbitrum",
+                "ethereum-avalanche",
+                "ethereum-base",
+                "ethereum-bsc",
+                "ethereum-celo",
+                "ethereum-mainnet",
+                "ethereum-optimism",
+                "ethereum-polygon",
+                "ethereum-robinhoodchain",
+                "ethereum-robinhoodchain-testnet",
+                "ethereum-sepolia",
+                "ethereum-unichain",
+                "solana-devnet",
+                "solana-mainnet-beta"
+              ],
+              "type": "string"
+            },
+            "example": "solana-mainnet-beta",
+            "in": "query",
+            "name": "chainNetwork",
+            "required": true,
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "symbolOrAddress",
+            "required": true,
+            "description": "Token symbol or address to remove"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "description": "Success message",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/tokens/find/{address}": {
@@ -5010,100 +5095,13 @@
         }
       }
     },
-    "/tokens/{address}": {
-      "delete": {
-        "operationId": "removeToken",
-        "tags": [
-          "/tokens"
-        ],
-        "description": "Remove a token from a token list by address",
-        "parameters": [
-          {
-            "schema": {
-              "enum": [
-                "ethereum-arbitrum",
-                "ethereum-avalanche",
-                "ethereum-base",
-                "ethereum-bsc",
-                "ethereum-celo",
-                "ethereum-mainnet",
-                "ethereum-optimism",
-                "ethereum-polygon",
-                "ethereum-robinhoodchain",
-                "ethereum-robinhoodchain-testnet",
-                "ethereum-sepolia",
-                "ethereum-unichain",
-                "solana-devnet",
-                "solana-mainnet-beta"
-              ],
-              "type": "string"
-            },
-            "example": "solana-mainnet-beta",
-            "in": "query",
-            "name": "chainNetwork",
-            "required": true,
-            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)"
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "path",
-            "name": "address",
-            "required": true,
-            "description": "Token address to remove"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "description": "Success message",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/pools/{tradingPair}": {
+    "/pools/{tradingPairOrAddress}": {
       "get": {
         "operationId": "getPool",
         "tags": [
           "/pools"
         ],
-        "description": "Get a specific pool by trading pair",
+        "description": "Get a specific pool by trading pair (with type, and connector to narrow it) or by pool address",
         "parameters": [
           {
             "schema": {
@@ -5149,8 +5147,8 @@
             },
             "in": "query",
             "name": "type",
-            "required": true,
-            "description": "Pool type"
+            "required": false,
+            "description": "Pool type; required to look a pool up by trading pair"
           },
           {
             "schema": {
@@ -5188,9 +5186,9 @@
               }
             },
             "in": "path",
-            "name": "tradingPair",
+            "name": "tradingPairOrAddress",
             "required": true,
-            "description": "Trading pair (e.g., SOL-USDC, ETH-USDC)"
+            "description": "Trading pair (e.g., SOL-USDC, ETH-USDC) or pool address"
           }
         ],
         "responses": {
@@ -5248,6 +5246,134 @@
                     "quoteTokenAddress",
                     "feePct",
                     "address"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removePool",
+        "tags": [
+          "/pools"
+        ],
+        "description": "Remove a pool by address, or by trading pair (with type, and connector to narrow it) when exactly one pool matches",
+        "parameters": [
+          {
+            "schema": {
+              "enum": [
+                "ethereum-arbitrum",
+                "ethereum-avalanche",
+                "ethereum-base",
+                "ethereum-bsc",
+                "ethereum-celo",
+                "ethereum-mainnet",
+                "ethereum-optimism",
+                "ethereum-polygon",
+                "ethereum-robinhoodchain",
+                "ethereum-robinhoodchain-testnet",
+                "ethereum-sepolia",
+                "ethereum-unichain",
+                "solana-devnet",
+                "solana-mainnet-beta"
+              ],
+              "type": "string"
+            },
+            "example": "solana-mainnet-beta",
+            "in": "query",
+            "name": "chainNetwork",
+            "required": true,
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)"
+          },
+          {
+            "schema": {
+              "enum": [
+                "amm",
+                "clmm"
+              ],
+              "type": "string"
+            },
+            "examples": {
+              "amm": {
+                "value": "amm"
+              },
+              "clmm": {
+                "value": "clmm"
+              }
+            },
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "description": "Pool type; required to look a pool up by trading pair"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "raydium": {
+                "value": "raydium"
+              },
+              "meteora": {
+                "value": "meteora"
+              },
+              "uniswap": {
+                "value": "uniswap"
+              },
+              "orca": {
+                "value": "orca"
+              }
+            },
+            "in": "query",
+            "name": "connector",
+            "required": false,
+            "description": "Optional: filter by connector (raydium, meteora, uniswap, orca)"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "tradingPairOrAddress",
+            "required": true,
+            "description": "Pool contract address, or trading pair (e.g., SOL-USDC) to remove"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
                   ]
                 }
               }
@@ -6104,92 +6230,6 @@
                   "required": [
                     "message",
                     "pool"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/pools/{address}": {
-      "delete": {
-        "operationId": "removePool",
-        "tags": [
-          "/pools"
-        ],
-        "description": "Remove a pool by address",
-        "parameters": [
-          {
-            "schema": {
-              "enum": [
-                "ethereum-arbitrum",
-                "ethereum-avalanche",
-                "ethereum-base",
-                "ethereum-bsc",
-                "ethereum-celo",
-                "ethereum-mainnet",
-                "ethereum-optimism",
-                "ethereum-polygon",
-                "ethereum-robinhoodchain",
-                "ethereum-robinhoodchain-testnet",
-                "ethereum-sepolia",
-                "ethereum-unichain",
-                "solana-devnet",
-                "solana-mainnet-beta"
-              ],
-              "type": "string"
-            },
-            "example": "solana-mainnet-beta",
-            "in": "query",
-            "name": "chainNetwork",
-            "required": true,
-            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)"
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "path",
-            "name": "address",
-            "required": true,
-            "description": "Pool contract address to remove"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
                   ]
                 }
               }
