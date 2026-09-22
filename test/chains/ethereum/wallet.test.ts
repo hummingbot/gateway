@@ -1,6 +1,23 @@
 // Mock fs-extra to prevent actual file writes
 jest.mock('fs-extra');
 
+// Importing src/app runs configureGatewayServer() at module scope, which reads the
+// certificate passphrase and calls process.exit when none is configured. That happens
+// while this file's imports are being evaluated — long before beforeAll could patch
+// readPassphrase — so both suites died at load and reported zero tests. jest.mock is
+// hoisted above the imports, which is early enough.
+jest.mock('../../../src/services/config-manager-cert-passphrase', () => ({
+  // The whole namespace, not just readPassphrase: wallet add/remove goes through
+  // readWalletKey, which delegates to readPassphrase inside the module, so a partial
+  // mock leaves it undefined and every write turns into a 500.
+  ConfigManagerCertPassphrase: {
+    bindings: { _exit: jest.fn() },
+    readPassphrase: jest.fn().mockReturnValue('a'),
+    readWalletKey: jest.fn().mockReturnValue('a'),
+  },
+}));
+jest.mock('../../../src/https', () => ({ getHttpsOptions: jest.fn().mockReturnValue(null) }));
+
 import * as fse from 'fs-extra';
 
 import { gatewayApp } from '../../../src/app';
@@ -45,7 +62,11 @@ const mockWallets: { [key: string]: Set<string> } = {
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-  eth = await Ethereum.getInstance('sepolia');
+  // `addWallet` resolves the chain's own default network — 'mainnet' for ethereum
+  // (src/wallet/utils.ts) — and never reads the network from the request. Holding a
+  // different instance here left every per-test `patch(eth, ...)` applying to an object
+  // the route never touched, so the "mocked" add ran the real key derivation.
+  eth = await Ethereum.getInstance('mainnet');
   await gatewayApp.ready();
 });
 
@@ -55,12 +76,19 @@ beforeEach(() => {
   // Clear mock wallets
   mockWallets.ethereum.clear();
 
-  // Mock wallet operations to work with in-memory storage
-  patch(eth, 'getWalletFromPrivateKey', () => {
+  // Mock wallet operations to work with in-memory storage.
+  //
+  // Patched on the prototype, not just on `eth`: whichever Ethereum instance the route
+  // resolves is then stubbed, so a change to the network addWallet picks cannot quietly
+  // put the real implementations back. That matters most for `encrypt`, which is scrypt
+  // at n=131072 — about a second of CPU per call, and the reason this suite used to
+  // blow its 10s timeout under parallel workers. Individual tests still patch `eth`
+  // directly to override a single case; an own property shadows the prototype.
+  patch(Ethereum.prototype, 'getWalletFromPrivateKey', () => {
     return { address: testAddress };
   });
 
-  patch(eth, 'encrypt', () => {
+  patch(Ethereum.prototype, 'encrypt', () => {
     return JSON.stringify(encodedPrivateKey);
   });
 
@@ -154,8 +182,11 @@ describe('Ethereum Wallet Operations', () => {
     });
 
     it('should fail with invalid private key', async () => {
-      // Override the mock to simulate invalid key
-      patch(eth, 'getWalletFromPrivateKey', () => {
+      // Override the mock to simulate invalid key. Patched on the prototype like the
+      // beforeEach stubs: `patch` stores a property descriptor rather than the function
+      // when the property is inherited rather than own, and `unpatch` puts that
+      // descriptor back as a value — leaving a non-callable behind for the next test.
+      patch(Ethereum.prototype, 'getWalletFromPrivateKey', () => {
         throw new Error('Invalid private key');
       });
 

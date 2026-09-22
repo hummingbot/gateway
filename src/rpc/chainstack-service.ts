@@ -4,7 +4,7 @@ import WebSocket from 'ws';
 import { httpGet, httpPost } from '../services/http-client';
 import { logger } from '../services/logger';
 
-import { createRateLimitAwareEthereumProvider } from './rpc-connection-interceptor';
+import { createRateLimitAwareEthereumProvider, rateLimitAwareConnection } from './rpc-connection-interceptor';
 import { RPCProvider, RPCProviderConfig, NetworkInfo, TransactionMonitorResult } from './rpc-provider-base';
 
 /** Raw node object returned by GET /v1/nodes */
@@ -250,16 +250,13 @@ export class ChainstackService extends RPCProvider {
     };
 
     if (this.networkInfo.chain === 'ethereum') {
-      // throttleLimit: 1 disables ethers' built-in 429 retry so the interceptor
-      // is the single retry layer.
+      // rateLimitAwareConnection keeps ethers from retrying 429s, so the interceptor
+      // is the single retry layer, while preserving the status it needs to see them.
       this.ethereumProvider = createRateLimitAwareEthereumProvider(
-        new providers.StaticJsonRpcProvider(
-          { url: this.selectedNode.https_endpoint, throttleLimit: 1 },
-          {
-            name: mapping.network,
-            chainId: this.networkInfo.chainId,
-          },
-        ),
+        new providers.StaticJsonRpcProvider(rateLimitAwareConnection(this.selectedNode.https_endpoint), {
+          name: mapping.network,
+          chainId: this.networkInfo.chainId,
+        }),
         this.selectedNode.https_endpoint,
       );
     }

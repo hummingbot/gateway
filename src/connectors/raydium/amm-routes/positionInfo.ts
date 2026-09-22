@@ -1,13 +1,9 @@
-import { BN } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
-import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { PositionInfo, PositionInfoSchema, GetPositionInfoRequestType } from '../../../schemas/amm-schema';
-import { logger } from '../../../services/logger';
+import { PositionInfo } from '../../../schemas/amm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { Raydium } from '../raydium';
-import { RaydiumAmmGetPositionInfoRequest } from '../schemas';
 
 /**
  * Calculate the LP token amount and corresponding token amounts
@@ -70,83 +66,58 @@ async function calculateLpAmount(
   };
 }
 
-export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: GetPositionInfoRequestType;
-    Reply: PositionInfo;
-  }>(
-    '/position-info',
-    {
-      schema: {
-        description: 'Get info about a Raydium AMM position',
-        tags: ['/connector/raydium'],
-        querystring: RaydiumAmmGetPositionInfoRequest,
-        response: {
-          200: PositionInfoSchema,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { poolAddress, walletAddress } = request.query;
-        const network = request.query.network;
+/**
+ * Standardized network-first position-info fetcher for the Raydium AMM/CPMM connector.
+ * Imported by the unified /trading/amm dispatcher and by the Fastify route below.
+ */
+export async function getPositionInfo(
+  network: string,
+  poolAddress: string,
+  walletAddress: string,
+): Promise<PositionInfo> {
+  // Validate wallet address
+  let walletPublicKey: PublicKey;
+  try {
+    // Read-only: the address does not need to be a wallet stored in Gateway
+    walletPublicKey = new PublicKey(walletAddress);
+  } catch (error) {
+    throw httpErrors.badRequest('Invalid wallet address');
+  }
 
-        // Validate wallet address
-        try {
-          new PublicKey(walletAddress);
-        } catch (error) {
-          throw fastify.httpErrors.badRequest('Invalid wallet address');
-        }
+  const raydium = await Raydium.getInstance(network);
+  const solana = await Solana.getInstance(network);
 
-        const raydium = await Raydium.getInstance(network);
-        const solana = await Solana.getInstance(network);
+  // Validate pool address
+  try {
+    new PublicKey(poolAddress);
+  } catch (error) {
+    throw httpErrors.badRequest('Invalid pool address');
+  }
 
-        // Prepare wallet and check if it's hardware
-        const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+  // Get pool info
+  const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
+  const [poolInfo] = await raydium.getPoolfromAPI(poolAddress);
+  if (!poolInfo) {
+    throw httpErrors.notFound('Pool not found');
+  }
 
-        // Get wallet public key
-        const walletPublicKey = isHardwareWallet ? (wallet as PublicKey) : (wallet as any).publicKey;
-
-        // Validate pool address
-        try {
-          new PublicKey(poolAddress);
-        } catch (error) {
-          throw fastify.httpErrors.badRequest('Invalid pool address');
-        }
-
-        // Get pool info
-        const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
-        const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
-        if (!poolInfo) {
-          throw fastify.httpErrors.notFound('Pool not found');
-        }
-
-        // Calculate LP token amount and token amounts
-        const { lpTokenAmount, baseTokenAmount, quoteTokenAmount } = await calculateLpAmount(
-          solana,
-          walletPublicKey,
-          ammPoolInfo,
-          poolInfo,
-          poolAddress,
-        );
-
-        return {
-          poolAddress,
-          walletAddress,
-          baseTokenAddress: ammPoolInfo.baseTokenAddress,
-          quoteTokenAddress: ammPoolInfo.quoteTokenAddress,
-          lpTokenAmount: lpTokenAmount,
-          baseTokenAmount,
-          quoteTokenAmount,
-          price: poolInfo.price,
-        };
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to fetch position info');
-      }
-    },
+  // Calculate LP token amount and token amounts
+  const { lpTokenAmount, baseTokenAmount, quoteTokenAmount } = await calculateLpAmount(
+    solana,
+    walletPublicKey,
+    ammPoolInfo,
+    poolInfo,
+    poolAddress,
   );
-};
 
-export default positionInfoRoute;
+  return {
+    poolAddress,
+    walletAddress,
+    baseTokenAddress: ammPoolInfo.baseTokenAddress,
+    quoteTokenAddress: ammPoolInfo.quoteTokenAddress,
+    lpTokenAmount: lpTokenAmount,
+    baseTokenAmount,
+    quoteTokenAmount,
+    price: poolInfo.price,
+  };
+}

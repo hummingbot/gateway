@@ -1,8 +1,7 @@
 name: Gateway Docker Buildx Workflow 
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
       - main
       - development
@@ -11,8 +10,8 @@ on:
     types: [published, edited]
 
 jobs:
-  build_pr:
-    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+  build_push:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -31,7 +30,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push Development Image
-        if: github.base_ref == 'development'
+        if: github.ref == 'refs/heads/development'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -40,7 +39,7 @@ jobs:
           tags: hummingbot/gateway:development  
 
       - name: Build and push Latest Image
-        if: github.base_ref == 'main'
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
           context: .

@@ -9,7 +9,9 @@ export namespace MeteoraConfig {
   export type Network = string;
 
   // Supported trading types
-  export const tradingTypes = ['clmm'] as const;
+  // - clmm: DLMM (dynamic liquidity market maker)
+  // - amm:  DAMM v2 (constant-product cp-amm)
+  export const tradingTypes = ['clmm', 'amm'] as const;
 
   export interface RootConfig {
     // Global configuration

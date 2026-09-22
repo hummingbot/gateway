@@ -80,6 +80,21 @@ jobs:
           # Copy template configurations
           cp -rf src/templates/* conf/
 
+      # The committed spec is what consumers generate their clients from, and the tests
+      # that check it read the committed copy — so a route change with no regeneration
+      # leaves them passing against a stale document. Only regenerating and comparing
+      # catches that. The generator writes the template port and placeholder wallets, so
+      # this produces the same bytes here as on any developer's machine.
+      - name: Check openapi.json is regenerated
+        shell: bash
+        run: |
+          pnpm generate:openapi
+          if ! git diff --quiet -- openapi.json; then
+            echo "::error::openapi.json does not match the routes. Run 'pnpm generate:openapi' and commit the result."
+            git --no-pager diff -- openapi.json
+            exit 1
+          fi
+
       - name: Run unit test coverage
         if: github.event_name == 'pull_request'
         shell: bash

@@ -1,6 +1,5 @@
-import DLMM, { getPriceOfBinByBinId, LbPair, LBCLMM_PROGRAM_IDS } from '@meteora-ag/dlmm';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { PublicKey, MemcmpFilter } from '@solana/web3.js';
+import DLMM, { getPriceOfBinByBinId, LbPair } from '@meteora-ag/dlmm';
+import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
 import { MeteoraPoolInfo, PositionInfo, BinLiquidity } from '../../schemas/clmm-schema';
@@ -56,13 +55,42 @@ export interface MeteoraApiPool {
 
 export class Meteora {
   private static _instances: { [name: string]: Meteora };
-  // Recommended maximum bins per position (aligns with SDK's DEFAULT_BIN_PER_POSITION)
-  // Ensures single-transaction operations. SDK supports up to 1400 bins via multiple transactions.
-  private static readonly MAX_BINS = 70;
+  // The widest bin range one DLMM position can be created and funded in a single
+  // transaction, and the program's own limit on how wide a position may be initialized:
+  // DEFAULT_BIN_PER_POSITION. A position can still span up to POSITION_MAX_LENGTH (1400)
+  // bins, but only by growing past this, which openPosition does by chunking the deposit.
+  //
+  // 70, not the 69 this used to say, confirmed by mainnet simulation against the Meteora
+  // SOL/USDC pool: initializePosition succeeds at 70 bins and fails at 71 with
+  // InvalidPositionWidth (6040 / 0x1798, thrown at position/common.rs:30), and the
+  // combined create-and-fund transaction behaves identically — 819 message bytes at width
+  // 70, comfortably inside the 1232-byte limit, so neither transaction size nor the
+  // 10,240-byte CPI allocation limit binds first. The old 69 came from a simulation that
+  // verified 69 worked without testing whether 70 did.
+  public static readonly MAX_POSITION_BIN_WIDTH = 70;
+
+  // How many bins either side of the active bin pool-info reports. Unrelated to what a
+  // position can hold: this is how much of the book to show, and it shared a constant
+  // with the position cap only by coincidence.
+  private static readonly POOL_LIQUIDITY_BIN_RANGE = 69;
+
+  // How long a cached DLMM instance's on-chain state is trusted before it is refetched.
+  // DLMM.create() populates `lbPair` once and the SDK never refreshes it on its own, but
+  // nearly every read goes through it: getBinsAroundActiveBin centers the pool-info window
+  // on `lbPair.activeId`, swapQuote prices from that id and from `lbPair.vParameters`, and
+  // initializePositionAndAddLiquidityByStrategy bakes the id into the instruction as
+  // `active_id`. Left alone a long-lived instance keeps answering with whatever the pool
+  // looked like the first time Gateway touched it. refetchStates() is a single batched
+  // getMultipleAccounts, so bounding the staleness costs one round trip per pool per
+  // window rather than one per request.
+  private static readonly DLMM_STATE_TTL_MS = 5000;
+
   private solana: Solana;
   public config: MeteoraConfig.RootConfig;
   private dlmmPools: Map<string, DLMM> = new Map();
   private dlmmPoolPromises: Map<string, Promise<DLMM>> = new Map();
+  private dlmmPoolRefreshedAt: Map<string, number> = new Map();
+  private dlmmPoolRefreshes: Map<string, Promise<void>> = new Map();
 
   private constructor() {
     this.config = MeteoraConfig.config;
@@ -88,6 +116,8 @@ export class Meteora {
       this.solana = await Solana.getInstance(network); // Get initialized Solana instance
       this.dlmmPools = new Map();
       this.dlmmPoolPromises = new Map();
+      this.dlmmPoolRefreshedAt = new Map();
+      this.dlmmPoolRefreshes = new Map();
       logger.info('Initializing Meteora');
     } catch (error) {
       logger.error('Failed to initialize Meteora:', error);
@@ -95,11 +125,13 @@ export class Meteora {
     }
   }
 
-  /** Gets DLMM pool instance */
+  /** Gets DLMM pool instance, with its on-chain state no more than DLMM_STATE_TTL_MS old */
   async getDlmmPool(poolAddress: string): Promise<DLMM> {
     // Check if we already have the pool instance
-    if (this.dlmmPools.has(poolAddress)) {
-      return this.dlmmPools.get(poolAddress);
+    const cachedPool = this.dlmmPools.get(poolAddress);
+    if (cachedPool) {
+      await this.refreshDlmmPoolState(poolAddress, cachedPool);
+      return cachedPool;
     }
 
     // Check if we have a pending promise for this pool
@@ -114,6 +146,7 @@ export class Meteora {
           cluster: this.solana.network as any,
         });
         await dlmmPool.refetchStates();
+        this.dlmmPoolRefreshedAt.set(poolAddress, Date.now());
         this.dlmmPools.set(poolAddress, dlmmPool);
         this.dlmmPoolPromises.delete(poolAddress);
         return dlmmPool;
@@ -127,6 +160,43 @@ export class Meteora {
 
     this.dlmmPoolPromises.set(poolAddress, dlmmPoolPromise);
     return dlmmPoolPromise;
+  }
+
+  /**
+   * Refetch a cached instance's on-chain state once it has aged past DLMM_STATE_TTL_MS.
+   * Concurrent callers share the one in-flight refetch. A failure propagates instead of
+   * leaving the caller holding state it has no way to tell is stale — a silently stale
+   * `activeId` prices a swap off the wrong bin and goes into a position instruction as
+   * `active_id`, which is worse than the request failing.
+   */
+  private async refreshDlmmPoolState(poolAddress: string, dlmmPool: DLMM): Promise<void> {
+    const refreshedAt = this.dlmmPoolRefreshedAt.get(poolAddress) ?? 0;
+    if (Date.now() - refreshedAt < Meteora.DLMM_STATE_TTL_MS) {
+      return;
+    }
+
+    const inFlight = this.dlmmPoolRefreshes.get(poolAddress);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const refresh = (async () => {
+      const activeIdBefore = dlmmPool.lbPair.activeId;
+      try {
+        await dlmmPool.refetchStates();
+        this.dlmmPoolRefreshedAt.set(poolAddress, Date.now());
+        if (dlmmPool.lbPair.activeId !== activeIdBefore) {
+          logger.info(
+            `Pool ${poolAddress} active bin moved ${activeIdBefore} -> ${dlmmPool.lbPair.activeId} since the last refresh`,
+          );
+        }
+      } finally {
+        this.dlmmPoolRefreshes.delete(poolAddress);
+      }
+    })();
+
+    this.dlmmPoolRefreshes.set(poolAddress, refresh);
+    return refresh;
   }
 
   /** Gets Meteora pools with optional token filtering */
@@ -291,7 +361,10 @@ export class Meteora {
     if (!dlmmPool) {
       throw new Error(`Pool not found: ${poolAddress}`);
     }
-    const binData = await dlmmPool.getBinsAroundActiveBin(Meteora.MAX_BINS - 1, Meteora.MAX_BINS - 1);
+    const binData = await dlmmPool.getBinsAroundActiveBin(
+      Meteora.POOL_LIQUIDITY_BIN_RANGE,
+      Meteora.POOL_LIQUIDITY_BIN_RANGE,
+    );
 
     return binData.bins.map((bin) => ({
       binId: bin.binId,
@@ -597,11 +670,14 @@ export class Meteora {
     const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true) - padBins;
     const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false) + padBins;
 
-    if (maxBinId - minBinId > Meteora.MAX_BINS) {
+    // Same width rule as openPosition, from the same constant. These used to disagree:
+    // this compared `maxBinId - minBinId` against 70 while openPosition compared the
+    // inclusive width against 69, differing by two bins on what a position could hold.
+    if (maxBinId - minBinId + 1 > Meteora.MAX_POSITION_BIN_WIDTH) {
       throw new Error(
-        `Position range too wide: ${maxBinId - minBinId} bins requested. ` +
-          `Recommended maximum is ${Meteora.MAX_BINS} bins for single-transaction operations. ` +
-          `For wider ranges, create multiple positions or narrow your price range.`,
+        `Position range too wide: ${maxBinId - minBinId + 1} bins requested. ` +
+          `One position holds at most ${Meteora.MAX_POSITION_BIN_WIDTH} bins. ` +
+          `For wider ranges, open the position without a pad or narrow your price range.`,
       );
     }
 

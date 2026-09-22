@@ -3,6 +3,7 @@ import { PoolUtils } from '@raydium-io/raydium-sdk-v2';
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/raydium/raydium');
@@ -29,8 +30,8 @@ jest.mock('@raydium-io/raydium-sdk-v2', () => {
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/raydium/clmm-routes/quoteSwap');
-  await server.register(quoteSwapRoute);
+  const { makeQuoteSwapRoute } = await import('../../../../src/trading/pool-swap-routes');
+  await server.register(makeQuoteSwapRoute('clmm'));
   return server;
 };
 
@@ -113,7 +114,8 @@ describe('GET /quote-swap (Raydium CLMM)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
         quoteToken: 'USDC',
@@ -124,11 +126,11 @@ describe('GET /quote-swap (Raydium CLMM)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body).toHaveProperty('amountIn', 0.2);
+    expect(Number(body.amountIn)).toBe(0.2);
     expect(body).toHaveProperty('amountOut', 13);
     expect(body).toHaveProperty('price', 65);
     expect(body).toHaveProperty('maxAmountIn', 0.2);
@@ -156,7 +158,8 @@ describe('GET /quote-swap (Raydium CLMM)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
         quoteToken: 'USDC',
@@ -167,11 +170,11 @@ describe('GET /quote-swap (Raydium CLMM)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockSOL.address);
-    expect(body).toHaveProperty('amountIn', 13);
+    expect(Number(body.amountIn)).toBe(13);
     expect(body).toHaveProperty('amountOut', 0.2);
     expect(body).toHaveProperty('price', 65);
     // The core regression: maxAmountIn must be GREATER than amountIn (was inverted before).
@@ -198,7 +201,8 @@ describe('GET /quote-swap (Raydium CLMM)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         poolAddress: 'invalid-pool-address',
         baseToken: 'SOL',
         quoteToken: 'USDC',
@@ -209,6 +213,6 @@ describe('GET /quote-swap (Raydium CLMM)', () => {
     });
 
     expect(response.statusCode).toBe(404);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 });

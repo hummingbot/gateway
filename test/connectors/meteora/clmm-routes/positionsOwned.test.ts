@@ -7,6 +7,7 @@ import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/meteora/meteora');
 jest.mock('../../../../src/chains/solana/solana.config', () => ({
+  ...jest.requireActual('../../../../src/chains/solana/solana.config'),
   getSolanaChainConfig: jest.fn().mockReturnValue({
     defaultNetwork: 'mainnet-beta',
     defaultWallet: 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF',
@@ -16,7 +17,7 @@ jest.mock('../../../../src/chains/solana/solana.config', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { positionsOwnedRoute } = await import('../../../../src/connectors/meteora/clmm-routes/positionsOwned');
+  const { positionsOwnedRoute } = await import('../../../../src/trading/clmm/positions-owned');
   await server.register(positionsOwnedRoute);
   return server;
 };
@@ -87,7 +88,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: mockWalletAddress,
       },
     });
@@ -116,7 +118,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: mockWalletAddress,
       },
     });
@@ -132,7 +135,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: 'invalid-address',
       },
     });
@@ -140,16 +144,27 @@ describe('GET /positions-owned', () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it('should return 400 when walletAddress is missing', async () => {
+  // The refactor gave walletAddress a schema default, so an omitted wallet is filled
+  // from the chain config rather than rejected. Only a malformed one still fails
+  // (above). Asserted here rather than in the raydium/pancakeswap-sol copies of this
+  // file because only this one mocks the Solana config, so only here is the filled
+  // value something the test knows.
+  it('fills an omitted wallet from the chain config instead of rejecting', async () => {
+    const getAllPositionsForWallet = jest.fn().mockResolvedValue(mockPositions);
+    (Meteora.getInstance as jest.Mock).mockResolvedValue({ getAllPositionsForWallet });
+
     const response = await app.inject({
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
       },
     });
 
-    expect(response.statusCode).toBe(400);
+    expect(response.statusCode).toBe(200);
+    // The connector hands the SDK a PublicKey, not the raw string it was given.
+    expect(getAllPositionsForWallet.mock.calls[0][0].toBase58()).toBe(mockWalletAddress);
   });
 
   it('should use default network if not provided', async () => {
@@ -162,6 +177,7 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
+        connector: 'meteora',
         walletAddress: mockWalletAddress,
       },
     });

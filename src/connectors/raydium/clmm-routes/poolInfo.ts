@@ -1,11 +1,10 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
+import { PoolInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { computeRaydiumBinDistribution } from '../raydium.utils';
-import { RaydiumClmmGetPoolInfoRequest, RaydiumClmmGetPoolInfoRequestType } from '../schemas';
 
 export async function getPoolInfo(
   fastify: FastifyInstance,
@@ -57,34 +56,3 @@ export async function getPoolInfo(
 
   return poolInfo;
 }
-
-export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: RaydiumClmmGetPoolInfoRequestType;
-    Reply: Record<string, any>;
-  }>(
-    '/pool-info',
-    {
-      schema: {
-        description: 'Get CLMM pool information from Raydium',
-        tags: ['/connector/raydium'],
-        querystring: RaydiumClmmGetPoolInfoRequest,
-        response: {
-          200: PoolInfoSchema,
-        },
-      },
-    },
-    async (request): Promise<PoolInfo> => {
-      try {
-        const { poolAddress, binCount = 0, network } = request.query;
-        return await getPoolInfo(fastify, network, poolAddress, binCount);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
-      }
-    },
-  );
-};
-
-export default poolInfoRoute;

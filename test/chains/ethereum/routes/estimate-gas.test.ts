@@ -5,6 +5,7 @@ import '../../../mocks/app-mocks';
 
 import { gatewayApp } from '../../../../src/app';
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
+import { parseWire } from '../../../utils/wire';
 
 // Mock the Ethereum class, but keep the real EIP1559_NETWORKS constant
 // (automocking would replace the array and break the route's network gate)
@@ -55,7 +56,7 @@ describe('Ethereum Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data).toMatchObject({
         feePerComputeUnit: 15.5,
@@ -80,7 +81,7 @@ describe('Ethereum Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(503);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data.error).toBe('ServiceUnavailableError');
       expect(data.message).toContain('RPC provider unavailable');
@@ -98,7 +99,7 @@ describe('Ethereum Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(500);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data.error).toBe('InternalServerError');
       expect(data.message).toContain('Failed to estimate gas');
@@ -118,7 +119,7 @@ describe('Ethereum Estimate Gas Route', () => {
         });
 
         expect(response.statusCode).toBe(200);
-        const data = JSON.parse(response.body);
+        const data = parseWire(response.body);
 
         expect(data).toMatchObject({
           feePerComputeUnit: 10.0,
@@ -142,7 +143,7 @@ describe('Ethereum Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       // Verify response schema
       expect(typeof data.feePerComputeUnit).toBe('number');
@@ -175,10 +176,10 @@ describe('Ethereum Estimate Gas Route', () => {
         });
 
         expect(response.statusCode).toBe(200);
-        const data = JSON.parse(response.body);
+        const data = parseWire(response.body);
 
         expect({ network, gasType: data.gasType }).toEqual({ network, gasType: 'eip1559' });
-        expect(data.maxFeePerGas).toBe(12.5);
+        expect(Number(data.maxFeePerGas)).toBe(12.5);
         expect(data.maxPriorityFeePerGas).toBe(0.5);
       }
     });
@@ -197,7 +198,7 @@ describe('Ethereum Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data.gasType).toBe('legacy');
       expect(data.maxFeePerGas).toBeUndefined();
@@ -218,7 +219,7 @@ describe('Ethereum Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data.gasType).toBe('legacy');
     });
@@ -232,7 +233,7 @@ describe('Ethereum Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data).toMatchObject({
         feePerComputeUnit: 12.0,

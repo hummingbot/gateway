@@ -797,6 +797,71 @@ export const IUniswapV2FactoryABI = {
 };
 
 /**
+ * Uniswap V3 Factory ABI — minimal fragment for reading a deployed pool address.
+ * `getPool` returns the canonical pool for a (token0, token1, fee) triple, or the zero
+ * address when no pool has been deployed yet. Used by create-pool to read back the
+ * authoritative pool address after the create+initialize tx confirms.
+ */
+export const IUniswapV3FactoryABI = [
+  {
+    inputs: [
+      { internalType: 'address', name: 'tokenA', type: 'address' },
+      { internalType: 'address', name: 'tokenB', type: 'address' },
+      { internalType: 'uint24', name: 'fee', type: 'uint24' },
+    ],
+    name: 'getPool',
+    outputs: [{ internalType: 'address', name: 'pool', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+];
+
+/**
+ * Uniswap V3 Pool ABI — minimal `slot0` fragment. `sqrtPriceX96 == 0` means the pool
+ * contract has been deployed by the factory but not yet initialized with a price.
+ * create-pool uses this to distinguish an already-initialized (live) pool from a
+ * created-but-uninitialized one.
+ */
+export const IUniswapV3PoolSlot0ABI = [
+  {
+    inputs: [],
+    name: 'slot0',
+    outputs: [
+      { internalType: 'uint160', name: 'sqrtPriceX96', type: 'uint160' },
+      { internalType: 'int24', name: 'tick', type: 'int24' },
+      { internalType: 'uint16', name: 'observationIndex', type: 'uint16' },
+      { internalType: 'uint16', name: 'observationCardinality', type: 'uint16' },
+      { internalType: 'uint16', name: 'observationCardinalityNext', type: 'uint16' },
+      { internalType: 'uint8', name: 'feeProtocol', type: 'uint8' },
+      { internalType: 'bool', name: 'unlocked', type: 'bool' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+];
+
+/**
+ * Uniswap V3 NonfungiblePositionManager ABI — minimal `createAndInitializePoolIfNecessary`
+ * fragment. This single, idempotent call deploys the pool via the factory (if it does not
+ * yet exist) AND initializes it at `sqrtPriceX96` (if not yet initialized), returning the
+ * pool address. Preferred over the two-tx Factory.createPool + Pool.initialize path.
+ */
+export const INftManagerCreatePoolABI = [
+  {
+    inputs: [
+      { internalType: 'address', name: 'token0', type: 'address' },
+      { internalType: 'address', name: 'token1', type: 'address' },
+      { internalType: 'uint24', name: 'fee', type: 'uint24' },
+      { internalType: 'uint160', name: 'sqrtPriceX96', type: 'uint160' },
+    ],
+    name: 'createAndInitializePoolIfNecessary',
+    outputs: [{ internalType: 'address', name: 'pool', type: 'address' }],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+];
+
+/**
  * Uniswap V4 StateView ABI for querying pool state
  */
 export const IStateViewABI = [

@@ -1,22 +1,13 @@
 import { Contract } from '@ethersproject/contracts';
-import { Type } from '@sinclair/typebox';
 import { Position, tickToPrice, computePoolAddress } from '@uniswap/v3-sdk';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
+import { PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress, getUniswapV3FactoryAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
-
-// Define the request and response types
-const PositionsOwnedRequest = Type.Object({
-  network: Type.Optional(Type.String({ examples: ['base'], default: 'base' })),
-  walletAddress: Type.String({ examples: ['<ethereum-wallet-address>'] }),
-});
-
-const PositionsOwnedResponse = Type.Array(PositionInfoSchema);
 
 // Additional ABI methods needed for enumerating positions
 const ENUMERABLE_ABI = [
@@ -83,10 +74,10 @@ export async function getPositionsOwned(
       // Get position details
       const positionDetails = await positionManager.positions(tokenId);
 
-      // Skip positions with no liquidity
-      if (positionDetails.liquidity.eq(0)) {
-        continue;
-      }
+      // Zero-liquidity positions are reported, not skipped. The NFT is still
+      // owned and still counted by balanceOf, it can hold uncollected
+      // tokensOwed after a decrease, and it can be increased again or burned.
+      // Callers that want only active liquidity filter on it themselves.
 
       // Get the token addresses from the position
       const token0Address = positionDetails.token0;
@@ -109,8 +100,7 @@ export async function getPositionsOwned(
       // Get the pool associated with the position
       const pool = await uniswap.getV3Pool(token0, token1, fee);
       if (!pool) {
-        logger.warn(`Pool not found for position ${tokenId}`);
-        continue;
+        throw new Error(`pool not found for ${token0.symbol}-${token1.symbol} at fee tier ${fee}`);
       }
 
       // Calculate price range
@@ -171,52 +161,49 @@ export async function getPositionsOwned(
         price: parseFloat(price),
       });
     } catch (err) {
-      logger.warn(`Error fetching position ${i} for wallet ${walletAddress}: ${err.message}`);
+      // A wallet that loses a position mid-scan renumbers underneath this loop: the
+      // enumerable bookkeeping swap-and-pops on removal, so an index that was inside the
+      // set when balanceOf was read can fall off the end, and a tokenId read a moment ago
+      // can stop existing before positions() is asked about it. Verified against the
+      // mainnet position manager: the first reverts with "EnumerableSet: index out of
+      // bounds", the second with "Invalid token ID".
+      //
+      // That is the caller's own concurrent close, not a Gateway fault. Reporting the raw
+      // revert as a 500 reads like a bug in here and tells them nothing; a conflict says
+      // what happened and that the request is worth repeating.
+      const revert = err.message ?? '';
+      if (revert.includes('index out of bounds') || revert.includes('Invalid token ID')) {
+        throw fastify.httpErrors.conflict(
+          `Wallet ${walletAddress} lost a position while its ${numPositions} positions were being listed. Retry.`,
+        );
+      }
+
+      // Do not swallow anything else. A failure here is indistinguishable from the
+      // position not existing, so returning the rest would hand the caller a
+      // silently short list — and callers size new exposure against it.
+      throw fastify.httpErrors.internalServerError(
+        `Failed to read position ${i + 1} of ${numPositions} for wallet ${walletAddress}: ${err.message}`,
+      );
     }
   }
 
+  // No final balanceOf comparison. A count check cannot say what it appears to say, and
+  // the version that was here rejected correct answers to do it.
+  //
+  // Enumeration is EnumerableSet-backed, which appends on add and swap-and-pops on remove.
+  // So a position ADDED mid-scan cannot disturb indices 0..N-1 — the loop reads exactly the
+  // set that existed when the request arrived, and the list it returns is a correct
+  // snapshot. A count check sees N+1 against N and throws that correct snapshot away, which
+  // for a wallet that opens positions while polling this route is the common case, not the
+  // edge. A position REMOVED mid-scan is caught by the loop itself, above: the index walks
+  // off the end, or the tokenId stops existing, and either way the pass throws.
+  //
+  // What neither catches is a change that lands after the loop's last read. That window is
+  // narrow and closing it needs atomicity, not arithmetic — pinning every read to one
+  // blockTag, at which point nothing here has to be inferred. Deliberately not done: a
+  // pinned read against the load-balanced public RPCs Gateway defaults to can land on a
+  // node that has not yet seen that block, trading a rare stale list for a routine failed
+  // request. Known and accepted.
+
   return positions;
 }
-
-export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.get<{
-    Querystring: typeof PositionsOwnedRequest.static;
-    Reply: typeof PositionsOwnedResponse.static;
-  }>(
-    '/positions-owned',
-    {
-      schema: {
-        description: 'Get all Uniswap V3 positions owned by a wallet',
-        tags: ['/connector/uniswap'],
-        querystring: {
-          ...PositionsOwnedRequest,
-          properties: {
-            ...PositionsOwnedRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-          },
-        },
-        response: {
-          200: PositionsOwnedResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress } = request.query;
-        const network = request.query.network;
-        return await getPositionsOwned(fastify, network, walletAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw fastify.httpErrors.internalServerError('Failed to fetch positions');
-      }
-    },
-  );
-};
-
-export default positionsOwnedRoute;

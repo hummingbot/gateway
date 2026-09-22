@@ -2,7 +2,6 @@ import { Contract } from '@ethersproject/contracts';
 import { Token } from '@pancakeswap/sdk';
 import { FeeAmount, Pool as V3Pool } from '@pancakeswap/v3-sdk';
 import { FastifyInstance } from 'fastify';
-import { Address } from 'viem';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { logger } from '../../services/logger';

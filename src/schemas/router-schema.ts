@@ -1,5 +1,7 @@
 import { Type, Static } from '@sinclair/typebox';
 
+import { DecimalNumber } from './decimal-field';
+
 // ========================================
 // Base request/response types for DEX aggregators
 // and other order router-based connectors
@@ -19,6 +21,7 @@ export const QuoteSwapRequest = Type.Object(
       description: 'The other token in the pair',
     }),
     amount: Type.Number({
+      format: 'decimal',
       description: 'Amount of base token to trade',
     }),
     side: Type.String({
@@ -28,6 +31,7 @@ export const QuoteSwapRequest = Type.Object(
     }),
     slippagePct: Type.Optional(
       Type.Number({
+        format: 'decimal',
         minimum: 0,
         maximum: 100,
         description: 'Maximum acceptable slippage percentage',
@@ -41,7 +45,9 @@ export const QuoteSwapRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'QuoteSwapRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type QuoteSwapRequestType = Static<typeof QuoteSwapRequest>;
 
@@ -56,22 +62,22 @@ export const QuoteSwapResponse = Type.Object(
     tokenOut: Type.String({
       description: 'Address of the token being swapped to',
     }),
-    amountIn: Type.Number({
+    amountIn: DecimalNumber({
       description: 'Amount of tokenIn to be swapped',
     }),
-    amountOut: Type.Number({
+    amountOut: DecimalNumber({
       description: 'Expected amount of tokenOut to receive',
     }),
-    price: Type.Number({
+    price: DecimalNumber({
       description: 'Exchange rate between tokenIn and tokenOut',
     }),
-    priceImpactPct: Type.Number({
+    priceImpactPct: DecimalNumber({
       description: 'Estimated price impact percentage (0-100)',
     }),
-    minAmountOut: Type.Number({
+    minAmountOut: DecimalNumber({
       description: 'Minimum amount of tokenOut that will be accepted',
     }),
-    maxAmountIn: Type.Number({
+    maxAmountIn: DecimalNumber({
       description: 'Maximum amount of tokenIn that will be spent',
     }),
     approximation: Type.Optional(
@@ -81,7 +87,9 @@ export const QuoteSwapResponse = Type.Object(
       }),
     ),
   },
-  { $id: 'QuoteSwapResponse' },
+  // No $id: no route serves this shape. The pool-scoped surfaces answer with the shared
+  // Chain* responses, so publishing this would put a name a caller reaches for on a
+  // shape they never receive. Kept as the base those responses compose from.
 );
 export type QuoteSwapResponseType = Static<typeof QuoteSwapResponse>;
 
@@ -101,7 +109,9 @@ export const ExecuteQuoteRequest = Type.Object(
       description: 'ID of the quote to execute',
     }),
   },
-  { $id: 'ExecuteQuoteRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type ExecuteQuoteRequestType = Static<typeof ExecuteQuoteRequest>;
 
@@ -124,6 +134,7 @@ export const ExecuteSwapRequest = Type.Object(
       description: 'The other token in the pair',
     }),
     amount: Type.Number({
+      format: 'decimal',
       description: 'Amount of base token to trade',
     }),
     side: Type.String({
@@ -133,6 +144,7 @@ export const ExecuteSwapRequest = Type.Object(
     }),
     slippagePct: Type.Optional(
       Type.Number({
+        format: 'decimal',
         minimum: 0,
         maximum: 100,
         description: 'Maximum acceptable slippage percentage',
@@ -146,7 +158,9 @@ export const ExecuteSwapRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'ExecuteSwapRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
 
@@ -161,31 +175,42 @@ export const SwapExecuteResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        tokenIn: Type.String({
-          description: 'Address of the token swapped from',
-        }),
-        tokenOut: Type.String({
-          description: 'Address of the token swapped to',
-        }),
-        amountIn: Type.Number({
-          description: 'Actual amount of tokenIn swapped',
-        }),
-        amountOut: Type.Number({
-          description: 'Actual amount of tokenOut received',
-        }),
-        fee: Type.Number({
-          description: 'Transaction fee paid',
-        }),
-        baseTokenBalanceChange: Type.Number({
-          description: 'Change in base token balance (negative for decrease)',
-        }),
-        quoteTokenBalanceChange: Type.Number({
-          description: 'Change in quote token balance (negative for decrease)',
-        }),
-      }),
+      Type.Object(
+        {
+          tokenIn: Type.String({
+            description: 'Address of the token swapped from',
+          }),
+          tokenOut: Type.String({
+            description: 'Address of the token swapped to',
+          }),
+          amountIn: DecimalNumber({
+            description: 'Actual amount of tokenIn swapped',
+          }),
+          amountOut: DecimalNumber({
+            description: 'Actual amount of tokenOut received',
+          }),
+          fee: DecimalNumber({
+            description: 'Transaction fee paid',
+          }),
+          baseTokenBalanceChange: DecimalNumber({
+            description: 'Change in base token balance (negative for decrease)',
+          }),
+          quoteTokenBalanceChange: DecimalNumber({
+            description: 'Change in quote token balance (negative for decrease)',
+          }),
+          slippagePct: Type.Optional(
+            DecimalNumber({
+              description: 'Slippage tolerance percentage actually applied to the swap',
+            }),
+          ),
+        },
+        // No $id: its parent is not published either — nothing would reference this, and a
+        // generated client would carry it as a class no response ever produces.
+      ),
     ),
   },
-  { $id: 'SwapExecuteResponse' },
+  // No $id: no route serves this shape. The pool-scoped surfaces answer with the shared
+  // Chain* responses, so publishing this would put a name a caller reaches for on a
+  // shape they never receive. Kept as the base those responses compose from.
 );
 export type SwapExecuteResponseType = Static<typeof SwapExecuteResponse>;

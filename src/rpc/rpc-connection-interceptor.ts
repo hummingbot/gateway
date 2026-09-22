@@ -4,7 +4,7 @@
  */
 
 import { Connection } from '@solana/web3.js';
-import { providers } from 'ethers';
+import { providers, utils } from 'ethers';
 
 import { logger } from '../services/logger';
 
@@ -15,6 +15,34 @@ const READ_RETRY_ATTEMPTS = 3;
 const READ_RETRY_BASE_DELAY_MS = 500;
 const READ_RETRY_MAX_DELAY_MS = 5000;
 const READ_RETRY_JITTER = 0.2;
+
+/**
+ * Connection settings for an ethers HTTP provider that the retry Proxy below can
+ * actually act on.
+ *
+ * `throttleLimit: 1` alone is not enough, and is in fact the reason 429s went
+ * unretried. In ethers' `_fetchData`, an HTTP 429 sets `tryAgain` and re-enters the
+ * fetch loop, whose bound is `throttleLimit`; at 1 the loop exits immediately and the
+ * request ends at the final `throwError("failed response", ...)`, which carries only
+ * `requestBody`, `requestMethod` and `url`. The status, headers and body — every trace
+ * that this was a rate limit — are dropped, so nothing reaches `is429Error` to match on.
+ * Measured against a node rate-limiting at 125 requests/second, 174 of 401 concurrent
+ * `eth_call`s failed and `is429Error` recognised none of them.
+ *
+ * `throttleCallback` is consulted before that retry: returning false clears `tryAgain`,
+ * so the 429 leaves through the non-2xx path instead and throws `"bad response"` with
+ * `status: 429` intact. Same effect — ethers still does not retry — but the error stays
+ * diagnosable. On the same test, all 160 failures were recognised.
+ */
+export function rateLimitAwareConnection(url: string): utils.ConnectionInfo {
+  return {
+    url,
+    // Keep ethers from retrying, so the Proxy below is the single retry layer...
+    throttleLimit: 1,
+    // ...without letting it discard the evidence that a retry was warranted.
+    throttleCallback: async () => false,
+  };
+}
 
 /**
  * Redact sensitive parts of RPC URL (API keys, tokens)
@@ -158,7 +186,7 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
 
       // Return wrapped async function that retries read 429s, then normalizes.
       // This is the single retry layer for Ethereum reads: the underlying provider
-      // is constructed with throttleLimit: 1 so ethers does NOT retry 429s itself,
+      // is built by rateLimitAwareConnection so ethers does NOT retry 429s itself,
       // avoiding a compounding retry. This also covers rate limits returned as a
       // JSON-RPC error body (HTTP 200), which ethers' own throttle would ignore.
       return async function (this: T, ...args: any[]) {

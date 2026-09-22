@@ -1,5 +1,4 @@
 import sensible from '@fastify/sensible';
-import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';

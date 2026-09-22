@@ -1,23 +1,16 @@
 import { Token, CurrencyAmount, Percent, TradeType } from '@uniswap/sdk-core';
-import { Pool as V3Pool, SwapQuoter, SwapOptions, Route as V3Route, Trade as V3Trade } from '@uniswap/v3-sdk';
+import { Route as V3Route, Trade as V3Trade } from '@uniswap/v3-sdk';
 import { BigNumber, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  QuoteSwapRequestType,
-  QuoteSwapResponseType,
-  QuoteSwapRequest,
-  QuoteSwapResponse,
-} from '../../../schemas/clmm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
-import { formatTokenAmount, parseFeeTier, getUniswapPoolInfo } from '../uniswap.utils';
-
+import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 async function quoteClmmSwap(
   uniswap: Uniswap,
   poolAddress: string,
@@ -190,7 +183,7 @@ async function formatSwapQuote(
 
   try {
     // Use the extracted quote function
-    const { quote, uniswap, ethereum, baseTokenObj, quoteTokenObj } = await getUniswapClmmQuote(
+    const { quote, ethereum } = await getUniswapClmmQuote(
       network,
       poolAddress,
       baseToken,
@@ -239,14 +232,12 @@ async function formatSwapQuote(
     const priceImpactPct = quote.priceImpact;
 
     // Get current tick from pool
-    const activeBinId = quote.currentTick || 0;
 
     // Determine token addresses for computed fields
     const tokenIn = quote.inputToken.address;
     const tokenOut = quote.outputToken.address;
 
     // Calculate fee (V3 has dynamic fees based on pool)
-    const fee = quote.estimatedAmountIn * (quote.feeTier / 1000000);
 
     return {
       // Base QuoteSwapResponse fields in correct order
@@ -271,133 +262,34 @@ async function formatSwapQuote(
   }
 }
 
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  // Import the httpErrors plugin to ensure it's available
-  await fastify.register(require('@fastify/sensible'));
+/**
+ * Resolves the counter ("quote") token for a Uniswap V3 pool given the base token. The standardized
+ * swap wrappers take poolAddress + baseToken and derive the other side from the pool, so callers no
+ * longer pass quoteToken.
+ */
+export async function resolveCounterToken(network: string, poolAddress: string, baseToken: string): Promise<string> {
+  const poolInfo = await getUniswapPoolInfo(poolAddress, network, 'clmm');
+  if (!poolInfo) throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
+  const uniswap = await Uniswap.getInstance(network);
+  const resolved = await uniswap.getToken(baseToken);
+  const baseAddr = resolved ? resolved.address : baseToken;
+  if (baseAddr === poolInfo.baseTokenAddress) return poolInfo.quoteTokenAddress;
+  if (baseAddr === poolInfo.quoteTokenAddress) return poolInfo.baseTokenAddress;
+  throw httpErrors.badRequest(`Token ${baseToken} is not part of pool ${poolAddress}`);
+}
 
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: QuoteSwapResponseType;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get swap quote for Uniswap V3 CLMM',
-        tags: ['/connector/uniswap'],
-        querystring: {
-          ...QuoteSwapRequest,
-          properties: {
-            ...QuoteSwapRequest.properties,
-            network: { type: 'string', default: 'base' },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.001] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
-        response: { 200: QuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, poolAddress, baseToken, quoteToken, amount, side, slippagePct } = request.query;
-
-        const networkToUse = network;
-
-        // Validate essential parameters
-        if (!baseToken || !amount || !side) {
-          throw httpErrors.badRequest('baseToken, amount, and side are required');
-        }
-
-        const uniswap = await Uniswap.getInstance(networkToUse);
-
-        let poolAddressToUse = poolAddress;
-        let baseTokenToUse: string;
-        let quoteTokenToUse: string;
-
-        if (poolAddressToUse) {
-          // Pool address provided, get pool info to determine tokens
-          const poolInfo = await getUniswapPoolInfo(poolAddressToUse, networkToUse, 'clmm');
-          if (!poolInfo) {
-            throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddressToUse));
-          }
-
-          // Determine which token is base and which is quote based on the provided baseToken
-          if (baseToken === poolInfo.baseTokenAddress) {
-            baseTokenToUse = poolInfo.baseTokenAddress;
-            quoteTokenToUse = poolInfo.quoteTokenAddress;
-          } else if (baseToken === poolInfo.quoteTokenAddress) {
-            // User specified the quote token as base, so swap them
-            baseTokenToUse = poolInfo.quoteTokenAddress;
-            quoteTokenToUse = poolInfo.baseTokenAddress;
-          } else {
-            // Try to resolve baseToken as symbol to address
-            const resolvedToken = await uniswap.getToken(baseToken);
-
-            if (resolvedToken) {
-              if (resolvedToken.address === poolInfo.baseTokenAddress) {
-                baseTokenToUse = poolInfo.baseTokenAddress;
-                quoteTokenToUse = poolInfo.quoteTokenAddress;
-              } else if (resolvedToken.address === poolInfo.quoteTokenAddress) {
-                baseTokenToUse = poolInfo.quoteTokenAddress;
-                quoteTokenToUse = poolInfo.baseTokenAddress;
-              } else {
-                throw httpErrors.badRequest(`Token ${baseToken} not found in pool ${poolAddressToUse}`);
-              }
-            } else {
-              throw httpErrors.badRequest(`Token ${baseToken} not found in pool ${poolAddressToUse}`);
-            }
-          }
-        } else {
-          // No pool address provided, need quoteToken to find pool
-          if (!quoteToken) {
-            throw httpErrors.badRequest('quoteToken is required when poolAddress is not provided');
-          }
-
-          baseTokenToUse = baseToken;
-          quoteTokenToUse = quoteToken;
-
-          // Find pool using findDefaultPool
-          poolAddressToUse = await uniswap.findDefaultPool(baseTokenToUse, quoteTokenToUse, 'clmm');
-
-          if (!poolAddressToUse) {
-            throw httpErrors.notFound(`No CLMM pool found for pair ${baseTokenToUse}-${quoteTokenToUse}`);
-          }
-        }
-
-        return await formatSwapQuote(
-          networkToUse,
-          poolAddressToUse,
-          baseTokenToUse,
-          quoteTokenToUse,
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        logger.error('Unexpected error getting swap quote:', e);
-        throw httpErrors.internalServerError('Error getting swap quote');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;
-
-// Export quoteSwap wrapper for chain-level routes
+/**
+ * Standard CLMM quote-swap entry point (network-based) — consumed by the unified swap router.
+ * Requires poolAddress; the quote token is derived from the pool.
+ */
 export async function quoteSwap(
   network: string,
   poolAddress: string,
   baseToken: string,
-  quoteToken: string,
-  amount: number,
   side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
   return await formatSwapQuote(network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
 }

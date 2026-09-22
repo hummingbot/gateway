@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { parseChainNetwork } from '../../services/chain-network';
 import { TokenService } from '../../services/token-service';
 import { TokenViewQuery, TokenViewQuerySchema, TokenResponse, TokenResponseSchema } from '../schemas';
 import { handleTokenError } from '../token-error-handler';
@@ -33,7 +34,8 @@ export const getTokenRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { symbolOrAddress } = request.params;
-      const { chain, network } = request.query;
+      const { chainNetwork } = request.query;
+      const { chain, network } = parseChainNetwork(chainNetwork);
 
       try {
         const tokenService = TokenService.getInstance();
@@ -45,8 +47,7 @@ export const getTokenRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           token,
-          chain,
-          network,
+          chainNetwork,
         };
       } catch (error) {
         // Don't log "not found" errors as they are expected when searching across chains

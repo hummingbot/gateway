@@ -3,6 +3,7 @@ import { VersionedTransaction, MessageV0 } from '@solana/web3.js';
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/raydium/raydium');
@@ -13,6 +14,8 @@ jest.mock('../../../../src/services/config-manager-v2', () => ({
   ConfigManagerV2: {
     getInstance: jest.fn().mockReturnValue({
       get: jest.fn().mockReturnValue(1), // Default slippage
+      // Read at import time by the trading routes to build the chainNetwork enum.
+      getSupportedChainNetworks: jest.fn().mockReturnValue(['solana-devnet', 'solana-mainnet-beta']),
     }),
   },
 }));
@@ -35,7 +38,7 @@ jest.mock('../../../../src/services/logger', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { addLiquidityRoute } = await import('../../../../src/connectors/raydium/amm-routes/addLiquidity');
+  const { addLiquidityRoute } = await import('../../../../src/trading/trading-amm-routes/add');
   await server.register(addLiquidityRoute);
   return server;
 };
@@ -122,6 +125,7 @@ const buildSolanaMock = (overrides: any = {}) => ({
   connection: {
     getTransaction: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
   },
+  getConfirmedTransactionData: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
   extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
     balanceChanges: [-0.999, -149.85],
   }),
@@ -177,9 +181,10 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         baseTokenAmount: 1,
@@ -192,7 +197,7 @@ describe('POST /add-liquidity', () => {
       console.error('Response error:', response.body);
     }
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     // Owner is set to the wallet public key (wallet-type-agnostic), then sent via the chokepoint.
     expect(mockRaydiumInstance.setOwner).toHaveBeenCalled();
@@ -202,8 +207,54 @@ describe('POST /add-liquidity', () => {
     expect(body).toHaveProperty('signature', 'mock-signature');
     expect(body).toHaveProperty('status', 1);
     expect(body.data).toHaveProperty('fee');
-    expect(body.data).toHaveProperty('baseTokenAmountAdded');
-    expect(body.data).toHaveProperty('quoteTokenAmountAdded');
+
+    // The values, not just the keys. A deposit's wallet delta is negative — the mock
+    // returns the live one, [-0.999, -149.85] — and `…Added` reports how much went in,
+    // so these are the magnitudes. Asserting only that the keys exist accepted the
+    // negatives that were reaching the event table.
+    expect(Number(body.data.baseTokenAmountAdded)).toBeCloseTo(0.999, 9);
+    expect(body.data.quoteTokenAmountAdded).toBeCloseTo(149.85, 9);
+  });
+
+  // Named for the defect: hummingbot-api stores data.baseTokenAmountAdded verbatim, so a
+  // negative here becomes a negative ADD_LIQUIDITY row, and summing the event table nets
+  // a round trip on this connector while double-counting it on every other one.
+  it('reports a deposit as a positive amount whichever way the wallet moved', async () => {
+    const { quoteLiquidity } = require('../../../../src/connectors/raydium/amm-routes/quoteLiquidity');
+    quoteLiquidity.mockResolvedValue({
+      baseLimited: true,
+      baseTokenAmount: 0.01,
+      quoteTokenAmount: 0.848971,
+      baseTokenAmountMax: 0.0101,
+      quoteTokenAmountMax: 0.857,
+      lpTokenAmount: 1,
+    });
+
+    (Solana.getInstance as jest.Mock).mockResolvedValue(
+      buildSolanaMock({
+        // The exact deltas of the live add in GW-17.
+        extractBalanceChangesAndFee: jest.fn().mockResolvedValue({ balanceChanges: [-0.01, -0.848971] }),
+      }),
+    );
+    (Raydium.getInstance as jest.Mock).mockResolvedValue(buildRaydiumMock());
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/add',
+      body: {
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
+        walletAddress: mockWalletAddress,
+        poolAddress: mockPoolAddress,
+        baseTokenAmount: 0.01,
+        quoteTokenAmount: 0.848971,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = parseWire(response.body);
+    expect(Number(body.data.baseTokenAmountAdded)).toBe(0.01);
+    expect(body.data.quoteTokenAmountAdded).toBe(0.848971);
   });
 
   it('should handle base-limited liquidity addition', async () => {
@@ -227,9 +278,10 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         baseTokenAmount: 1,
@@ -263,9 +315,10 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         baseTokenAmount: 1,
@@ -299,9 +352,10 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: 'invalid-pool',
         baseTokenAmount: 1,
@@ -340,9 +394,10 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         baseTokenAmount: 1,
@@ -393,9 +448,10 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         baseTokenAmount: 1,

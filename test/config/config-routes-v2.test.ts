@@ -1,5 +1,3 @@
-import Fastify, { FastifyInstance } from 'fastify';
-
 // Mock dependencies
 jest.mock('../../src/services/logger', () => ({
   logger: {
@@ -26,13 +24,15 @@ jest.mock('fs');
 jest.mock('js-yaml');
 
 // Import after mocking
+import * as fs from 'fs';
+
+import { FastifyInstance } from 'fastify';
 import * as yaml from 'js-yaml';
 
 import { configRoutes } from '../../src/config/config.routes';
 import { updateConfig, getConfig } from '../../src/config/utils';
 import { ConfigManagerV2 } from '../../src/services/config-manager-v2';
-
-import * as fs from 'fs';
+import { fastifyWithTypeProvider } from '../utils/testUtils';
 
 describe('Config Routes V2 Tests', () => {
   let fastify: FastifyInstance;
@@ -40,7 +40,7 @@ describe('Config Routes V2 Tests', () => {
 
   beforeEach(async () => {
     // Create a new Fastify instance for each test
-    fastify = Fastify();
+    fastify = fastifyWithTypeProvider();
 
     // Setup ConfigManagerV2 mock with new namespace structure
     mockConfigManager = {

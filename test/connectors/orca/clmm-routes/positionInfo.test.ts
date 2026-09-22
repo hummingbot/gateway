@@ -5,6 +5,8 @@ import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 jest.mock('../../../../src/chains/solana/solana', () => ({
   Solana: {
     getInstance: jest.fn(),
+    // Orca's positionInfo falls back to an example wallet when the caller names none.
+    getWalletAddressExample: jest.fn().mockResolvedValue('BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF'),
   },
 }));
 
@@ -15,6 +17,7 @@ jest.mock('../../../../src/connectors/orca/orca', () => ({
 }));
 
 jest.mock('../../../../src/chains/solana/solana.config', () => ({
+  ...jest.requireActual('../../../../src/chains/solana/solana.config'),
   getSolanaChainConfig: jest.fn().mockReturnValue({
     defaultNetwork: 'mainnet-beta',
     defaultWallet: 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF',
@@ -24,8 +27,8 @@ jest.mock('../../../../src/chains/solana/solana.config', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { positionInfoRoute } = await import('../../../../src/connectors/orca/clmm-routes/positionInfo');
-  await server.register(positionInfoRoute);
+  const { positionsRoute } = await import('../../../../src/trading/clmm/positions');
+  await server.register(positionsRoute);
   return server;
 };
 
@@ -69,10 +72,12 @@ describe('GET /position-info', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/position-info',
+        // No walletAddress: a position is addressed by its own address and the route
+        // declares no wallet. It used to be sent here and silently dropped.
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: mockPositionAddress,
-          walletAddress: mockWalletAddress,
         },
       });
 
@@ -85,9 +90,23 @@ describe('GET /position-info', () => {
     });
 
     it('should use default network if not provided', async () => {
+      // A complete position: the response schema is serialized against it, so a partial
+      // object fails on the way out rather than telling us anything about defaulting.
       const mockOrca = {
         getPositionInfo: jest.fn().mockResolvedValue({
           address: mockPositionAddress,
+          poolAddress: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          baseTokenAmount: 1.0,
+          quoteTokenAmount: 200,
+          baseFeeAmount: 0.01,
+          quoteFeeAmount: 0.2,
+          lowerBinId: 1000,
+          upperBinId: 2000,
+          lowerPrice: 150,
+          upperPrice: 250,
+          price: 200.5,
         }),
       };
       (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
@@ -96,11 +115,14 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
+          connector: 'orca',
           positionAddress: mockPositionAddress,
         },
       });
 
-      expect([200, 400, 500]).toContain(response.statusCode);
+      expect(response.statusCode).toBe(200);
+      // The schema default is solana-mainnet-beta, so the connector is built for it.
+      expect(Orca.getInstance).toHaveBeenCalledWith('mainnet-beta');
     });
 
     it('should handle null response when position not found', async () => {
@@ -113,7 +135,8 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: 'invalid-position',
         },
       });
@@ -129,14 +152,15 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
         },
       });
 
       expect(response.statusCode).toBe(400);
     });
 
-    it('should handle invalid position address', async () => {
+    it('reports a missing position as not-found rather than as an empty position', async () => {
       const mockOrca = {
         getPositionInfo: jest.fn().mockResolvedValue(null),
       };
@@ -146,13 +170,14 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: 'invalid',
         },
       });
 
-      // Route now throws 404 when position not found
-      expect([404, 400, 500]).toContain(response.statusCode);
+      // A position the connector cannot read is not-found, not a 200 with nothing in it.
+      expect(response.statusCode).toBe(404);
     });
   });
 
@@ -167,7 +192,8 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: mockPositionAddress,
         },
       });
@@ -182,7 +208,8 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: mockPositionAddress,
         },
       });
@@ -200,7 +227,8 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: mockPositionAddress,
         },
       });

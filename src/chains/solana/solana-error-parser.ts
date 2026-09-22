@@ -66,7 +66,9 @@ const PROGRAM_ERROR_CODES: Record<string, Record<number, { type: SolanaErrorType
     },
     6040: {
       type: 'INVALID_POSITION',
-      message: 'Invalid position width. Use a position width of 69 bins or lower.',
+      message:
+        'Invalid position width. A DLMM position spans up to 1400 bins, but only 70 can be created ' +
+        'and funded in one transaction — a wider range has to be deposited in chunks.',
     },
   },
 
@@ -90,8 +92,12 @@ const PROGRAM_ERROR_CODES: Record<string, Record<number, { type: SolanaErrorType
     },
   },
 
-  // Orca Whirlpool error codes (same as Raydium CLMM since they share similar design)
+  // Orca Whirlpool error codes
   [PROGRAM_IDS.ORCA_WHIRLPOOL]: {
+    6018: {
+      type: 'SLIPPAGE_EXCEEDED',
+      message: 'Did not meet the minimum token amount for the liquidity withdrawal.',
+    },
     6029: {
       type: 'SLIPPAGE_EXCEEDED',
       message: 'Price slippage check failed.',
@@ -163,7 +169,9 @@ const GENERIC_ERROR_CODES: Record<number, { type: SolanaErrorType; message: stri
   },
   6040: {
     type: 'INVALID_POSITION',
-    message: 'Invalid position width. Use a position width of 69 bins or lower.',
+    message:
+      'Invalid position width. A DLMM position spans up to 1400 bins, but only 70 can be created ' +
+      'and funded in one transaction — a wider range has to be deposited in chunks.',
   },
   // Math errors
   6018: {
@@ -324,6 +332,21 @@ export function extractProgramLogs(errorMessage: string, maxLines = 12): string[
  * Extract program ID from error message
  */
 function extractProgramId(errorMessage: string): string | null {
+  // Attribute a custom program error to the program that raised it: the id on the
+  // "failed: custom program error" line. Matching the FIRST "Program X invoke"
+  // instead misattributes simulation-shaped errors — their logs open with prelude
+  // programs (ComputeBudget, token programs), so the failing DEX program's
+  // error-code table was never consulted and codes fell through to the generic
+  // map (e.g. Orca 6018 TokenMinSubceeded reported as MATH_OVERFLOW — the exact
+  // misreporting in gateway#678).
+  const failedCustomMatch = errorMessage.match(/Program ([A-Za-z0-9]{32,44}) failed: custom program error/);
+  if (failedCustomMatch) {
+    return failedCustomMatch[1];
+  }
+  const failedMatch = errorMessage.match(/Program ([A-Za-z0-9]{32,44}) failed/);
+  if (failedMatch) {
+    return failedMatch[1];
+  }
   // Look for program invocation in logs
   const programMatch = errorMessage.match(/Program ([A-Za-z0-9]{32,44}) (?:invoke|failed)/);
   if (programMatch) {
@@ -378,8 +401,9 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
 
   // Solana caps account data growth via CPI at 10,240 bytes; programs allocate accounts
   // through the system program via CPI even in top-level instructions. The common trigger
-  // is a Meteora DLMM position whose price range spans too many bins (~112 bytes/bin; the
-  // program caps positions at 69 bins anyway).
+  // is a Meteora DLMM position grown too far in one instruction (~112 bytes/bin). Note the
+  // limit is on the growth, not on the position: a position spans up to POSITION_MAX_LENGTH
+  // (1400) bins, reached by depositing in chunks rather than in one go.
   if (errorMessage.includes('Failed to reallocate account data')) {
     return {
       type: 'INSTRUCTION_ERROR',
@@ -389,8 +413,8 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
       instructionIndex,
       message:
         'An instruction tried to grow an account beyond Solana’s 10,240-byte allocation limit. If this is a ' +
-        'Meteora DLMM position, the price range spans too many bins — a position holds at most 69 bins, so ' +
-        'narrow the range or open multiple positions to cover it.',
+        'Meteora DLMM position, the range was deposited in one instruction rather than in chunks — a position ' +
+        'spans up to 1400 bins, but only 70 fit in a single transaction.',
       rawError: errorMessage,
     };
   }

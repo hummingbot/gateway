@@ -1,5 +1,0 @@
-{
-  "statusCode": 400,
-  "error": "BadRequestError",
-  "message": "Base token not found: INVALID"
-}

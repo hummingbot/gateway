@@ -1,338 +1,106 @@
-import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
-import {
-  ORCA_WHIRLPOOL_PROGRAM_ID,
-  WhirlpoolIx,
-  decreaseLiquidityQuoteByLiquidityWithParams,
-  TokenExtensionUtil,
-  IGNORE_CACHE,
-} from '@orca-so/whirlpools-sdk';
-import { Static } from '@sinclair/typebox';
-import { TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync } from '@solana/spl-token';
+import { closePositionInstructions } from '@orca-so/whirlpools';
+import { fetchMaybePosition, fetchWhirlpool } from '@orca-so/whirlpools-client';
+import { address } from '@solana/kit';
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
-import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
+import { fetchMint } from '@solana-program/token-2022';
 
 import { Solana } from '../../../chains/solana/solana';
-import { ClosePositionResponse, ClosePositionResponseType } from '../../../schemas/clmm-schema';
+import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { extractInnerTransferAmounts, getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
-import { OrcaClmmClosePositionRequest } from '../schemas';
+import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
+import { extractInnerTransferAmounts } from '../orca.utils';
 
 export async function closePosition(
   network: string,
-  address: string,
+  walletAddress: string,
   positionAddress: string,
+  slippagePct?: number,
 ): Promise<ClosePositionResponseType> {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  // Build with the wallet's public key as authority — works for every wallet type
-  // (local, hardware). Signing/sending is delegated to
-  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
-  const client = await orca.getWhirlpoolClientForWallet(address);
   const positionPubkey = new PublicKey(positionAddress);
 
-  // Fetch position data
-  const position = await client.getPosition(positionPubkey);
-  if (!position) {
+  const position = await fetchMaybePosition(orca.solanaKitRpc, address(positionAddress));
+  if (!position.exists) {
     throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
+  const [whirlpool, positionMint] = await Promise.all([
+    fetchWhirlpool(orca.solanaKitRpc, position.data.whirlpool),
+    fetchMint(orca.solanaKitRpc, position.data.positionMint),
+  ]);
 
-  await position.refreshData();
-
-  const positionMint = await client.getFetcher().getMintInfo(position.getData().positionMint);
-  if (!positionMint) {
-    throw httpErrors.notFound(`Position mint not found: ${position.getData().positionMint.toString()}`);
-  }
-
-  // Fetch whirlpool data
-  const whirlpoolPubkey = position.getData().whirlpool;
-  const whirlpool = await client.getPool(whirlpoolPubkey, IGNORE_CACHE);
-  if (!whirlpool) {
-    throw httpErrors.notFound(`Whirlpool not found: ${whirlpoolPubkey.toString()}`);
-  }
-
-  await whirlpool.refreshData();
-
-  // Fetch token mint info
-  const mintA = await client.getFetcher().getMintInfo(whirlpool.getTokenAInfo().address);
-  const mintB = await client.getFetcher().getMintInfo(whirlpool.getTokenBInfo().address);
-  if (!mintA || !mintB) {
-    throw httpErrors.notFound('Token mint not found');
-  }
-
-  // Build transaction
-  const builder = new TransactionBuilder(client.getContext().connection, client.getContext().wallet);
-
-  // Get token owner accounts (ATAs)
-  const tokenOwnerAccountA = getAssociatedTokenAddressSync(
-    whirlpool.getTokenAInfo().address,
-    client.getContext().wallet.publicKey,
-    false,
-    mintA.tokenProgram,
-  );
-  const tokenOwnerAccountB = getAssociatedTokenAddressSync(
-    whirlpool.getTokenBInfo().address,
-    client.getContext().wallet.publicKey,
-    false,
-    mintB.tokenProgram,
-  );
-
-  // Ensure ATAs exist for receiving tokens
-  await handleWsolAta(
-    builder,
-    client,
-    whirlpool.getTokenAInfo().address,
-    tokenOwnerAccountA,
-    mintA.tokenProgram,
-    'receive',
-  );
-  await handleWsolAta(
-    builder,
-    client,
-    whirlpool.getTokenBInfo().address,
-    tokenOwnerAccountB,
-    mintB.tokenProgram,
-    'receive',
-  );
-
-  const hasLiquidity = !position.getData().liquidity.isZero();
-  const hasFees = !position.getData().feeOwedA.isZero() || !position.getData().feeOwedB.isZero();
-
+  const hasLiquidity = position.data.liquidity > 0n;
   let baseTokenAmountRemoved = 0;
   let quoteTokenAmountRemoved = 0;
   let baseFeeAmountCollected = 0;
   let quoteFeeAmountCollected = 0;
 
-  // Step 1: Update fees and rewards if position has liquidity (must be done BEFORE removing liquidity)
-  if (hasLiquidity) {
-    const { lower, upper } = getTickArrayPubkeys(position.getData(), whirlpool.getData(), whirlpoolPubkey);
-    builder.addInstruction(
-      WhirlpoolIx.updateFeesAndRewardsIx(client.getContext().program, {
-        position: positionPubkey,
-        tickArrayLower: lower,
-        tickArrayUpper: upper,
-        whirlpool: whirlpoolPubkey,
-      }),
-    );
-  }
-
-  // Step 2: Remove liquidity if position has liquidity
-  if (hasLiquidity) {
-    const decreaseQuote = decreaseLiquidityQuoteByLiquidityWithParams({
-      liquidity: position.getData().liquidity,
-      sqrtPrice: whirlpool.getData().sqrtPrice,
-      tickCurrentIndex: whirlpool.getData().tickCurrentIndex,
-      tickLowerIndex: position.getData().tickLowerIndex,
-      tickUpperIndex: position.getData().tickUpperIndex,
-      tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(client.getFetcher(), whirlpool.getData()),
-      slippageTolerance: Percentage.fromDecimal(new Decimal(50)),
-    });
-
-    const { lower, upper } = getTickArrayPubkeys(position.getData(), whirlpool.getData(), whirlpoolPubkey);
-    builder.addInstruction(
-      WhirlpoolIx.decreaseLiquidityV2Ix(client.getContext().program, {
-        liquidityAmount: decreaseQuote.liquidityAmount,
-        tokenMinA: decreaseQuote.tokenMinA,
-        tokenMinB: decreaseQuote.tokenMinB,
-        position: positionPubkey,
-        positionAuthority: client.getContext().wallet.publicKey,
-        tokenMintA: whirlpool.getTokenAInfo().address,
-        tokenMintB: whirlpool.getTokenBInfo().address,
-        positionTokenAccount: getAssociatedTokenAddressSync(
-          position.getData().positionMint,
-          client.getContext().wallet.publicKey,
-          false,
-          positionMint.tokenProgram,
-        ),
-        tickArrayLower: lower,
-        tickArrayUpper: upper,
-        tokenOwnerAccountA,
-        tokenOwnerAccountB,
-        tokenProgramA: mintA.tokenProgram,
-        tokenProgramB: mintB.tokenProgram,
-        tokenVaultA: whirlpool.getTokenVaultAInfo().address,
-        tokenVaultB: whirlpool.getTokenVaultBInfo().address,
-        whirlpool: whirlpoolPubkey,
-        tokenTransferHookAccountsA: await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
-          client.getContext().provider.connection,
-          mintA,
-          tokenOwnerAccountA,
-          whirlpool.getTokenVaultAInfo().address,
-          client.getContext().wallet.publicKey,
-        ),
-        tokenTransferHookAccountsB: await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
-          client.getContext().provider.connection,
-          mintB,
-          tokenOwnerAccountB,
-          whirlpool.getTokenVaultBInfo().address,
-          client.getContext().wallet.publicKey,
-        ),
-      }),
-    );
-
-    // Note: baseTokenAmountRemoved/quoteTokenAmountRemoved are set from actual
-    // TX inner instruction transfers after execution, not from the estimate here.
-  }
-
-  // Step 3: Collect fees if there are fees owed or if we just removed liquidity
-  // Note: Fee amounts are derived from inner instruction transfers after execution,
-  // which gives us exact amounts from the collectFees instruction separately
-  // from the decreaseLiquidity instruction.
-  if (hasFees || hasLiquidity) {
-    builder.addInstruction(
-      WhirlpoolIx.collectFeesV2Ix(client.getContext().program, {
-        position: positionPubkey,
-        positionAuthority: client.getContext().wallet.publicKey,
-        tokenMintA: whirlpool.getTokenAInfo().address,
-        tokenMintB: whirlpool.getTokenBInfo().address,
-        positionTokenAccount: getAssociatedTokenAddressSync(
-          position.getData().positionMint,
-          client.getContext().wallet.publicKey,
-          false,
-          positionMint.tokenProgram,
-        ),
-        tokenOwnerAccountA,
-        tokenOwnerAccountB,
-        tokenProgramA: mintA.tokenProgram,
-        tokenProgramB: mintB.tokenProgram,
-        tokenVaultA: whirlpool.getTokenVaultAInfo().address,
-        tokenVaultB: whirlpool.getTokenVaultBInfo().address,
-        whirlpool: whirlpoolPubkey,
-        tokenTransferHookAccountsA: await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
-          client.getContext().provider.connection,
-          mintA,
-          tokenOwnerAccountA,
-          whirlpool.getTokenVaultAInfo().address,
-          client.getContext().wallet.publicKey,
-        ),
-        tokenTransferHookAccountsB: await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
-          client.getContext().provider.connection,
-          mintB,
-          tokenOwnerAccountB,
-          whirlpool.getTokenVaultBInfo().address,
-          client.getContext().wallet.publicKey,
-        ),
-      }),
-    );
-  }
-
-  // Step 4: Auto-unwrap WSOL to native SOL after receiving all tokens
-  logger.info('Auto-unwrapping WSOL (if any) back to native SOL');
-  await handleWsolAta(
-    builder,
-    client,
-    whirlpool.getTokenAInfo().address,
-    tokenOwnerAccountA,
-    mintA.tokenProgram,
-    'unwrap',
-    undefined,
-    solana,
-  );
-  await handleWsolAta(
-    builder,
-    client,
-    whirlpool.getTokenBInfo().address,
-    tokenOwnerAccountB,
-    mintB.tokenProgram,
-    'unwrap',
-    undefined,
-    solana,
-  );
-
-  // Step 5: Close position - choose instruction based on token program
-  const isToken2022 = positionMint.tokenProgram.equals(TOKEN_2022_PROGRAM_ID);
-  const closePositionIxFn = isToken2022 ? WhirlpoolIx.closePositionWithTokenExtensionsIx : WhirlpoolIx.closePositionIx;
-
-  builder.addInstruction(
-    closePositionIxFn(client.getContext().program, {
-      position: positionPubkey,
-      positionAuthority: client.getContext().wallet.publicKey,
-      positionTokenAccount: getAssociatedTokenAddressSync(
-        position.getData().positionMint,
-        client.getContext().wallet.publicKey,
-        false,
-        isToken2022 ? TOKEN_2022_PROGRAM_ID : undefined,
-      ),
-      positionMint: position.getData().positionMint,
-      receiver: client.getContext().wallet.publicKey,
-    }),
-  );
-
-  // Build and send transaction via the wallet-type-aware chokepoint (handles
-  // local/hardware and simulates internally).
-  const txPayload = await builder.build();
-  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(txPayload.transaction, address);
-
-  // Extract rent refund and actual token amounts from the confirmed transaction.
-  // Position accounts (mint, PDA, ATA) are closed by the TX, so their preBalance = rent refunded.
-  // Tick arrays are NOT closed (shared resources), so they are not included here.
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
+  // Orca v8 builds the complete close flow: liquidity removal, token fees,
+  // every non-zero reward, the correct classic/Token-2022 close instruction,
+  // and destination account setup/cleanup. Gateway remains the only signer.
+  const closeResult = await closePositionInstructions(orca.solanaKitRpc, position.data.positionMint, {
+    authority: createOrcaAuthority(walletAddress),
+    // The caller's tolerance when they set one — an executor widening across retries is
+    // the case this exists for; a narrow in-range close can fail on slippage at the
+    // connector's configured value with no way to say "accept more to get out".
+    slippageToleranceBps: Math.round((slippagePct ?? orca.config.slippagePct) * 100),
+    whirlpoolDeployment: orca.deployment,
   });
+  const rewardCount = closeResult.rewardsQuote.rewards.filter((reward) => reward.rewardsOwed > 0n).length;
+  logger.info(`Built Orca close transaction with ${rewardCount} reward collection instruction(s)`);
 
+  const transaction = buildOrcaTransaction(closeResult.instructions, walletAddress);
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
   let positionRentRefunded = 0;
 
   if (txData) {
     const accountKeys = txData.transaction.message.getAccountKeys().staticAccountKeys;
     const preBalances = txData.meta?.preBalances || [];
     const postBalances = txData.meta?.postBalances || [];
-
-    // Position accounts whose rent gets refunded on close
-    const positionMintPubkey = position.getData().positionMint;
+    const positionMintPubkey = new PublicKey(position.data.positionMint);
     const positionTokenAccount = getAssociatedTokenAddressSync(
       positionMintPubkey,
-      client.getContext().wallet.publicKey,
+      new PublicKey(walletAddress),
       false,
-      isToken2022 ? TOKEN_2022_PROGRAM_ID : undefined,
+      new PublicKey(positionMint.programAddress),
     );
-    const rentAccounts: PublicKey[] = [positionMintPubkey, positionPubkey, positionTokenAccount];
+    const rentAccounts = [positionMintPubkey, positionPubkey, positionTokenAccount];
 
     let totalRentLamports = 0;
     for (const pubkey of rentAccounts) {
-      const idx = accountKeys.findIndex((key) => key.equals(pubkey));
-      if (idx !== -1 && postBalances[idx] === 0 && preBalances[idx] > 0) {
-        totalRentLamports += preBalances[idx];
-        logger.info(`Rent refunded from ${pubkey.toString()}: ${preBalances[idx]} lamports`);
+      const index = accountKeys.findIndex((key) => key.equals(pubkey));
+      if (index !== -1 && postBalances[index] === 0 && preBalances[index] > 0) {
+        totalRentLamports += preBalances[index];
+        logger.info(`Rent refunded from ${pubkey.toString()}: ${preBalances[index]} lamports`);
       }
     }
     positionRentRefunded = totalRentLamports / 1e9;
 
-    // Extract exact transfer amounts per Whirlpool instruction from inner instructions.
-    // The close TX has Whirlpool instructions in order:
-    //   updateFeesAndRewards (no transfers) → decreaseLiquidity (transfers) → collectFees (transfers) → closePosition (no transfers)
-    // extractInnerTransferAmounts returns only groups that have transfers, so:
-    //   transferGroups[0] = decreaseLiquidity amounts, transferGroups[1] = collectFees amounts
-    const tokenMintA = whirlpool.getTokenAInfo().address.toString();
-    const tokenMintB = whirlpool.getTokenBInfo().address.toString();
-
+    // Reward transfers use their own mints and are excluded by this filter.
     const { transferGroups } = await extractInnerTransferAmounts(
       solana.connection,
       signature,
-      ORCA_WHIRLPOOL_PROGRAM_ID.toString(),
-      [tokenMintA, tokenMintB],
+      orca.deployment.programId.toString(),
+      [whirlpool.data.tokenMintA.toString(), whirlpool.data.tokenMintB.toString()],
     );
 
     if (transferGroups.length >= 2) {
-      // First transfer group: decreaseLiquidity (liquidity removed)
-      baseTokenAmountRemoved = transferGroups[0][0];
-      quoteTokenAmountRemoved = transferGroups[0][1];
-      // Second transfer group: collectFees (fees collected)
-      baseFeeAmountCollected = transferGroups[1][0];
-      quoteFeeAmountCollected = transferGroups[1][1];
+      [baseTokenAmountRemoved, quoteTokenAmountRemoved] = transferGroups[0];
+      [baseFeeAmountCollected, quoteFeeAmountCollected] = transferGroups[1];
     } else if (transferGroups.length === 1) {
-      // Only one group with transfers — could be just decreaseLiquidity or just collectFees
       if (hasLiquidity) {
-        baseTokenAmountRemoved = transferGroups[0][0];
-        quoteTokenAmountRemoved = transferGroups[0][1];
+        [baseTokenAmountRemoved, quoteTokenAmountRemoved] = transferGroups[0];
       } else {
-        baseFeeAmountCollected = transferGroups[0][0];
-        quoteFeeAmountCollected = transferGroups[0][1];
+        [baseFeeAmountCollected, quoteFeeAmountCollected] = transferGroups[0];
       }
     }
-    // If transferGroups is empty, position had no liquidity and no fees — values stay at 0
   }
 
   logger.info(
@@ -343,8 +111,12 @@ export async function closePosition(
 
   return {
     signature,
-    status: 1, // CONFIRMED
+    status: 1,
     data: {
+      // The pool this position belongs to, already loaded here. The unified route is
+      // position-addressed and never receives it, so this is the only place it can
+      // come from without a second lookup.
+      poolAddress: position.data.whirlpool.toString(),
       fee,
       positionRentRefunded,
       baseTokenAmountRemoved,
@@ -354,36 +126,3 @@ export async function closePosition(
     },
   };
 }
-
-export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof OrcaClmmClosePositionRequest>;
-    Reply: ClosePositionResponseType;
-  }>(
-    '/close-position',
-    {
-      schema: {
-        description: 'Close an Orca position',
-        tags: ['/connector/orca'],
-        body: OrcaClmmClosePositionRequest,
-        response: {
-          200: ClosePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress, positionAddress } = request.body;
-        const network = request.body.network;
-
-        return await closePosition(network, walletAddress, positionAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default closePositionRoute;

@@ -43,11 +43,7 @@ async function fetchTokenMetadata(address: string) {
     const ethereum = await Ethereum.getInstance(NETWORK);
     const contract = new Contract(address, ERC20_ABI, ethereum.provider);
 
-    const [name, symbol, decimals] = await Promise.all([
-      contract.name(),
-      contract.symbol(),
-      contract.decimals(),
-    ]);
+    const [name, symbol, decimals] = await Promise.all([contract.name(), contract.symbol(), contract.decimals()]);
 
     return {
       chainId: BSC_CHAIN_ID,
@@ -99,9 +95,7 @@ async function addTokens() {
   }
 
   // Merge and sort by symbol
-  const allTokens = [...existingTokens, ...newTokens].sort((a, b) =>
-    a.symbol.localeCompare(b.symbol)
-  );
+  const allTokens = [...existingTokens, ...newTokens].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
   // Write updated token list
   fs.writeFileSync(TOKEN_FILE, JSON.stringify(allTokens, null, 2));

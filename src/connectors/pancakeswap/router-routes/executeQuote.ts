@@ -1,14 +1,11 @@
 import { BigNumber, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
-import { getEthereumChainConfig } from '../../../chains/ethereum/ethereum.config';
-import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
+import { SwapExecuteResponseType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
-import { PancakeswapExecuteQuoteRequest } from '../schemas';
 
 async function executeQuote(walletAddress: string, network: string, quoteId: string): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote
@@ -18,7 +15,7 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
   }
 
   const { quote, request } = cached;
-  const { inputToken, outputToken, side, amount } = request;
+  const { inputToken, outputToken, side, amount, slippagePct } = request;
 
   const ethereum = await Ethereum.getInstance(network);
 
@@ -179,6 +176,8 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
     expectedAmountIn,
     expectedAmountOut,
     side,
+    undefined,
+    slippagePct,
   );
 
   // Handle different transaction states
@@ -208,37 +207,3 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
 }
 
 export { executeQuote };
-
-export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: ExecuteQuoteRequestType;
-    Reply: SwapExecuteResponseType;
-  }>(
-    '/execute-quote',
-    {
-      schema: {
-        description: 'Execute a previously fetched quote from Pancakeswap Universal Router',
-        tags: ['/connector/pancakeswap'],
-        body: PancakeswapExecuteQuoteRequest,
-        response: { 200: SwapExecuteResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          walletAddress = getEthereumChainConfig().defaultWallet,
-          network = getEthereumChainConfig().defaultNetwork,
-          quoteId,
-        } = request.body as typeof PancakeswapExecuteQuoteRequest._type;
-
-        return await executeQuote(walletAddress, network, quoteId);
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error executing quote:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
-export default executeQuoteRoute;

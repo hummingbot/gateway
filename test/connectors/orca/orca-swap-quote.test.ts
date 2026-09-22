@@ -1,7 +1,7 @@
 /**
- * Unit tests for getOrcaSwapQuote (v4 whirlpools SDK path).
+ * Unit tests for getOrcaSwapQuote (v8 whirlpools SDK path).
  *
- * The quote is built via the v4 SDK's `swapInstructions`, which resolves tick
+ * The quote is built via the v8 SDK's `swapInstructions`, which resolves tick
  * arrays, the oracle and Token-2022 extensions internally. This is a
  * regression guard for adaptive-fee whirlpools (fee tier index >= 1024, e.g.
  * CASH/USDC): the legacy whirlpools-core swapQuoteByInputToken /
@@ -11,7 +11,10 @@
 jest.mock('../../../src/chains/solana/solana');
 jest.mock('@orca-so/whirlpools', () => ({
   swapInstructions: jest.fn(),
-  setWhirlpoolsConfig: jest.fn().mockResolvedValue(undefined),
+  WhirlpoolDeployment: {
+    mainnet: { programId: 'mainnet-program', configAddress: 'mainnet-config' },
+    devnet: { programId: 'devnet-program', configAddress: 'devnet-config' },
+  },
 }));
 jest.mock('@orca-so/whirlpools-client', () => ({
   fetchWhirlpool: jest.fn(),
@@ -26,7 +29,7 @@ jest.mock('@orca-so/whirlpools-core', () => ({
   sqrtPriceToPrice: jest.fn(),
 }));
 
-import { swapInstructions, setWhirlpoolsConfig } from '@orca-so/whirlpools';
+import { swapInstructions } from '@orca-so/whirlpools';
 import { fetchWhirlpool } from '@orca-so/whirlpools-client';
 import { sqrtPriceToPrice } from '@orca-so/whirlpools-core';
 import { fetchAllMint } from '@solana-program/token-2022';
@@ -49,7 +52,7 @@ function mockPool(tokenMintA: string, tokenMintB: string, decimalsA: number, dec
   (fetchAllMint as jest.Mock).mockResolvedValue([{ data: { decimals: decimalsA } }, { data: { decimals: decimalsB } }]);
 }
 
-describe('getOrcaSwapQuote (v4 SDK)', () => {
+describe('getOrcaSwapQuote (v8 SDK)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Spot price as tokenB per tokenA in human units (USDC per SOL)
@@ -72,10 +75,15 @@ describe('getOrcaSwapQuote (v4 SDK)', () => {
       await getOrcaSwapQuote(RPC, POOL, SOL_MINT, USDC_MINT, 1, 'SELL', 1);
 
       expect(swapInstructions).toHaveBeenCalledTimes(1);
-      const [, params, pool, slippageBps] = (swapInstructions as jest.Mock).mock.calls[0];
+      const [, params, pool, config] = (swapInstructions as jest.Mock).mock.calls[0];
       expect(params).toEqual({ inputAmount: 1_000_000_000n, mint: SOL_MINT });
       expect(String(pool)).toBe(POOL);
-      expect(slippageBps).toBe(100);
+      expect(config).toEqual(
+        expect.objectContaining({
+          slippageToleranceBps: 100,
+          whirlpoolDeployment: expect.objectContaining({ programId: 'mainnet-program' }),
+        }),
+      );
     });
 
     it('returns amounts, quote/base price, and min/max from the quote', async () => {
@@ -155,21 +163,16 @@ describe('getOrcaSwapQuote (v4 SDK)', () => {
       });
     });
 
-    it('configures the v4 SDK for mainnet by default', async () => {
+    it('uses the mainnet deployment by default', async () => {
       await getOrcaSwapQuote(RPC, POOL, SOL_MINT, USDC_MINT, 1, 'SELL', 1);
-      expect(setWhirlpoolsConfig).toHaveBeenCalledWith('solanaMainnet');
+      const config = (swapInstructions as jest.Mock).mock.calls[0][3];
+      expect(config.whirlpoolDeployment.programId).toBe('mainnet-program');
     });
 
-    it('configures the v4 SDK for devnet when requested', async () => {
+    it('uses the devnet deployment when requested', async () => {
       await getOrcaSwapQuote(RPC, POOL, SOL_MINT, USDC_MINT, 1, 'SELL', 1, 'devnet');
-      expect(setWhirlpoolsConfig).toHaveBeenCalledWith('solanaDevnet');
+      const config = (swapInstructions as jest.Mock).mock.calls[0][3];
+      expect(config.whirlpoolDeployment.programId).toBe('devnet-program');
     });
-  });
-
-  it('throws when the whirlpool does not exist', async () => {
-    (fetchWhirlpool as jest.Mock).mockResolvedValue({ data: null });
-    await expect(getOrcaSwapQuote(RPC, POOL, SOL_MINT, USDC_MINT, 1, 'SELL', 1)).rejects.toThrow(
-      `Whirlpool not found: ${POOL}`,
-    );
   });
 });

@@ -1,17 +1,19 @@
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { ClosePositionResponse, ClosePositionResponseType } from '../../../schemas/clmm-schema';
+import {
+  accountLifecycleSol,
+  liquidityWithoutRent,
+  transfersByProgramInstruction,
+} from '../../../chains/solana/solana.utils';
+import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
 import { buildDecreaseLiquidityV2Instruction, buildClosePositionInstruction } from '../pancakeswap-sol.instructions';
 import { parsePositionData } from '../pancakeswap-sol.parser';
-import { buildTransactionWithInstructions } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmClosePositionRequest } from '../schemas';
+import { buildTransactionWithInstructions, buildUnwrapSolInstructions } from '../pancakeswap-sol.transactions';
 
 export async function closePosition(
   network: string,
@@ -66,8 +68,25 @@ export async function closePosition(
   // Build transaction with both instructions (like successful manual transaction)
   const instructions = [];
 
-  // 1. If position has liquidity, remove it all first
+  // 1. Collect the fees on their own, THEN remove the liquidity.
+  //
+  // This program moves a position's fees and its principal in the same
+  // `decrease_liquidity_v2` transfer, so a single instruction leaves the two
+  // inseparable — which is why this route reported fees of 0 and a principal that
+  // silently contained them. A zero-liquidity decrease collects the fees and touches
+  // nothing else (it is exactly what the collect-fees route does), so the two land in
+  // different top-level instructions and the transaction says which is which.
   if (hasLiquidity) {
+    const collectFeesIx = await buildDecreaseLiquidityV2Instruction(
+      solana,
+      positionNftMint,
+      walletPubkey,
+      new BN(0), // liquidity: fees only
+      new BN(0), // amount0Min
+      new BN(0), // amount1Min
+    );
+    instructions.push(collectFeesIx);
+
     const removeLiquidityIx = await buildDecreaseLiquidityV2Instruction(
       solana,
       positionNftMint,
@@ -82,6 +101,11 @@ export async function closePosition(
   // 2. Close position and burn NFT
   const closePositionIx = await buildClosePositionInstruction(solana, positionNftMint, walletPubkey);
   instructions.push(closePositionIx);
+
+  // 3. Unwrap what the withdrawal paid out in WSOL. Without this the SOL never reaches
+  // the native balance, and the only thing that moves it is the rent — which is exactly
+  // how this route came to report the rent as the liquidity withdrawn.
+  instructions.push(...buildUnwrapSolInstructions(solana, walletPubkey, [baseToken.address, quoteToken.address]));
 
   // Build complete transaction
   const transaction = await buildTransactionWithInstructions(
@@ -102,72 +126,65 @@ export async function closePosition(
     const totalFee = txData.meta.fee;
 
     // Extract balance changes
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
+    const { balanceChanges, txDetails } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
       baseToken.address,
       quoteToken.address,
     ]);
 
-    const baseTokenChange = balanceChanges[0];
-    const quoteTokenChange = balanceChanges[1];
+    // Closing gives back the rent of every account that closed — the position, its NFT
+    // account, the tick array if this was the last position in it, and the wrapped-SOL
+    // account the unwrap above closes. All of it arrives in the same native balance
+    // change as the withdrawal, and none of it is liquidity.
+    const { closed, rentRefunded } = accountLifecycleSol(txData);
+    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
+    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
+
+    // The fee-collecting instruction is the first of this program's instructions in the
+    // transaction, so its transfers are the fees and nothing else. Taken from the
+    // transaction rather than from a balance change, which cannot separate them.
+    //
+    // An unreadable transaction leaves this at zero and the amounts whole, which is what
+    // this route did for every close before now — a known shape, not a new silence.
+    const [collected = [0, 0]] = transfersByProgramInstruction(txDetails, PANCAKESWAP_CLMM_PROGRAM_ID.toBase58(), [
+      baseToken.address,
+      quoteToken.address,
+    ]);
+    const baseFeeCollected = hasLiquidity ? collected[0] : 0;
+    const quoteFeeCollected = hasLiquidity ? collected[1] : 0;
 
     logger.info(`Position closed successfully. Signature: ${signature}`);
     logger.info(
-      `Removed ${Math.abs(baseTokenChange).toFixed(4)} ${baseToken.symbol}, ${Math.abs(quoteTokenChange).toFixed(4)} ${quoteToken.symbol}`,
+      `Removed ${baseTokenChange.toFixed(4)} ${baseToken.symbol}, ${quoteTokenChange.toFixed(4)} ${quoteToken.symbol}`,
     );
 
     return {
       signature,
       status: 1, // CONFIRMED
       data: {
+        // The pool this position belongs to, already loaded here. The unified route is
+        // position-addressed and never receives it, so this is the only place it can
+        // come from without a second lookup.
+        poolAddress: positionInfo.poolAddress,
         fee: totalFee / 1e9,
-        positionRentRefunded: 0, // Position rent refund (simplified)
-        baseTokenAmountRemoved: Math.abs(baseTokenChange),
-        quoteTokenAmountRemoved: Math.abs(quoteTokenChange),
-        baseFeeAmountCollected: 0, // Included in balance changes
-        quoteFeeAmountCollected: 0, // Included in balance changes
+        positionRentRefunded: rentRefunded,
+        // Principal is what came back less what the fee instruction paid out. Both
+        // arrive in the same balance change, so the subtraction is what keeps fee
+        // income out of the position's returned capital. Clamped at zero rather than
+        // publishing a negative quantity of tokens if the two measures ever disagree.
+        baseTokenAmountRemoved: Math.max(0, baseTokenChange - baseFeeCollected),
+        quoteTokenAmountRemoved: Math.max(0, quoteTokenChange - quoteFeeCollected),
+        baseFeeAmountCollected: baseFeeCollected,
+        quoteFeeAmountCollected: quoteFeeCollected,
       },
     };
   }
+
+  // A landed-but-failed transaction is terminal: fail loudly instead of returning
+  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
+  await solana.throwIfLandedWithError(signature, txData);
 
   return {
     signature,
     status: 0, // PENDING
   };
 }
-
-export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof PancakeswapSolClmmClosePositionRequest>;
-    Reply: ClosePositionResponseType;
-  }>(
-    '/close-position',
-    {
-      schema: {
-        description: 'Close a PancakeSwap Solana CLMM position and remove all liquidity and fees if present',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmClosePositionRequest,
-        response: {
-          200: ClosePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network = 'mainnet-beta', walletAddress, positionAddress } = request.body;
-
-        return await closePosition(network, walletAddress!, positionAddress);
-      } catch (e: any) {
-        logger.error('Close position error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to close position';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default closePositionRoute;

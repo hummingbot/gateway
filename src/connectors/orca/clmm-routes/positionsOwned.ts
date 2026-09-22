@@ -1,14 +1,10 @@
-import { Type } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
-import { GetPositionsOwnedRequestType, PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
+import { PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { OrcaClmmGetPositionsOwnedRequest } from '../schemas';
-
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 
 export async function getPositionsOwned(
   fastify: FastifyInstance,
@@ -34,36 +30,3 @@ export async function getPositionsOwned(
   logger.info(`Found ${positions.length} Orca position(s) for wallet ${walletAddressToUse.slice(0, 8)}...`);
   return positions;
 }
-
-export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: GetPositionsOwnedRequestType;
-    Reply: PositionInfo[];
-  }>(
-    '/positions-owned',
-    {
-      schema: {
-        description: "Retrieve all positions owned by a user's wallet across Orca CLMM pools",
-        tags: ['/connector/orca'],
-        querystring: OrcaClmmGetPositionsOwnedRequest,
-        response: {
-          200: Type.Array(PositionInfoSchema),
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress } = request.query;
-        return await getPositionsOwned(fastify, network, walletAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default positionsOwnedRoute;

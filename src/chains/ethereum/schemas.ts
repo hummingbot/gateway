@@ -62,61 +62,79 @@ export const EthereumPollRequest = Type.Object({
 });
 
 // Allowances request schema (multiple tokens)
-export const AllowancesRequestSchema = Type.Object({
-  network: EthereumNetworkParameter,
-  address: EthereumAddressParameter,
-  spender: Type.String({
-    description: 'Connector name (e.g., uniswap/clmm, uniswap/amm, 0x/router) or contract address',
-    examples: [EXAMPLE_SPENDER],
-  }),
-  tokens: Type.Array(Type.String(), {
-    description: 'Array of token symbols or addresses',
-    examples: [EXAMPLE_ALLOWANCE_TOKENS],
-  }),
-});
+export const AllowancesRequestSchema = Type.Object(
+  {
+    network: EthereumNetworkParameter,
+    address: EthereumAddressParameter,
+    spender: Type.String({
+      description: 'Connector name (e.g., uniswap/clmm, uniswap/amm, 0x/router) or contract address',
+      examples: [EXAMPLE_SPENDER],
+    }),
+    tokens: Type.Array(Type.String(), {
+      description: 'Array of token symbols or addresses',
+      examples: [EXAMPLE_ALLOWANCE_TOKENS],
+    }),
+  },
+  { $id: 'AllowancesRequest', additionalProperties: false },
+);
 
 // Allowances response schema
-export const AllowancesResponseSchema = Type.Object({
-  spender: Type.String(),
-  approvals: Type.Record(Type.String(), Type.String()),
-});
+export const AllowancesResponseSchema = Type.Object(
+  {
+    spender: Type.String(),
+    approvals: Type.Record(Type.String(), Type.String()),
+  },
+  // The last two chain responses without a name of their own. Every other route on
+  // /chains publishes a component; these were inlined, so a generated client got an
+  // anonymous model for them and nothing to import.
+  { $id: 'AllowancesResponse' },
+);
 
 // Approve request schema
-export const ApproveRequestSchema = Type.Object({
-  network: EthereumNetworkParameter,
-  address: EthereumAddressParameter,
-  spender: Type.String({
-    description: 'Connector name (e.g., uniswap/clmm, uniswap/amm, 0x/router) contract address',
-    examples: [EXAMPLE_SPENDER],
-  }),
-  token: Type.String({
-    description: 'Token symbol or address',
-    examples: [EXAMPLE_ALLOWANCE_TOKENS[0]],
-  }),
-  amount: Type.Optional(
-    Type.String({
-      description: 'The amount to approve. If not provided, defaults to maximum amount (unlimited approval).',
-      default: '',
+export const ApproveRequestSchema = Type.Object(
+  {
+    network: EthereumNetworkParameter,
+    address: EthereumAddressParameter,
+    spender: Type.String({
+      description: 'Connector name (e.g., uniswap/clmm, uniswap/amm, 0x/router) contract address',
+      examples: [EXAMPLE_SPENDER],
     }),
-  ),
-});
+    token: Type.String({
+      description: 'Token symbol or address',
+      examples: [EXAMPLE_ALLOWANCE_TOKENS[0]],
+    }),
+    amount: Type.Optional(
+      Type.String({
+        description: 'The amount to approve. If not provided, defaults to maximum amount (unlimited approval).',
+        default: '',
+      }),
+    ),
+  },
+  { $id: 'ApproveRequest', additionalProperties: false },
+);
 
 // Approve response schema
-export const ApproveResponseSchema = Type.Object({
-  signature: Type.String(),
-  status: Type.Number({ description: 'TransactionStatus enum value' }),
+export const ApproveResponseSchema = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
 
-  // Only included when status = CONFIRMED
-  data: Type.Optional(
-    Type.Object({
-      tokenAddress: Type.String(),
-      spender: Type.String(),
-      amount: Type.String(),
-      nonce: Type.Number(),
-      fee: Type.String(),
-    }),
-  ),
-});
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object(
+        {
+          tokenAddress: Type.String(),
+          spender: Type.String(),
+          amount: Type.String(),
+          nonce: Type.Number(),
+          fee: Type.String(),
+        },
+        { $id: 'ApproveResponseData' },
+      ),
+    ),
+  },
+  { $id: 'ApproveResponse' },
+);
 
 // Wrap request schema
 export const WrapRequestSchema = Type.Object({

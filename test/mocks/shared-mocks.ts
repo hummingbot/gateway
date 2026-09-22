@@ -43,6 +43,19 @@ export const mockConfigStorage: Record<string, any> = {
   'uniswap.ttl': 300,
 };
 
+const mockNamespaces: Record<string, unknown> = {
+  server: {},
+  'ethereum-mainnet': {},
+  'ethereum-goerli': {},
+  'solana-mainnet-beta': {},
+  'solana-devnet': {},
+  uniswap: {},
+  jupiter: {},
+  meteora: {},
+  raydium: {},
+  orca: {},
+};
+
 export const mockConfigManagerV2 = {
   getInstance: jest.fn().mockReturnValue({
     get: jest.fn().mockImplementation((key: string) => mockConfigStorage[key]),
@@ -50,18 +63,15 @@ export const mockConfigManagerV2 = {
       mockConfigStorage[key] = value;
     }),
     getNamespace: jest.fn(),
-    namespaces: {
-      server: {},
-      'ethereum-mainnet': {},
-      'ethereum-goerli': {},
-      'solana-mainnet-beta': {},
-      'solana-devnet': {},
-      uniswap: {},
-      jupiter: {},
-      meteora: {},
-      raydium: {},
-      orca: {},
-    },
+    namespaces: mockNamespaces,
+    // The trading routes read this at import time to build the chainNetwork enum, so a
+    // mock without it fails the suite on import rather than in a test. Derived from the
+    // namespaces above the way the real one is, so adding a namespace here is enough.
+    getSupportedChainNetworks: jest.fn(() =>
+      Object.keys(mockNamespaces)
+        .filter((namespace) => ['ethereum', 'solana'].includes(namespace.split('-')[0]))
+        .sort(),
+    ),
     allConfigurations: mockConfigStorage,
   }),
 };

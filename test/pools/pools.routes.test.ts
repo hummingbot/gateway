@@ -1,5 +1,3 @@
-import Fastify, { FastifyInstance } from 'fastify';
-
 // Mock dependencies
 jest.mock('../../src/services/logger', () => ({
   logger: {
@@ -47,11 +45,15 @@ jest.mock('@fastify/sensible', () => {
 });
 
 // Import after mocking
+import { FastifyInstance } from 'fastify';
+
 import { poolRoutes } from '../../src/pools/pools.routes';
 import { Pool } from '../../src/pools/types';
 import { CoinGeckoService } from '../../src/services/coingecko-service';
 import { PoolService } from '../../src/services/pool-service';
 import { TokenService } from '../../src/services/token-service';
+import { fastifyWithTypeProvider } from '../utils/testUtils';
+import { parseWire } from '../utils/wire';
 
 describe('Pool Routes Tests', () => {
   let fastify: FastifyInstance;
@@ -61,7 +63,7 @@ describe('Pool Routes Tests', () => {
 
   beforeEach(async () => {
     // Create a new Fastify instance for each test
-    fastify = Fastify();
+    fastify = fastifyWithTypeProvider();
 
     // Setup PoolService mock
     mockPoolService = {
@@ -183,11 +185,11 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=solana&network=mainnet-beta',
+        url: '/?chainNetwork=solana-mainnet-beta',
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual(mockPools);
+      expect(parseWire(response.payload)).toEqual(mockPools);
       expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', undefined, undefined, undefined);
     });
 
@@ -210,11 +212,11 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=solana&network=mainnet-beta&connector=raydium&type=clmm',
+        url: '/?chainNetwork=solana-mainnet-beta&connector=raydium&type=clmm',
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual(mockPools);
+      expect(parseWire(response.payload)).toEqual(mockPools);
       expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', 'raydium', 'clmm', undefined);
     });
 
@@ -237,11 +239,11 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=solana&network=mainnet-beta&search=SOL',
+        url: '/?chainNetwork=solana-mainnet-beta&search=SOL',
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual(mockPools);
+      expect(parseWire(response.payload)).toEqual(mockPools);
       expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', undefined, undefined, 'SOL');
     });
 
@@ -250,11 +252,11 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=invalid&network=mainnet',
+        url: '/?chainNetwork=invalid-mainnet',
       });
 
       expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload)).toHaveProperty('message');
     });
   });
 
@@ -276,11 +278,11 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/SOL-USDC?chain=solana&network=mainnet-beta&type=amm&connector=raydium',
+        url: '/SOL-USDC?chainNetwork=solana-mainnet-beta&type=amm&connector=raydium',
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual(mockPool);
+      expect(parseWire(response.payload)).toEqual(mockPool);
       expect(mockPoolService.getPool).toHaveBeenCalledWith('solana', 'mainnet-beta', 'amm', 'SOL', 'USDC', 'raydium');
     });
 
@@ -289,22 +291,22 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/UNKNOWN-TOKEN?chain=solana&network=mainnet-beta&type=amm',
+        url: '/UNKNOWN-TOKEN?chainNetwork=solana-mainnet-beta&type=amm',
       });
 
       expect(response.statusCode).toBe(404);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload)).toHaveProperty('message');
     });
 
     it('should return 400 for invalid trading pair format', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/INVALIDFORMAT?chain=solana&network=mainnet-beta&type=amm',
+        url: '/INVALIDFORMAT?chainNetwork=solana-mainnet-beta&type=amm',
       });
 
       expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
-      expect(JSON.parse(response.payload).message).toContain('Invalid trading pair format');
+      expect(parseWire(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload).message).toContain('Invalid trading pair format');
     });
   });
 
@@ -318,10 +320,9 @@ describe('Pool Routes Tests', () => {
         method: 'POST',
         url: '/',
         payload: {
-          chain: 'solana',
+          chainNetwork: 'solana-mainnet-beta',
           connector: 'raydium',
           type: 'amm',
-          network: 'mainnet-beta',
           baseSymbol: 'WIF',
           quoteSymbol: 'SOL',
           address: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx',
@@ -332,8 +333,8 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
-      expect(JSON.parse(response.payload).message).toContain('Pool WIF-SOL');
+      expect(parseWire(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload).message).toContain('Pool WIF-SOL');
 
       // Verify addPool was called with chain, network, and pool data
       expect(mockPoolService.addPool).toHaveBeenCalledWith(
@@ -372,10 +373,9 @@ describe('Pool Routes Tests', () => {
         method: 'POST',
         url: '/',
         payload: {
-          chain: 'solana',
+          chainNetwork: 'solana-mainnet-beta',
           connector: 'raydium',
           type: 'amm',
-          network: 'mainnet-beta',
           baseSymbol: 'SOL',
           quoteSymbol: 'USDC',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
@@ -386,7 +386,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload)).toHaveProperty('message');
       expect(mockPoolService.updatePool).toHaveBeenCalled();
     });
 
@@ -412,12 +412,12 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?chain=solana&network=mainnet-beta',
+        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?chainNetwork=solana-mainnet-beta',
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
-      expect(JSON.parse(response.payload).message).toContain('Pool with address');
+      expect(parseWire(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload).message).toContain('Pool with address');
 
       expect(mockPoolService.removePool).toHaveBeenCalledWith(
         'solana',
@@ -431,18 +431,19 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/NonExistent?chain=solana&network=mainnet-beta',
+        url: '/NonExistent?chainNetwork=solana-mainnet-beta',
       });
 
       expect(response.statusCode).toBe(404);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload)).toHaveProperty('message');
     });
 
     it('should return 400 for missing required parameters', async () => {
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?chain=solana',
-        // Missing network
+        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+        // No chainNetwork. A delete must say which list it is deleting from — defaulting
+        // one would pick a network and remove a pool from it.
       });
 
       expect(response.statusCode).toBe(400);
@@ -518,7 +519,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const result = JSON.parse(response.payload);
+      const result = parseWire(response.payload);
 
       // Verify response is in PoolInfo format
       expect(result).toHaveLength(2);
@@ -560,7 +561,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const result = JSON.parse(response.payload);
+      const result = parseWire(response.payload);
       expect(result).toEqual([]);
     });
 
@@ -571,7 +572,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.payload).message).toContain('Unsupported chainNetwork format');
+      expect(parseWire(response.payload).message).toContain('Unsupported chainNetwork format');
     });
 
     it('should return 500 on service error', async () => {
@@ -583,7 +584,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(500);
-      expect(JSON.parse(response.payload).message).toContain('Failed to fetch pools from GeckoTerminal');
+      expect(parseWire(response.payload).message).toContain('Failed to fetch pools from GeckoTerminal');
     });
   });
 });

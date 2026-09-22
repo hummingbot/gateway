@@ -112,29 +112,37 @@ Gateway uses [Swagger](https://swagger.io/) for API documentation. When running 
 - `POST /chains/{chain}/approve` - Approve token spending
 - `POST /chains/{chain}/wrap` - Wrap/unwrap native tokens
 
-#### Connector Routes (`/connectors/{dex}/{type}/*`)
+#### Trading Routes (`/trading/{type}/*`)
 
-**Router Operations** (e.g., `/connectors/jupiter/router/*`):
-- `POST /quote` - Get swap quote from aggregator
-- `POST /swap` - Execute swap through aggregator
+The trading type is a path segment and the connector is a `connector` parameter, so
+one set of routes covers every DEX.
 
-**AMM Operations** (e.g., `/connectors/raydium/amm/*`):
-- `POST /poolInfo` - Get pool details
-- `POST /positionInfo` - Get liquidity position info
-- `POST /quoteSwap` - Get swap quote
-- `POST /executeSwap` - Execute swap
-- `POST /quoteLiquidity` - Quote add/remove liquidity
-- `POST /addLiquidity` - Add liquidity to pool
-- `POST /removeLiquidity` - Remove liquidity from pool
+**Router** (`/trading/router/*`) — aggregators that route across pools (Jupiter, 0x, dflow, okx, titan, Uniswap, PancakeSwap):
+- `GET /trading/router/quote-swap` - Quote a swap (returns a `quoteId`)
+- `POST /trading/router/execute-quote` - Execute a previously fetched quote by id
+- `POST /trading/router/execute-swap` - Quote and execute in one call
 
-**CLMM Operations** (e.g., `/connectors/uniswap/clmm/*`):
-- `POST /poolInfo` - Get concentrated liquidity pool info
-- `POST /openPosition` - Open new position
-- `POST /closePosition` - Close existing position
-- `POST /addLiquidity` - Add liquidity to position
-- `POST /removeLiquidity` - Remove liquidity from position
-- `POST /collectFees` - Collect earned fees
-- `POST /positionsOwned` - List owned positions
+**AMM** (`/trading/amm/*`) — constant-product pools (Uniswap V2, PancakeSwap V2, Raydium CPMM, Meteora DAMM v2):
+- `GET /trading/amm/quote-swap` / `POST /trading/amm/execute-swap` - Swap against a single pool
+- `GET /trading/amm/pool-info` - Pool reserves, price, fee
+- `GET /trading/amm/position-info` - Wallet's liquidity in a pool
+- `GET /trading/amm/positions-owned` - All of a wallet's positions
+- `GET /trading/amm/quote-liquidity` - Two-sided deposit quote
+- `POST /trading/amm/open` / `close` - Open or close a position (fungible-LP AMMs deposit/withdraw in full)
+- `POST /trading/amm/add` / `remove` - Change a position's liquidity
+- `POST /trading/amm/create-pool`
+
+**CLMM** (`/trading/clmm/*`) — concentrated liquidity (Uniswap V3, PancakeSwap V3, Raydium, Meteora DLMM, Orca):
+- `GET /trading/clmm/quote-swap` / `POST /trading/clmm/execute-swap` - Swap against a single pool
+- `GET /trading/clmm/pool-info` - Pool info (optionally with bin/tick liquidity)
+- `GET /trading/clmm/position-info` - Position details
+- `GET /trading/clmm/positions-owned` - All of a wallet's positions
+- `GET /trading/clmm/quote-liquidity` - Deposit split for a candidate range
+- `GET /trading/clmm/fetch-pools` - Pool discovery from the DEX's own listing API
+- `POST /trading/clmm/open` / `close` - Open or close a position
+- `POST /trading/clmm/add` / `remove` - Change a position's liquidity
+- `POST /trading/clmm/collect-fees` - Collect earned fees
+- `POST /trading/clmm/create-pool`
 
 #### Wallet Routes (`/wallet/*`)
 - `GET /wallet` - List all wallets
@@ -405,43 +413,25 @@ docker compose up -d --build
 - `DELETE /wallet/remove` - Remove wallet
 - `POST /wallet/sign` - Sign message
 
-### Chain Operations
+### Chain Operations (`/chains/{chain}/*`)
 
-#### Ethereum/EVM (`/chains/ethereum`)
-- `GET /status` - Chain connection status
-- `GET /tokens` - Get token information
-- `GET /balances` - Get wallet balances
-- `GET /allowances` - Check token allowances
-- `POST /approve` - Approve token spending
-- `GET /poll` - Poll transaction status
+One parameterized set of routes serves every chain, so a new chain needs no new paths:
+- `GET /chains/{chain}/status` - Chain connection status and block height
+- `GET /chains/{chain}/estimate-gas` - Current transaction fee estimate
+- `POST /chains/{chain}/balances` - Wallet token balances
+- `POST /chains/{chain}/poll` - Poll a transaction by signature/hash
+- `POST /chains/{chain}/wrap` / `unwrap` - Wrap or unwrap the native token
 
-#### Solana (`/chains/solana`)
-- `GET /status` - Chain connection status
-- `GET /tokens` - Get token information
-- `GET /balances` - Get wallet balances
-- `GET /poll` - Poll transaction status
+EVM-only operations keep chain-specific paths, since they have no meaning elsewhere:
+- `POST /chains/ethereum/allowances` - Check token allowances
+- `POST /chains/ethereum/approve` - Approve token spending
 
 ### DEX Trading Endpoints
 
-#### Router Operations (DEX Aggregators)
-- `GET /connectors/{dex}/router/quote-swap` - Get swap quote
-- `POST /connectors/{dex}/router/execute-swap` - Execute swap without quote
-- `POST /connectors/{dex}/router/execute-quote` - Execute pre-fetched quote
-- `GET /connectors/0x/router/get-price` - Get price estimate (0x only)
-
-#### AMM Operations (Uniswap V2, PancakeSwap V2, Raydium)
-- `GET /connectors/{dex}/amm/pool-info` - Pool information
-- `GET /connectors/{dex}/amm/position-info` - LP position details
-- `POST /connectors/{dex}/amm/add-liquidity` - Add liquidity
-- `POST /connectors/{dex}/amm/remove-liquidity` - Remove liquidity
-
-#### CLMM Operations (Uniswap V3, PancakeSwap V3, Raydium, Meteora)
-- `GET /connectors/{dex}/clmm/pool-info` - Pool information
-- `GET /connectors/{dex}/clmm/positions-owned` - List positions
-- `POST /connectors/{dex}/clmm/open-position` - Open position
-- `POST /connectors/{dex}/clmm/add-liquidity` - Add to position
-- `POST /connectors/{dex}/clmm/remove-liquidity` - Remove from position
-- `POST /connectors/{dex}/clmm/collect-fees` - Collect fees
+See [Trading Routes](#trading-routes-tradingtype) above. Every trading route takes
+`chainNetwork` (e.g. `solana-mainnet-beta`) and `connector` (e.g. `jupiter`), and the
+full request/response schemas are in the OpenAPI document at `/docs` (or `openapi.json`,
+regenerated with `pnpm generate:openapi`).
 
 ## Contribution
 
@@ -626,63 +616,21 @@ The test directory is organized as follows:
 
 ```
 /test
-  /chains/                    # Chain endpoint tests
-    chain.test.js            # Chain routes test
-    ethereum.test.js         # Ethereum chain tests
-    solana.test.js           # Solana chain tests
-  /connectors/                # Connector endpoint tests by protocol
-    /jupiter/                 # Jupiter connector tests
-    /uniswap/                 # Uniswap connector tests
-    /raydium/                 # Raydium connector tests
-    /meteora/                 # Meteora connector tests
-    /pancakeswap/             # PancakeSwap (EVM) connector tests
-    /pancakeswap-sol/         # PancakeSwap Solana connector tests
-  /mocks/                     # Mock response data
-    /chains/                  # Chain mock responses
-      chains.json            # Chain routes mock response
-      /ethereum/             # Ethereum mock responses
-      /solana/               # Solana mock responses
-    /connectors/              # Connector mock responses
-  /services/                  # Service tests
-    /data/                    # Test data files
-  /wallet/                    # Wallet tests
-  /config/                    # Configuration tests
-  /jest-setup.js              # Test environment configuration
+  /chains/                    # Chain route tests (ethereum, solana)
+  /connectors/                # Connector tests, one directory per connector
+  /trading/                   # The unified /trading/* route tests
+  /mocks/                     # Shared mock modules (TypeScript)
+  /helpers/ /utils/           # Test helpers and fastifyWithTypeProvider
+  /services/ /wallet/ /config/ /pools/ /tokens/ /rpc/
+  jest-setup.js               # Test environment configuration
 
-/scripts                      # Live testing and utility scripts
-  test-helius-live.js        # Helius RPC provider integration tests
-  test-infura-live.js        # Infura RPC provider integration tests
-  test-provider-switching.js  # RPC provider switching tests
+/scripts                      # Utility scripts
+  generate-openapi.ts        # Write openapi.json from the live route table
+  create-wallet.ts           # Wallet creation helper
+  add-bsc-tokens.ts          # Token list maintenance
+  add-pancakeswap-pools.ts   # Pool list maintenance
+  migrate-pool-templates.ts  # Pool template migration
 ```
-
-#### RPC Provider Testing
-
-Gateway includes comprehensive testing for RPC provider integrations:
-
-**Live Integration Tests** (`scripts/test-*-live.js`):
-- Test real API connectivity with configured keys
-- Verify WebSocket connections and features
-- Measure performance improvements vs standard RPC
-- Validate network-specific endpoint mappings
-
-**Running RPC Provider Tests**:
-```bash
-# Test Infura integration (requires API key in conf/rpc/infura.yml)
-node scripts/test-infura-live.js
-
-# Test Helius integration (requires API key in conf/rpc/helius.yml)
-node scripts/test-helius-live.js
-
-# Test provider switching functionality
-node scripts/test-provider-switching.js
-```
-
-**Test Coverage Areas**:
-- Provider initialization and configuration loading
-- Automatic fallback to standard RPC on failures
-- Network-specific endpoint resolution
-- WebSocket connection establishment
-- Performance benchmarking and health checks
 
 For more details on the test setup and structure, see [Test README](./test/README.md).
 
@@ -1010,12 +958,18 @@ testProviderIntegration();
 
 3. **Implement trading methods** based on supported operations
 
-4. **Create route files** following the pattern:
-   - Router routes in `router-routes/` (for DEX aggregators)
-   - AMM routes in `amm-routes/` (for V2-style pools)
-   - CLMM routes in `clmm-routes/` (for concentrated liquidity)
+4. **Export plain operation functions** — not routes — following the pattern:
+   - Router operations in `router-routes/` (for DEX aggregators): `quoteSwap`, `executeSwap`, `executeQuote`
+   - AMM operations in `amm-routes/` (for V2-style pools)
+   - CLMM operations in `clmm-routes/` (for concentrated liquidity)
 
-5. **Add configuration and register** in `src/connectors/connector.routes.ts`
+   Each takes plain arguments and returns the shared response shape. Connectors no
+   longer register HTTP routes of their own; the unified `/trading/*` routes are the
+   only surface.
+
+5. **Add one entry per trading type** to `src/trading/connector-registry.ts`, which is
+   what wires the functions into the unified routes and into the `connector` enums the
+   schemas (and the OpenAPI document) advertise.
 
 ### Testing Requirements
 
