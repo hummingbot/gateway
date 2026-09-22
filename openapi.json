@@ -3,7 +3,7 @@
   "info": {
     "title": "Hummingbot Gateway",
     "description": "API endpoints for interacting with DEXs and blockchains",
-    "version": "dev-2.17.0"
+    "version": "dev-2.18.0"
   },
   "components": {
     "parameters": {
