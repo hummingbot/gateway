@@ -46,8 +46,8 @@ export async function buildSwapTransaction(
   ]);
 
   // Get token accounts with correct token programs
-  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, false, inputTokenProgram);
-  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, false, outputTokenProgram);
+  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, true, inputTokenProgram);
+  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, true, outputTokenProgram);
 
   // Check if token accounts exist
   const [inputAccountInfo, outputAccountInfo] = await Promise.all([
@@ -291,8 +291,8 @@ export async function buildAddLiquidityTransaction(
   ]);
 
   // Get token accounts
-  const token0Account = getAssociatedTokenAddressSync(token0Mint, walletPubkey, false, token0Program);
-  const token1Account = getAssociatedTokenAddressSync(token1Mint, walletPubkey, false, token1Program);
+  const token0Account = getAssociatedTokenAddressSync(token0Mint, walletPubkey, true, token0Program);
+  const token1Account = getAssociatedTokenAddressSync(token1Mint, walletPubkey, true, token1Program);
 
   // Check if token accounts exist
   const [token0AccountInfo, token1AccountInfo] = await Promise.all([
@@ -386,8 +386,8 @@ export async function buildOpenPositionTransaction(
   ]);
 
   // Get token accounts
-  const token0Account = getAssociatedTokenAddressSync(token0Mint, walletPubkey, false, token0Program);
-  const token1Account = getAssociatedTokenAddressSync(token1Mint, walletPubkey, false, token1Program);
+  const token0Account = getAssociatedTokenAddressSync(token0Mint, walletPubkey, true, token0Program);
+  const token1Account = getAssociatedTokenAddressSync(token1Mint, walletPubkey, true, token1Program);
 
   // Check if token accounts exist
   const [token0AccountInfo, token1AccountInfo] = await Promise.all([

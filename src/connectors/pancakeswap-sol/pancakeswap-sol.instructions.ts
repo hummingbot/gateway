@@ -207,8 +207,8 @@ export async function buildSwapV2Instruction(
   ]);
 
   // Get user token accounts with correct token programs
-  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, false, inputTokenProgram);
-  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, false, outputTokenProgram);
+  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, true, inputTokenProgram);
+  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, true, outputTokenProgram);
 
   logger.info(`Token accounts: input=${inputTokenAccount.toString()}, output=${outputTokenAccount.toString()}`);
   logger.info(`Token programs: input=${inputTokenProgram.toString()}, output=${outputTokenProgram.toString()}`);
@@ -281,13 +281,13 @@ export async function buildClosePositionInstruction(
 
   // Get the position NFT account (try both SPL Token and Token2022)
   // First check Token2022 since PancakeSwap uses it for position NFTs
-  let positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_2022_PROGRAM_ID);
+  let positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_2022_PROGRAM_ID);
   let accountInfo = await solana.connection.getAccountInfo(positionNftAccount);
   let nftTokenProgram = TOKEN_2022_PROGRAM_ID;
 
   // If not found in Token2022, try SPL Token
   if (!accountInfo) {
-    positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+    positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_PROGRAM_ID);
     accountInfo = await solana.connection.getAccountInfo(positionNftAccount);
     nftTokenProgram = TOKEN_PROGRAM_ID;
 
@@ -394,7 +394,7 @@ export async function buildDecreaseLiquidityV2Instruction(
       const rewardTokenProgram = await getTokenProgramForMint(solana, rewardMint);
 
       // Get user's ATA for reward token
-      const userRewardAta = getAssociatedTokenAddressSync(rewardMint, walletPubkey, false, rewardTokenProgram);
+      const userRewardAta = getAssociatedTokenAddressSync(rewardMint, walletPubkey, true, rewardTokenProgram);
 
       activeRewards.push({
         vault: rewardVault,
@@ -423,11 +423,11 @@ export async function buildDecreaseLiquidityV2Instruction(
   );
 
   // Get NFT account (try Token2022 first)
-  let nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_2022_PROGRAM_ID);
+  let nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_2022_PROGRAM_ID);
   const accountInfo = await solana.connection.getAccountInfo(nftAccount);
 
   if (!accountInfo) {
-    nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+    nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_PROGRAM_ID);
   }
 
   // Detect token programs for pool mints
@@ -437,8 +437,8 @@ export async function buildDecreaseLiquidityV2Instruction(
   ]);
 
   // Get recipient token accounts with correct token programs
-  const recipientTokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, tokenProgram0);
-  const recipientTokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, tokenProgram1);
+  const recipientTokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, true, tokenProgram0);
+  const recipientTokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, true, tokenProgram1);
 
   // Create instruction using Anchor coder
   const coder = new BorshCoder(clmmIdl);
@@ -544,11 +544,11 @@ export async function buildIncreaseLiquidityV2Instruction(
   );
 
   // Get NFT account
-  let nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_2022_PROGRAM_ID);
+  let nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_2022_PROGRAM_ID);
   const accountInfo = await solana.connection.getAccountInfo(nftAccount);
 
   if (!accountInfo) {
-    nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+    nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_PROGRAM_ID);
   }
 
   // Detect token programs for pool mints
@@ -558,8 +558,8 @@ export async function buildIncreaseLiquidityV2Instruction(
   ]);
 
   // Get user token accounts with correct token programs
-  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, tokenProgram0);
-  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, tokenProgram1);
+  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, true, tokenProgram0);
+  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, true, tokenProgram1);
 
   // Create instruction - use actual liquidity value (like your successful transaction)
   const coder = new BorshCoder(clmmIdl);
@@ -666,7 +666,7 @@ export async function buildOpenPositionWithToken22NftInstruction(
   const positionNftAccount = getAssociatedTokenAddressSync(
     positionNftMint.publicKey,
     walletPubkey,
-    false,
+    true,
     TOKEN_2022_PROGRAM_ID,
   );
 
@@ -677,8 +677,8 @@ export async function buildOpenPositionWithToken22NftInstruction(
   ]);
 
   // Get user token accounts with correct token programs
-  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, tokenProgram0);
-  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, tokenProgram1);
+  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, true, tokenProgram0);
+  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, true, tokenProgram1);
 
   // Log all instruction parameters
   const { logger } = await import('../../services/logger');
