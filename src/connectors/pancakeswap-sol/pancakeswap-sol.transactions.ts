@@ -66,8 +66,8 @@ export async function buildSwapTransaction(
   // Track if we're using WSOL (to close it after swap)
   const isInputSOL = inputMint.equals(NATIVE_MINT);
 
-  // Create input token account if needed
-  if (!inputAccountInfo) {
+  // Create input token account if needed; for native SOL, wrapSOL creates it.
+  if (!inputAccountInfo && !isInputSOL) {
     instructions.push(
       createAssociatedTokenAccountInstruction(
         walletPubkey, // payer
