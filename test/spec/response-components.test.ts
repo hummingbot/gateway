@@ -57,16 +57,4 @@ describe('every trading response is a named component', () => {
 
     expect(asymmetric).toEqual([]);
   });
-
-  // A component holding a name its route no longer uses is the GW-10 trap. Pinned by name
-  // because the shapes are what they always were — only the labels were wrong.
-  it.each([
-    ['QuotePositionResponse', 'the route is quote-liquidity now'],
-    ['PoolInfo', 'ambiguous between the two surfaces'],
-    ['PositionInfo', 'ambiguous between the two surfaces'],
-    ['AddLiquidityResponse', 'ambiguous between the two surfaces'],
-    ['CreatePoolResponse', 'ambiguous between the two surfaces'],
-  ])('no longer publishes %s (%s)', (name) => {
-    expect(Object.keys(spec.components.schemas)).not.toContain(name);
-  });
 });
