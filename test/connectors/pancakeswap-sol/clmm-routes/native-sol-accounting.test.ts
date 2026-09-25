@@ -22,6 +22,8 @@ jest.mock('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol', () => ({
 jest.mock('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.instructions', () => ({
   ...jest.requireActual('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.instructions'),
   buildDecreaseLiquidityV2Instruction: jest.fn().mockResolvedValue({ ix: 'decrease' }),
+  // The pool pays no rewards here: nothing to create.
+  buildRewardAccountSetup: jest.fn().mockResolvedValue([]),
   buildClosePositionInstruction: jest.fn().mockResolvedValue({ ix: 'close' }),
 }));
 // buildUnwrapSolInstructions stays real — it is the fix under test. Only the transaction

@@ -16,6 +16,7 @@ import {
   buildSwapV2Instruction,
   buildClosePositionInstruction,
   buildDecreaseLiquidityV2Instruction,
+  buildRewardAccountSetup,
   buildIncreaseLiquidityV2Instruction,
   buildOpenPositionWithToken22NftInstruction,
 } from './pancakeswap-sol.instructions';
@@ -233,7 +234,8 @@ export async function buildRemoveLiquidityTransaction(
   // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
 
-  // Add remove liquidity instruction
+  // The wallet's reward accounts, which the decrease pays into, then the decrease.
+  instructions.push(...(await buildRewardAccountSetup(solana, positionNftMint, walletPubkey)));
   instructions.push(removeLiqIx);
 
   // What the program just paid out in WSOL, back to SOL.

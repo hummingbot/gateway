@@ -11,7 +11,11 @@ import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
-import { buildDecreaseLiquidityV2Instruction, buildClosePositionInstruction } from '../pancakeswap-sol.instructions';
+import {
+  buildDecreaseLiquidityV2Instruction,
+  buildClosePositionInstruction,
+  buildRewardAccountSetup,
+} from '../pancakeswap-sol.instructions';
 import { parsePositionData } from '../pancakeswap-sol.parser';
 import { buildTransactionWithInstructions, buildUnwrapSolInstructions } from '../pancakeswap-sol.transactions';
 
@@ -72,6 +76,8 @@ export async function closePosition(
   // nothing else (it is exactly what the collect-fees route does), so the two land in
   // different top-level instructions and the transaction says which is which.
   if (hasLiquidity) {
+    // The wallet's reward accounts, which both decreases pay into.
+    instructions.push(...(await buildRewardAccountSetup(solana, positionNftMint, walletPubkey)));
     const collectFeesIx = await buildDecreaseLiquidityV2Instruction(
       solana,
       positionNftMint,
