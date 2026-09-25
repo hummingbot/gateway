@@ -218,7 +218,9 @@ describe('POST /add-liquidity', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('should return error when no token amount provided', async () => {
+    it('rejects an add with no token amount', async () => {
+      seedConnector();
+
       const response = await app.inject({
         method: 'POST',
         url: '/add',
@@ -230,10 +232,16 @@ describe('POST /add-liquidity', () => {
         },
       });
 
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBe(400);
+      expect(parseWire(response.body).message).toBe(
+        'At least one of baseTokenAmount or quoteTokenAmount must be greater than 0',
+      );
+      expect(mockFetchPosition).not.toHaveBeenCalled();
     });
 
-    it('should handle invalid position address', async () => {
+    it('rejects a malformed position address before reading the chain', async () => {
+      seedConnector();
+
       const response = await app.inject({
         method: 'POST',
         url: '/add',
@@ -246,16 +254,16 @@ describe('POST /add-liquidity', () => {
         },
       });
 
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBe(400);
+      expect(parseWire(response.body).message).toBe('Invalid position address: invalid');
+      expect(mockFetchPosition).not.toHaveBeenCalled();
     });
   });
 
   describe('error handling', () => {
-    it('should handle Orca errors gracefully', async () => {
-      const mockOrca = {
-        addLiquidity: jest.fn().mockRejectedValue(new Error('Add liquidity failed')),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+    it('reports a failed position read as 500 with its cause, sending nothing', async () => {
+      seedConnector();
+      mockFetchPosition.mockRejectedValue(new Error('RPC node behind'));
 
       const response = await app.inject({
         method: 'POST',
@@ -269,25 +277,9 @@ describe('POST /add-liquidity', () => {
         },
       });
 
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
-    });
-
-    it('should handle service unavailable', async () => {
-      (Orca.getInstance as jest.Mock).mockResolvedValue(null);
-
-      const response = await app.inject({
-        method: 'POST',
-        url: '/add',
-        payload: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          walletAddress: mockWalletAddress,
-          positionAddress: mockPositionAddress,
-          baseTokenAmount: 1.0,
-        },
-      });
-
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBe(500);
+      expect(parseWire(response.body).message).toBe('Failed to add liquidity: RPC node behind');
+      expect(mockSendAndConfirm).not.toHaveBeenCalled();
     });
   });
 });

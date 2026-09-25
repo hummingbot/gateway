@@ -26,10 +26,17 @@ export async function openPosition(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
+  let owner: PublicKey;
+  try {
+    owner = new PublicKey(walletAddress);
+  } catch {
+    throw httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
+  }
+
   // Set the SDK owner to the wallet's public key — works for every wallet type (local,
   // hardware). The tx is built unsigned; signing/sending is delegated to
   // sendAndConfirmTransactionForWallet, which signs for the wallet's type.
-  await raydium.setOwner(new PublicKey(walletAddress));
+  await raydium.setOwner(owner);
 
   const poolResponse = await raydium.getClmmPoolfromAPI(poolAddress);
   if (!poolResponse) {

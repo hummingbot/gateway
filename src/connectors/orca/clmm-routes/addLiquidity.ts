@@ -29,6 +29,11 @@ export async function addLiquidity(
   if ((!baseTokenAmount || baseTokenAmount <= 0) && (!quoteTokenAmount || quoteTokenAmount <= 0)) {
     throw httpErrors.badRequest('At least one token amount must be provided and greater than 0');
   }
+  try {
+    new PublicKey(positionAddress);
+  } catch {
+    throw httpErrors.badRequest(`Invalid position address: ${positionAddress}`);
+  }
 
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);

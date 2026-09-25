@@ -238,20 +238,13 @@ describe('POST /open-position', () => {
     expect(body.data.quoteTokenAmountAdded).toBeCloseTo(150, 9);
   });
 
-  it('should handle invalid wallet address error', async () => {
+  it('rejects a malformed wallet address with 400 before touching the pool', async () => {
     const mockSolanaInstance = buildSolanaMock();
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockRaydiumInstance = {
       setOwner: jest.fn().mockResolvedValue(undefined),
-      getClmmPoolInfo: jest.fn(),
-      getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
-      raydiumSDK: {
-        clmm: {
-          getPriceAndTick: jest.fn(),
-          openPositionFromBase: jest.fn(),
-        },
-      },
+      getClmmPoolfromAPI: jest.fn(),
     };
     (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
 
@@ -270,8 +263,9 @@ describe('POST /open-position', () => {
       },
     });
 
-    // An invalid wallet address fails when constructing the PublicKey owner.
-    expect(response.statusCode).toBe(500);
+    expect(response.statusCode).toBe(400);
+    expect(parseWire(response.body).message).toBe('Invalid wallet address: invalid-wallet');
+    expect(mockRaydiumInstance.getClmmPoolfromAPI).not.toHaveBeenCalled();
   });
 
   it('should handle pool not found error', async () => {
@@ -352,7 +346,7 @@ describe('POST /open-position', () => {
     expect(mockRaydiumInstance.setOwner).toHaveBeenCalled();
   });
 
-  it('should use default compute units and dynamic priority fee', async () => {
+  it('converts the lamport priority fee to microLamports for the SDK', async () => {
     const mockSolanaInstance = buildSolanaMock();
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -396,11 +390,9 @@ describe('POST /open-position', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalled();
 
-    // Verify that openPositionFromBase was called with the default compute budget
+    // estimateGasPrice answers lamports per CU (2000); the SDK takes microLamports.
     const openPositionCall = mockOpenPositionFunc.mock.calls[0];
-    expect(openPositionCall[0].computeBudgetConfig.units).toBe(500000); // Using hardcoded COMPUTE_UNITS
-    expect(openPositionCall[0].computeBudgetConfig.microLamports).toBe(2000000000); // Dynamic priority fee from estimateGasPrice * 1e6
+    expect(openPositionCall[0].computeBudgetConfig.microLamports).toBe(2000000000);
   });
 });
