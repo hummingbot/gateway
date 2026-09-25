@@ -178,13 +178,14 @@ describe('Config Utils - Chain-Network Merge', () => {
     });
 
     it('should let network config override chain config if keys conflict', () => {
-      // Network config takes precedence over chain config for conflicts
-      const config = getConfig(fastify, 'solana-mainnet-beta');
-
-      // Both chain and network might have overlapping keys in the future
-      // The spread operator gives network config precedence: {...chain, ...network}
-      // This test ensures the merge order is correct
-      expect(config).toBeDefined();
+      const chainConfig = mockEthereumChainConfig.configuration as Record<string, unknown>;
+      chainConfig.nodeURL = 'https://chain-level.example';
+      try {
+        const config = getConfig(fastify, 'ethereum-mainnet');
+        expect(config).toHaveProperty('nodeURL', mockEthereumNetworkConfig.configuration.nodeURL);
+      } finally {
+        delete chainConfig.nodeURL;
+      }
     });
   });
 

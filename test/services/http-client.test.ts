@@ -166,13 +166,21 @@ describe('HttpClient', () => {
       expect(result.data).toBe('plain text response');
     });
 
-    it('should remove trailing slash from baseURL', () => {
+    it('should remove trailing slash from baseURL', async () => {
       const clientWithSlash = new HttpClient({
         baseURL: 'https://api.example.com/',
       });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: new Headers({ 'content-type': 'application/json' }),
+        text: jest.fn().mockResolvedValue('{}'),
+      });
 
-      // The trailing slash should be removed internally
-      expect(clientWithSlash).toBeDefined();
+      await clientWithSlash.get('/test');
+
+      expect(mockFetch.mock.calls[0][0]).toBe('https://api.example.com/test');
     });
   });
 

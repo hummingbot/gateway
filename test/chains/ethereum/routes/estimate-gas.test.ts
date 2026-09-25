@@ -63,9 +63,10 @@ describe('Ethereum Estimate Gas Route', () => {
         denomination: 'gwei',
         computeUnits: 300000,
         feeAsset: 'ETH',
-        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
+      // 15.5 gwei × the 300,000 gas limit, in ETH.
+      expect(data.fee).toBeCloseTo(0.00465, 12);
 
       expect(mockEthereum.getInstance).toHaveBeenCalledWith('mainnet');
       expect(mockInstance.estimateGasPrice).toHaveBeenCalled();

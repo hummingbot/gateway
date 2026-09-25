@@ -62,9 +62,10 @@ describe('Solana Estimate Gas Route', () => {
         denomination: 'lamports',
         computeUnits: 200000,
         feeAsset: 'SOL',
-        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
+      // 2.5 lamports/CU × 200,000 CU plus the 5,000-lamport signature fee, in SOL.
+      expect(data.fee).toBeCloseTo(0.000505, 12);
 
       expect(mockSolana.getInstance).toHaveBeenCalledWith('mainnet-beta');
       expect(mockInstance.estimateGasPriceDetailed).toHaveBeenCalled();
