@@ -191,49 +191,50 @@ export class Raydium {
   }
 
   async getClmmPoolInfo(poolAddress: string): Promise<ClmmPoolInfo | null> {
+    let rawPool: ClmmRpcData;
+    let vaultABalance: number | null;
+    let vaultBBalance: number | null;
     try {
       // PancakeSwap's Solana CLMM is a fork with Raydium's account layout, so a
       // pool decodes here whichever program owns it; only Raydium's are Raydium's.
       const account = await this.solana.connection.getAccountInfo(new PublicKey(poolAddress));
       if (!account || !isValidClmm(account.owner.toBase58())) return null;
-      const rawPool = await this.getClmmPoolfromRPC(poolAddress);
-
-      // Fetch AMM config account data
-      let ammConfigData;
-      if (rawPool.ammConfig) {
-        try {
-          const configAccount = await this.solana.connection.getAccountInfo(rawPool.ammConfig);
-          if (configAccount) {
-            const dataBuffer = configAccount.data;
-            ammConfigData = {
-              // 47 is the offset for tradeFeeRate in the dataBuffer
-              tradeFeeRate: dataBuffer.readUInt32LE(47) / 10000,
-            };
-          }
-        } catch (e) {
-          logger.error(`Error fetching CLMM pool info for ${poolAddress}: ${e}`);
-        }
-      }
-
-      const vaultABalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultA)).value.uiAmount;
-      const vaultBBalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultB)).value.uiAmount;
-
-      const poolInfo: ClmmPoolInfo = {
-        address: poolAddress,
-        baseTokenAddress: rawPool.mintA.toString(),
-        quoteTokenAddress: rawPool.mintB.toString(),
-        binStep: Number(rawPool.tickSpacing),
-        feePct: ammConfigData?.tradeFeeRate,
-        price: Number(rawPool.currentPrice),
-        baseTokenAmount: Number(vaultABalance),
-        quoteTokenAmount: Number(vaultBBalance),
-        activeBinId: Number(rawPool.tickCurrent),
-      };
-      return poolInfo;
+      rawPool = await this.getClmmPoolfromRPC(poolAddress);
+      vaultABalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultA)).value.uiAmount;
+      vaultBBalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultB)).value.uiAmount;
     } catch (error) {
       logger.debug(`Could not decode ${poolAddress} as Raydium CLMM pool: ${error}`);
       return null;
     }
+
+    // The pool is Raydium's; a fee it cannot read is an error, not a missing field.
+    const feePct = await this.readClmmTradeFeePct(rawPool.ammConfig, poolAddress);
+
+    return {
+      address: poolAddress,
+      baseTokenAddress: rawPool.mintA.toString(),
+      quoteTokenAddress: rawPool.mintB.toString(),
+      binStep: Number(rawPool.tickSpacing),
+      feePct,
+      price: Number(rawPool.currentPrice),
+      baseTokenAmount: Number(vaultABalance),
+      quoteTokenAmount: Number(vaultBBalance),
+      activeBinId: Number(rawPool.tickCurrent),
+    };
+  }
+
+  /** The trade fee, as a percent, from a CLMM AMM config account (millionths at offset 47). */
+  private async readClmmTradeFeePct(ammConfig: PublicKey, poolAddress: string): Promise<number> {
+    let configAccount;
+    try {
+      configAccount = await this.solana.connection.getAccountInfo(ammConfig);
+    } catch (e) {
+      throw new Error(`could not read Raydium CLMM config ${ammConfig} for pool ${poolAddress}: ${e?.message ?? e}`);
+    }
+    if (!configAccount) {
+      throw new Error(`could not read Raydium CLMM config ${ammConfig} for pool ${poolAddress}: account not found`);
+    }
+    return configAccount.data.readUInt32LE(47) / 10000;
   }
 
   /**

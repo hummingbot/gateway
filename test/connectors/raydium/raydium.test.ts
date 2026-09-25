@@ -293,6 +293,30 @@ describe('Raydium', () => {
         expect(mockRaydiumSDK.clmm.getRpcClmmPoolInfo).not.toHaveBeenCalled();
       });
 
+      it('throws, naming the config and the pool, when the AMM config read fails', async () => {
+        const poolAddress = '2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv';
+        mockRaydiumSDK.clmm.getRpcClmmPoolInfo.mockResolvedValue({ ammConfig: 'config-address' });
+        mockConnection.getAccountInfo
+          .mockResolvedValueOnce({ owner: CLMM_PROGRAM_ID, data: Buffer.alloc(0) })
+          .mockRejectedValueOnce(new Error('429 Too Many Requests'));
+
+        await expect(raydiumInstance.getClmmPoolInfo(poolAddress)).rejects.toThrow(
+          `could not read Raydium CLMM config config-address for pool ${poolAddress}: 429 Too Many Requests`,
+        );
+      });
+
+      it('throws when the AMM config account does not exist', async () => {
+        const poolAddress = '2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv';
+        mockRaydiumSDK.clmm.getRpcClmmPoolInfo.mockResolvedValue({ ammConfig: 'config-address' });
+        mockConnection.getAccountInfo
+          .mockResolvedValueOnce({ owner: CLMM_PROGRAM_ID, data: Buffer.alloc(0) })
+          .mockResolvedValueOnce(null);
+
+        await expect(raydiumInstance.getClmmPoolInfo(poolAddress)).rejects.toThrow(
+          `could not read Raydium CLMM config config-address for pool ${poolAddress}: account not found`,
+        );
+      });
+
       it('should handle pool not found', async () => {
         mockRaydiumSDK.clmm.getRpcClmmPoolInfo.mockRejectedValue(new Error('Pool not found'));
 
