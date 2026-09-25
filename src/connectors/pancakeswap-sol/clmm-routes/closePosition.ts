@@ -29,7 +29,6 @@ export async function closePosition(
     throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
-  const wallet = await solana.getWallet(walletAddress);
   const walletPubkey = new PublicKey(walletAddress);
   const positionNftMint = new PublicKey(positionAddress);
 
@@ -60,10 +59,6 @@ export async function closePosition(
   if (!baseToken || !quoteToken) {
     throw httpErrors.notFound('Token information not found');
   }
-
-  // Get priority fee
-  const priorityFeeInLamports = await solana.estimateGasPrice();
-  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
 
   // Build transaction with both instructions (like successful manual transaction)
   const instructions = [];
@@ -113,16 +108,15 @@ export async function closePosition(
     walletPubkey,
     instructions,
     800000, // Compute units for both operations
-    priorityFeePerCU,
   );
 
-  // Sign and send
-  transaction.sign([wallet]);
-  await solana.simulateWithErrorHandling(transaction);
+  // The wallet chokepoint simulates, sets the compute budget and priority fee, and signs
+  // for the wallet's type (local keypair or Ledger).
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  // Retrying re-fetch; throws the shared landed-but-failed error, so txData means confirmed.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-  if (confirmed && txData) {
+  if (txData) {
     const totalFee = txData.meta.fee;
 
     // Extract balance changes
@@ -179,10 +173,7 @@ export async function closePosition(
     };
   }
 
-  // A landed-but-failed transaction is terminal: fail loudly instead of returning
-  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
-  await solana.throwIfLandedWithError(signature, txData);
-
+  // Confirmed, but not yet visible to the re-fetch: report it pending.
   return {
     signature,
     status: 0, // PENDING

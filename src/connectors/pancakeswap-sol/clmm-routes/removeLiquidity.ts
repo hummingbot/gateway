@@ -51,7 +51,6 @@ export async function removeLiquidity(
   logger.info(`Removing ${percentageToRemove}% liquidity from position ${positionAddress}`);
   logger.info(`Total liquidity: ${liquidity.toString()}, removing: ${liquidityToRemove.toString()}`);
 
-  const wallet = await solana.getWallet(walletAddress);
   const walletPubkey = new PublicKey(walletAddress);
 
   // Get base and quote tokens
@@ -61,10 +60,6 @@ export async function removeLiquidity(
   if (!baseToken || !quoteToken) {
     throw httpErrors.notFound('Token information not found');
   }
-
-  // Get priority fee
-  const priorityFeeInLamports = await solana.estimateGasPrice();
-  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
 
   // Build transaction (using 0 for min amounts - no slippage protection for now)
   const transaction = await buildRemoveLiquidityTransaction(
@@ -76,16 +71,15 @@ export async function removeLiquidity(
     new BN(0), // amount1Min
     [baseToken.address, quoteToken.address], // unwrap a native side rather than leaving it WSOL
     600000, // Compute units
-    priorityFeePerCU,
   );
 
-  // Sign and send
-  transaction.sign([wallet]);
-  await solana.simulateWithErrorHandling(transaction);
+  // The wallet chokepoint simulates, sets the compute budget and priority fee, and signs
+  // for the wallet's type (local keypair or Ledger).
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  // Retrying re-fetch; throws the shared landed-but-failed error, so txData means confirmed.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-  if (confirmed && txData) {
+  if (txData) {
     const totalFee = txData.meta.fee;
 
     // Extract balance changes
@@ -121,10 +115,7 @@ export async function removeLiquidity(
     };
   }
 
-  // A landed-but-failed transaction is terminal: fail loudly instead of returning
-  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
-  await solana.throwIfLandedWithError(signature, txData);
-
+  // Confirmed, but not yet visible to the re-fetch: report it pending.
   return {
     signature,
     status: 0, // PENDING

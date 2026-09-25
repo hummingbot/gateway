@@ -32,20 +32,12 @@ export async function buildSwapTransaction(
   sqrtPriceLimitX64: BN,
   isBaseInput: boolean,
   computeUnits: number = 600000,
-  priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
   const instructions: TransactionInstruction[] = [];
 
-  // Add compute budget instructions
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
-
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    instructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
 
   // Detect token programs for input/output mints
   const [inputTokenProgram, outputTokenProgram] = await Promise.all([
@@ -137,22 +129,14 @@ export async function buildClosePositionTransaction(
   positionNftMint: PublicKey,
   walletPubkey: PublicKey,
   computeUnits: number = 400000,
-  priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
   const closePositionIx = await buildClosePositionInstruction(solana, positionNftMint, walletPubkey);
 
   const instructions: TransactionInstruction[] = [];
 
-  // Add compute budget instructions
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
-
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    instructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
 
   // Add close position instruction
   instructions.push(closePositionIx);
@@ -201,20 +185,12 @@ export async function buildTransactionWithInstructions(
   walletPubkey: PublicKey,
   instructions: TransactionInstruction[],
   computeUnits: number = 600000,
-  priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
   const allInstructions: TransactionInstruction[] = [];
 
-  // Add compute budget instructions
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   allInstructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
-
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    allInstructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
 
   // Add provided instructions
   allInstructions.push(...instructions);
@@ -241,7 +217,6 @@ export async function buildRemoveLiquidityTransaction(
   amount1Min: BN,
   poolMints: string[],
   computeUnits: number = 600000,
-  priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
   const removeLiqIx = await buildDecreaseLiquidityV2Instruction(
     solana,
@@ -254,16 +229,9 @@ export async function buildRemoveLiquidityTransaction(
 
   const instructions: TransactionInstruction[] = [];
 
-  // Add compute budget instructions
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
-
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    instructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
 
   // Add remove liquidity instruction
   instructions.push(removeLiqIx);
@@ -292,7 +260,6 @@ export async function buildAddLiquidityTransaction(
   amount0Max: BN,
   amount1Max: BN,
   computeUnits: number = 600000,
-  priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
   // Get position account to extract pool info
   const [personalPosition] = PublicKey.findProgramAddressSync(
@@ -335,15 +302,9 @@ export async function buildAddLiquidityTransaction(
 
   const instructions: TransactionInstruction[] = [];
 
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
-
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    instructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
 
   // Handle token0 (create ATA if needed, wrap SOL if native)
   const isToken0SOL = token0Mint.equals(NATIVE_MINT);
@@ -404,7 +365,6 @@ export async function buildOpenPositionTransaction(
   baseFlag: boolean | null,
   liquidity: BN,
   computeUnits: number = 800000,
-  priorityFeePerCU?: number,
 ): Promise<{ transaction: VersionedTransaction; positionNftMint: Keypair }> {
   // Generate new keypair for NFT mint
   const positionNftMint = Keypair.generate();
@@ -437,15 +397,9 @@ export async function buildOpenPositionTransaction(
 
   const instructions: TransactionInstruction[] = [];
 
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
-
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    instructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
 
   // Handle token0 (create ATA if needed, wrap SOL if native)
   const isToken0SOL = token0Mint.equals(NATIVE_MINT);
