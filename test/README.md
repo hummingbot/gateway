@@ -21,8 +21,6 @@ This directory contains comprehensive test suites for the Gateway API. The test 
   /mocks/                     # Shared mock modules (TypeScript, not fixtures)
     app-mocks.ts              # Import before importing app
     shared-mocks.ts
-    /0x/ /orca/               # Per-connector mock data modules
-  /helpers/                   # commonMocks, connectorMocks, connector-test-utils
   /utils/testUtils.ts         # fastifyWithTypeProvider — use this to build a server
   /config/ /pools/ /rpc/ /services/ /tokens/ /wallet/
   jest-setup.js               # Test environment configuration
@@ -92,7 +90,7 @@ Tests mock the modules a route depends on — the chain class, the connector cla
 services — and then drive the route through `app.inject`. Real Gateway code runs; only
 the blockchain is absent.
 
-Shared mock modules live in `test/mocks` and `test/helpers`. A suite that builds the
+Shared mock modules live in `test/mocks`. A suite that builds the
 whole app imports `test/mocks/app-mocks` **before** importing the app:
 
 ```typescript
