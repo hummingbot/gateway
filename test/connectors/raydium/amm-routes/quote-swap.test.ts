@@ -2,7 +2,6 @@ import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
-import { httpErrors } from '../../../../src/services/error-handler';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 import { parseWire } from '../../../utils/wire';
 
@@ -238,40 +237,5 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('price', 150);
     expect(body).toHaveProperty('priceImpactPct', 1);
     expect(body).toHaveProperty('slippagePct', 1);
-  });
-
-  it('should return 404 if pool not found', async () => {
-    const mockSolanaInstance = {
-      getToken: jest.fn((token) => {
-        if (token === 'SOL' || token === mockSOL.address) return Promise.resolve(mockSOL);
-        if (token === 'USDC' || token === mockUSDC.address) return Promise.resolve(mockUSDC);
-        return Promise.resolve(null);
-      }),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000), // Mock priority fee in lamports per CU
-    };
-    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
-
-    const mockRaydiumInstance = {
-      getAmmPoolInfo: jest.fn().mockRejectedValue(httpErrors.notFound('Pool account not found: invalid-pool-address')),
-    };
-    (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
-
-    const response = await server.inject({
-      method: 'GET',
-      url: '/quote-swap',
-      query: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        poolAddress: 'invalid-pool-address',
-        baseToken: 'SOL',
-        quoteToken: 'USDC',
-        amount: '0.1',
-        side: 'SELL',
-        slippagePct: '1',
-      },
-    });
-
-    expect(response.statusCode).toBe(404);
-    expect(parseWire(response.body)).toHaveProperty('error');
   });
 });

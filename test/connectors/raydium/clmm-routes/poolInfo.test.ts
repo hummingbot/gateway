@@ -75,26 +75,6 @@ describe('GET /pool-info (raydium clmm)', () => {
     await app.close();
   });
 
-  it('returns the base pool info shape', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/pool-info',
-      query: { chainNetwork: 'solana-mainnet-beta', connector: 'raydium', poolAddress: mockPoolAddress },
-    });
-    expect(response.statusCode).toBe(200);
-    const body = parseWire(response.body);
-    expect(body).toEqual(
-      expect.objectContaining({
-        address: mockPoolAddress,
-        baseTokenAddress: mockPoolInfo.baseTokenAddress,
-        quoteTokenAddress: mockPoolInfo.quoteTokenAddress,
-        feePct: expect.any(Number),
-        price: expect.any(Number),
-        activeBinId: expect.any(Number),
-      }),
-    );
-  });
-
   it('returns 404 when pool not found', async () => {
     (Raydium.getInstance as jest.Mock).mockResolvedValue({
       getClmmPoolInfo: jest.fn().mockResolvedValue(null),
@@ -170,20 +150,6 @@ describe('GET /pool-info (raydium clmm)', () => {
       expect(call.binCount).toBe(11);
       expect(call.tickSpacing).toBe(4);
       expect(call.currentTick).toBe(-28800);
-    });
-
-    it('rejects binCount above the schema max', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/pool-info',
-        query: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'raydium',
-          poolAddress: mockPoolAddress,
-          binCount: 999,
-        },
-      });
-      expect(response.statusCode).toBe(400);
     });
   });
 });

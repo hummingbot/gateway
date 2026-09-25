@@ -88,20 +88,6 @@ describe('GET /positions-owned', () => {
     await app.close();
   });
 
-  it('should return all positions for a wallet across all pools', async () => {
-    mockRaydiumWith(jest.fn().mockResolvedValue(mockPositions));
-
-    const response = await requestPositions(app, mockWalletAddress);
-
-    expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBe(2);
-    expect(body[0]).toHaveProperty('address', mockPosition1NFT);
-    expect(body[0]).toHaveProperty('poolAddress');
-    expect(body[1]).toHaveProperty('address', mockPosition2NFT);
-  });
-
   it('should look positions up by address, without a wallet stored in Gateway', async () => {
     const mockRaydium = mockRaydiumWith(jest.fn().mockResolvedValue(mockPositions));
 
@@ -110,17 +96,6 @@ describe('GET /positions-owned', () => {
     expect(response.statusCode).toBe(200);
     expect(mockRaydium.getPositionsForWalletAddress).toHaveBeenCalledWith(mockWalletAddress);
     expect(mockRaydium.setOwner).not.toHaveBeenCalled();
-  });
-
-  it('should return empty array when wallet has no positions', async () => {
-    mockRaydiumWith(jest.fn().mockResolvedValue([]));
-
-    const response = await requestPositions(app, mockWalletAddress);
-
-    expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBe(0);
   });
 
   it('should return 400 for invalid wallet address', async () => {

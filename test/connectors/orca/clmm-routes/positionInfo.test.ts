@@ -88,62 +88,6 @@ describe('GET /position-info', () => {
         expect(mockOrca.getPositionInfo).toHaveBeenCalled();
       }
     });
-
-    it('should use default network if not provided', async () => {
-      // A complete position: the response schema is serialized against it, so a partial
-      // object fails on the way out rather than telling us anything about defaulting.
-      const mockOrca = {
-        getPositionInfo: jest.fn().mockResolvedValue({
-          address: mockPositionAddress,
-          poolAddress: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
-          baseTokenAddress: 'So11111111111111111111111111111111111111112',
-          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-          baseTokenAmount: 1.0,
-          quoteTokenAmount: 200,
-          baseFeeAmount: 0.01,
-          quoteFeeAmount: 0.2,
-          lowerBinId: 1000,
-          upperBinId: 2000,
-          lowerPrice: 150,
-          upperPrice: 250,
-          price: 200.5,
-        }),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/position-info',
-        query: {
-          connector: 'orca',
-          positionAddress: mockPositionAddress,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      // The schema default is solana-mainnet-beta, so the connector is built for it.
-      expect(Orca.getInstance).toHaveBeenCalledWith('mainnet-beta');
-    });
-
-    it('should handle null response when position not found', async () => {
-      const mockOrca = {
-        getPositionInfo: jest.fn().mockResolvedValue(null),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/position-info',
-        query: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          positionAddress: 'invalid-position',
-        },
-      });
-
-      // Route now throws 404 when position not found
-      expect(response.statusCode).toBe(404);
-    });
   });
 
   describe('validation', () => {

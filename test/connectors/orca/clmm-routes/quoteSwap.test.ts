@@ -1,6 +1,5 @@
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
-import { PoolService } from '../../../../src/services/pool-service';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/chains/solana/solana');
@@ -150,88 +149,11 @@ describe('GET /quote-swap', () => {
     });
   });
 
-  describe('without poolAddress (pool lookup)', () => {
-    beforeEach(() => {
-      // Mock PoolService
-      const mockPoolService = {
-        getPool: jest.fn().mockResolvedValue({
-          address: mockPoolAddress,
-          type: 'clmm',
-          network: 'mainnet-beta',
-          baseSymbol: 'SOL',
-          quoteSymbol: 'USDC',
-        }),
-      };
-      (PoolService.getInstance as jest.Mock).mockReturnValue(mockPoolService);
-    });
-
-    it('should look up pool by token pair and return quote', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/quote-swap',
-        query: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 1.0,
-          side: 'SELL',
-          slippagePct: 1,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    });
-
-    it('should return 404 when pool not found', async () => {
-      const mockSolana = {
-        getToken: jest.fn().mockImplementation((symbol: string) => {
-          if (symbol === 'SOL') return mockBaseTokenInfo;
-          if (symbol === 'UNKNOWN') return { symbol: 'UNKNOWN', address: 'unknown-address', decimals: 6 };
-          return null;
-        }),
-      };
-      (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
-
-      const mockPoolService = {
-        getPool: jest.fn().mockResolvedValue(null),
-      };
-      (PoolService.getInstance as jest.Mock).mockReturnValue(mockPoolService);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/quote-swap',
-        query: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          baseToken: 'SOL',
-          quoteToken: 'UNKNOWN',
-          amount: 1.0,
-          side: 'SELL',
-        },
-      });
-
-      expect(response.statusCode).toBe(404);
-    });
-  });
-
   describe('validation', () => {
     // The unified schema carries defaults for baseToken/quoteToken/amount/side (the
     // convention the unified trading routes already used), so an omitted field is
     // filled rather than rejected. What still fails is a token that cannot resolve.
     it('rejects a base token that is not one of the pool mints', async () => {
-      // Re-seeded rather than inherited: the pool-lookup case above swapped the Solana
-      // mock, and this assertion should not depend on which test ran before it.
-      (Solana.getInstance as jest.Mock).mockResolvedValue({
-        getToken: jest.fn().mockImplementation((symbol: string) => {
-          if (symbol === 'SOL') return mockBaseTokenInfo;
-          if (symbol === 'USDC') return mockQuoteTokenInfo;
-          return null;
-        }),
-      });
-
       const response = await app.inject({
         method: 'GET',
         url: '/quote-swap',

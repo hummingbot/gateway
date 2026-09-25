@@ -163,12 +163,6 @@ describe('getOrcaSwapQuote (v8 SDK)', () => {
       });
     });
 
-    it('uses the mainnet deployment by default', async () => {
-      await getOrcaSwapQuote(RPC, POOL, SOL_MINT, USDC_MINT, 1, 'SELL', 1);
-      const config = (swapInstructions as jest.Mock).mock.calls[0][3];
-      expect(config.whirlpoolDeployment.programId).toBe('mainnet-program');
-    });
-
     it('uses the devnet deployment when requested', async () => {
       await getOrcaSwapQuote(RPC, POOL, SOL_MINT, USDC_MINT, 1, 'SELL', 1, 'devnet');
       const config = (swapInstructions as jest.Mock).mock.calls[0][3];

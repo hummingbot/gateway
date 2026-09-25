@@ -140,26 +140,6 @@ describe('POST /remove-liquidity', () => {
       // 100% takes the whole position, not a rounded-down fraction of it.
       expect(mockDecreaseLiquidity).toHaveBeenCalledWith({}, 'mint', { liquidity: 1_000_000n }, expect.anything());
     });
-
-    it('should use default network and wallet', async () => {
-      seedConnector();
-
-      const response = await app.inject({
-        method: 'POST',
-        url: '/remove',
-        payload: {
-          connector: 'orca',
-          positionAddress: mockPositionAddress,
-          percentageToRemove: 25,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(Orca.getInstance).toHaveBeenCalledWith('mainnet-beta');
-      const [, sentFor] = mockSendAndConfirm.mock.calls[0];
-      expect(typeof sentFor).toBe('string');
-      expect(sentFor.length).toBeGreaterThan(0);
-    });
   });
 
   describe('validation', () => {

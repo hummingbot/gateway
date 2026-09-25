@@ -46,16 +46,9 @@ describe('meteora AMM removeLiquidity — full-removal delegation', () => {
     expect(result.data?.positionRentRefunded).toBe(0.0099);
   });
 
-  it('does not delegate below 100% — the position stays open and refunds nothing', async () => {
-    const { removeLiquidity } = await import('../../../../src/connectors/meteora/amm-routes/removeLiquidity');
-
-    // The partial path reaches the chain, which is not available here. What matters is
-    // that it got past the delegation branch rather than being answered by the mock.
-    await expect(removeLiquidity('mainnet-beta', WALLET, POOL, POSITION, 50, 1)).rejects.toBeDefined();
-    expect(closePosition).not.toHaveBeenCalled();
-  });
-
-  it.each([0.0001, 25, 99.9999])('does not delegate at %s%%', async (pct) => {
+  // The partial path reaches the chain, which is not available here. What matters is
+  // that it got past the delegation branch rather than being answered by the mock.
+  it.each([0.0001, 25, 50, 99.9999])('does not delegate at %s%%', async (pct) => {
     const { removeLiquidity } = await import('../../../../src/connectors/meteora/amm-routes/removeLiquidity');
     await expect(removeLiquidity('mainnet-beta', WALLET, POOL, POSITION, pct, 1)).rejects.toBeDefined();
     expect(closePosition).not.toHaveBeenCalled();

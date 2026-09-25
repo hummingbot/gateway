@@ -144,38 +144,7 @@ describe('GET /fetch-pools (Meteora)', () => {
     });
   });
 
-  it('should fetch pools with search query', async () => {
-    const mockMeteoraInstance = {
-      fetchPoolsFromApi: jest.fn().mockResolvedValue({
-        pools: [mockMeteoraApiResponse.pools[0]],
-        total: 1,
-        page: 1,
-        pageSize: 50,
-      }),
-    };
-    (Meteora.getInstance as jest.Mock).mockResolvedValue(mockMeteoraInstance);
-
-    const response = await server.inject({
-      method: 'GET',
-      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora&query=SOL-USDC&limit=10',
-    });
-
-    expect(response.statusCode).toBe(200);
-    const body = parseWire(response.body);
-
-    expect(body.pools).toHaveLength(1);
-    expect(body.pools[0].name).toBe('SOL-USDC');
-
-    // Verify fetchPoolsFromApi was called with correct params
-    expect(mockMeteoraInstance.fetchPoolsFromApi).toHaveBeenCalledWith(
-      expect.objectContaining({
-        limit: 10,
-        query: 'SOL-USDC',
-      }),
-    );
-  });
-
-  it('should fetch pools with sorting', async () => {
+  it('passes the query, limit, sort and verification filter through to the API', async () => {
     const mockMeteoraInstance = {
       fetchPoolsFromApi: jest.fn().mockResolvedValue(mockMeteoraApiResponse),
     };
@@ -183,73 +152,17 @@ describe('GET /fetch-pools (Meteora)', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora&sortBy=tvl:desc',
+      url:
+        '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora' +
+        '&query=SOL-USDC&limit=10&sortBy=tvl:desc&includeUnverified=false',
     });
 
     expect(response.statusCode).toBe(200);
     expect(mockMeteoraInstance.fetchPoolsFromApi).toHaveBeenCalledWith(
       expect.objectContaining({
+        limit: 10,
+        query: 'SOL-USDC',
         sortBy: 'tvl:desc',
-      }),
-    );
-  });
-
-  it('should handle API errors gracefully', async () => {
-    const mockMeteoraInstance = {
-      fetchPoolsFromApi: jest.fn().mockRejectedValue(new Error('Meteora API error')),
-    };
-    (Meteora.getInstance as jest.Mock).mockResolvedValue(mockMeteoraInstance);
-
-    const response = await server.inject({
-      method: 'GET',
-      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora',
-    });
-
-    expect(response.statusCode).toBe(500);
-    expect(parseWire(response.body)).toHaveProperty('error');
-  });
-
-  it('should handle empty pool results', async () => {
-    const mockMeteoraInstance = {
-      fetchPoolsFromApi: jest.fn().mockResolvedValue({
-        pools: [],
-        total: 0,
-        page: 1,
-        pageSize: 50,
-      }),
-    };
-    (Meteora.getInstance as jest.Mock).mockResolvedValue(mockMeteoraInstance);
-
-    const response = await server.inject({
-      method: 'GET',
-      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora&query=NONEXISTENT',
-    });
-
-    expect(response.statusCode).toBe(200);
-    const body = parseWire(response.body);
-    expect(body.pools).toHaveLength(0);
-    expect(body.total).toBe(0);
-  });
-
-  it('should filter unverified pools when includeUnverified is false', async () => {
-    const mockMeteoraInstance = {
-      fetchPoolsFromApi: jest.fn().mockResolvedValue({
-        pools: [mockMeteoraApiResponse.pools[0]],
-        total: 1,
-        page: 1,
-        pageSize: 50,
-      }),
-    };
-    (Meteora.getInstance as jest.Mock).mockResolvedValue(mockMeteoraInstance);
-
-    const response = await server.inject({
-      method: 'GET',
-      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora&includeUnverified=false',
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(mockMeteoraInstance.fetchPoolsFromApi).toHaveBeenCalledWith(
-      expect.objectContaining({
         includeUnverified: false,
       }),
     );

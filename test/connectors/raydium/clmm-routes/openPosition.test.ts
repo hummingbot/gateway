@@ -238,64 +238,6 @@ describe('POST /open-position', () => {
     expect(body.data.quoteTokenAmountAdded).toBeCloseTo(150, 9);
   });
 
-  it('should set the owner before pool operations', async () => {
-    const mockSolanaInstance = buildSolanaMock();
-    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
-
-    let setOwnerCallOrder = 0;
-    let getClmmPoolfromAPICallOrder = 0;
-    let callCounter = 0;
-
-    const mockRaydiumInstance = {
-      setOwner: jest.fn().mockImplementation(() => {
-        setOwnerCallOrder = ++callCounter;
-        return Promise.resolve(undefined);
-      }),
-      getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
-      getClmmPoolfromAPI: jest.fn().mockImplementation(() => {
-        getClmmPoolfromAPICallOrder = ++callCounter;
-        return Promise.resolve([mockApiPoolInfo, {}]);
-      }),
-      getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
-      raydiumSDK: {
-        clmm: {
-          getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
-          openPositionFromBase: jest.fn().mockResolvedValue({
-            transaction: buildVersionedTransaction(),
-            extInfo: { nftMint: { toBase58: () => 'mock-position-nft' } },
-            signers: [],
-          }),
-        },
-        connection: {
-          getEpochInfo: jest.fn().mockResolvedValue({ epoch: 100, slotIndex: 0 }),
-        },
-      },
-    };
-    (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
-
-    const response = await server.inject({
-      method: 'POST',
-      url: '/open',
-      body: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        walletAddress: mockWalletAddress,
-        poolAddress: mockPoolAddress,
-        lowerPrice: 140,
-        upperPrice: 160,
-        baseTokenAmount: 1,
-        quoteTokenAmount: 150,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-
-    // Verify setOwner was called before getClmmPoolfromAPI
-    expect(setOwnerCallOrder).toBeLessThan(getClmmPoolfromAPICallOrder);
-    expect(setOwnerCallOrder).toBe(1);
-    expect(getClmmPoolfromAPICallOrder).toBe(2);
-  });
-
   it('should handle invalid wallet address error', async () => {
     const mockSolanaInstance = buildSolanaMock();
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);

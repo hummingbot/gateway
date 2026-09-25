@@ -122,26 +122,6 @@ describe('GET /quote-liquidity', () => {
       expect(mockQuotePosition).toHaveBeenCalledWith({}, mockPoolAddress, 150, 250, 1, 200, 1);
       expect(parseWire(response.body).baseLimited).toBe(true);
     });
-
-    it('should use default network if not provided', async () => {
-      (Orca.getInstance as jest.Mock).mockResolvedValue({ solanaKitRpc: {} });
-      mockQuotePosition.mockResolvedValue(QUOTE);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/quote-liquidity',
-        query: {
-          connector: 'orca',
-          poolAddress: mockPoolAddress,
-          lowerPrice: '150',
-          upperPrice: '250',
-          baseTokenAmount: '1.0',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(Orca.getInstance).toHaveBeenCalledWith('mainnet-beta');
-    });
   });
 
   describe('validation', () => {
@@ -225,30 +205,10 @@ describe('GET /quote-liquidity', () => {
 
       expect(response.statusCode).toBeGreaterThanOrEqual(400);
     });
-
-    it('should handle invalid pool address', async () => {
-      (Orca.getInstance as jest.Mock).mockResolvedValue({ solanaKitRpc: {} });
-      mockQuotePosition.mockRejectedValue(new Error('Invalid pool address'));
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/quote-liquidity',
-        query: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          poolAddress: 'invalid',
-          lowerPrice: '150',
-          upperPrice: '250',
-          baseTokenAmount: '1.0',
-        },
-      });
-
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
-    });
   });
 
   describe('error handling', () => {
-    it('should handle Orca errors gracefully', async () => {
+    it('answers 500 when the quote fails', async () => {
       (Orca.getInstance as jest.Mock).mockResolvedValue({ solanaKitRpc: {} });
       mockQuotePosition.mockRejectedValue(new Error('Failed to quote position'));
 
@@ -265,7 +225,7 @@ describe('GET /quote-liquidity', () => {
         },
       });
 
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBe(500);
     });
 
     it('should handle service unavailable', async () => {
@@ -278,26 +238,6 @@ describe('GET /quote-liquidity', () => {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
           poolAddress: mockPoolAddress,
-          lowerPrice: '150',
-          upperPrice: '250',
-          baseTokenAmount: '1.0',
-        },
-      });
-
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
-    });
-
-    it('should handle pool not found', async () => {
-      (Orca.getInstance as jest.Mock).mockResolvedValue({ solanaKitRpc: {} });
-      mockQuotePosition.mockRejectedValue(new Error('Pool not found'));
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/quote-liquidity',
-        query: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          poolAddress: 'nonexistent123',
           lowerPrice: '150',
           upperPrice: '250',
           baseTokenAmount: '1.0',

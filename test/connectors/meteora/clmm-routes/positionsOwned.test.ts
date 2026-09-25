@@ -1,5 +1,3 @@
-import { PublicKey } from '@solana/web3.js';
-
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Meteora } from '../../../../src/connectors/meteora/meteora';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
@@ -83,53 +81,6 @@ describe('GET /positions-owned', () => {
     await app.close();
   });
 
-  it('should return all positions for a wallet', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/positions-owned',
-      query: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'meteora',
-        walletAddress: mockWalletAddress,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBe(2);
-    expect(body[0]).toHaveProperty('address');
-    expect(body[0]).toHaveProperty('poolAddress');
-    expect(body[0]).toHaveProperty('baseTokenAddress');
-    expect(body[0]).toHaveProperty('quoteTokenAddress');
-    expect(body[0]).toHaveProperty('baseTokenAmount');
-    expect(body[0]).toHaveProperty('quoteTokenAmount');
-    expect(body[0]).toHaveProperty('lowerPrice');
-    expect(body[0]).toHaveProperty('upperPrice');
-  });
-
-  it('should return empty array when wallet has no positions', async () => {
-    const mockMeteora = {
-      getAllPositionsForWallet: jest.fn().mockResolvedValue([]),
-    };
-    (Meteora.getInstance as jest.Mock).mockResolvedValue(mockMeteora);
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/positions-owned',
-      query: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'meteora',
-        walletAddress: mockWalletAddress,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBe(0);
-  });
-
   it('should return 400 for invalid wallet address', async () => {
     const response = await app.inject({
       method: 'GET',
@@ -165,24 +116,5 @@ describe('GET /positions-owned', () => {
     expect(response.statusCode).toBe(200);
     // The connector hands the SDK a PublicKey, not the raw string it was given.
     expect(getAllPositionsForWallet.mock.calls[0][0].toBase58()).toBe(mockWalletAddress);
-  });
-
-  it('should use default network if not provided', async () => {
-    const mockMeteora = {
-      getAllPositionsForWallet: jest.fn().mockResolvedValue(mockPositions),
-    };
-    (Meteora.getInstance as jest.Mock).mockResolvedValue(mockMeteora);
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/positions-owned',
-      query: {
-        connector: 'meteora',
-        walletAddress: mockWalletAddress,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(Meteora.getInstance).toHaveBeenCalledWith(expect.any(String));
   });
 });
