@@ -1,3 +1,4 @@
+import { Decimal } from 'decimal.js';
 import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
@@ -214,8 +215,10 @@ export class ZeroX {
   }
 
   public parseTokenAmount(amount: number, decimals: number): string {
-    // Convert a decimal amount to the token's smallest unit
-    const amountStr = amount.toFixed(decimals);
+    // Convert a decimal amount to the token's smallest unit. Through Decimal, not
+    // Number.toFixed: (0.1).toFixed(18) is "0.100000000000000006", which asked 0x to
+    // swap 6 wei more than requested.
+    const amountStr = new Decimal(amount).toFixed(decimals, Decimal.ROUND_DOWN);
     const [whole, decimal = ''] = amountStr.split('.');
     const paddedDecimal = decimal.padEnd(decimals, '0');
     const combined = whole + paddedDecimal;

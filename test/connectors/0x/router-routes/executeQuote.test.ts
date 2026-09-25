@@ -1,15 +1,15 @@
-import { BigNumber, providers } from 'ethers';
+import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { ZeroX } from '../../../../src/connectors/0x/0x';
 import { quoteCache } from '../../../../src/services/quote-cache';
-import { TokenService } from '../../../../src/services/token-service';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/0x/0x');
-jest.mock('../../../../src/services/token-service');
+
+const RealZeroX = jest.requireActual('../../../../src/connectors/0x/0x').ZeroX;
 
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
@@ -19,73 +19,56 @@ const buildApp = async () => {
   return server;
 };
 
-const mockWETH = {
-  symbol: 'WETH',
-  address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
-  decimals: 18,
-  name: 'Wrapped Ether',
-};
+const WALLET = '0x1234567890123456789012345678901234567890';
+const QUOTE_ID = 'test-quote-id';
 
-const mockUSDC = {
-  symbol: 'USDC',
-  address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-  decimals: 6,
-  name: 'USD Coin',
-};
+const mockWETH = { symbol: 'WETH', address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', decimals: 18 };
+const mockUSDC = { symbol: 'USDC', address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', decimals: 6 };
 
-const mockWallet = {
-  address: '0x1234567890123456789012345678901234567890',
-  sendTransaction: jest.fn(),
-};
-
-const mockTransaction = {
-  hash: '0xabcdef1234567890',
-  wait: jest.fn(),
-};
-
-const mockReceipt = {
-  transactionHash: '0xabcdef1234567890',
-  status: 1,
-  gasUsed: BigNumber.from('200000'),
-  effectiveGasPrice: BigNumber.from('30000000000'), // 30 gwei
-};
-
+// The fields of a 0x firm quote the execute path reads.
 const mockQuoteData = {
-  chainId: 1,
-  price: '1500',
-  estimatedPriceImpact: '0.001',
-  value: '0',
-  gasPrice: '30000000000',
-  gas: '200000',
-  estimatedGas: '200000',
-  protocolFee: '0',
-  minimumProtocolFee: '0',
-  buyTokenAddress: mockUSDC.address,
-  buyAmount: '150000000',
   sellTokenAddress: mockWETH.address,
-  sellAmount: '100000000000000000',
-  sources: [],
+  sellAmount: '100000000000000000', // 0.1 WETH
+  buyTokenAddress: mockUSDC.address,
+  buyAmount: '150000000', // 150 USDC
   allowanceTarget: '0xdef1c0ded9bec7f1a1670819833240f027b25eff',
-  sellTokenToEthRate: '1',
-  buyTokenToEthRate: '0.0006666',
-  expectedSlippage: null,
-  // Quote-specific fields
-  guaranteedPrice: '1500',
   to: '0xdef1c0ded9bec7f1a1670819833240f027b25eff',
   data: '0x1234567890',
-  orders: [],
-  fees: {
-    zeroExFee: {
-      feeType: 'none',
-      feeToken: '0x0',
-      feeAmount: '0',
-      billingType: 'none',
-    },
-  },
-  auxiliaryChainData: {},
-} as any;
+  value: '0',
+  gas: '250000',
+  estimatedGas: '200000',
+};
 
-describe('POST /execute-quote', () => {
+const mockEthereum = (allowance: string) => {
+  const tokens: Record<string, any> = { [mockWETH.address]: mockWETH, [mockUSDC.address]: mockUSDC };
+  const txResponse = { hash: '0xabcdef' };
+  const txReceipt = { transactionHash: '0xabcdef', status: 1 };
+  const wallet = { address: WALLET, sendTransaction: jest.fn().mockResolvedValue(txResponse) };
+  const ethereum = {
+    wallet,
+    txResponse,
+    txReceipt,
+    nativeTokenSymbol: 'ETH',
+    getWallet: jest.fn().mockResolvedValue(wallet),
+    getContract: jest.fn().mockReturnValue({}),
+    getToken: jest.fn(async (address: string) => tokens[address]),
+    getERC20Allowance: jest.fn().mockResolvedValue({ value: BigNumber.from(allowance) }),
+    approveERC20: jest.fn(),
+    handleTransactionExecution: jest.fn().mockResolvedValue(txReceipt),
+    handleExecuteQuoteTransactionConfirmation: jest.fn().mockReturnValue({ signature: '0xabcdef', status: 1 }),
+  };
+  (Ethereum.getInstance as jest.Mock).mockResolvedValue(ethereum);
+  return ethereum;
+};
+
+const execute = (server: any, quoteId = QUOTE_ID) =>
+  server.inject({
+    method: 'POST',
+    url: '/execute-quote',
+    payload: { chainNetwork: 'ethereum-mainnet', connector: '0x', walletAddress: WALLET, quoteId },
+  });
+
+describe('POST /execute-quote (0x)', () => {
   let server: any;
 
   beforeAll(async () => {
@@ -98,208 +81,55 @@ describe('POST /execute-quote', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    quoteCache.delete('test-quote-id');
-
-    // Mock TokenService
-    const mockTokenService = {
-      getToken: jest.fn().mockImplementation(async (_chain, _network, addressOrSymbol) => {
-        // Handle both address and symbol lookups
-        const addressLower = addressOrSymbol.toLowerCase();
-        if (addressLower === mockWETH.address.toLowerCase() || addressOrSymbol === 'WETH') {
-          return Promise.resolve(mockWETH);
-        }
-        if (addressLower === mockUSDC.address.toLowerCase() || addressOrSymbol === 'USDC') {
-          return Promise.resolve(mockUSDC);
-        }
-        return Promise.resolve(null);
-      }),
-    };
-    (TokenService.getInstance as jest.Mock).mockReturnValue(mockTokenService);
+    quoteCache.delete(QUOTE_ID);
+    (ZeroX.getInstance as jest.Mock).mockResolvedValue({ formatTokenAmount: RealZeroX.prototype.formatTokenAmount });
   });
 
-  it('should execute a previously fetched quote', async () => {
-    const quoteId = 'test-quote-id';
-    quoteCache.set(quoteId, '0x', mockQuoteData);
+  it("sends the quote's transaction from the wallet and confirms it against the quoted amounts", async () => {
+    quoteCache.set(QUOTE_ID, '0x', mockQuoteData, { slippagePct: 0.5 });
+    const ethereum = mockEthereum('1000000000000000000');
 
-    mockWallet.sendTransaction.mockResolvedValue(mockTransaction);
-    mockTransaction.wait.mockResolvedValue(mockReceipt);
-
-    const mockEthereumInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getContract: jest.fn().mockReturnValue({}),
-      getERC20Allowance: jest.fn().mockResolvedValue({
-        value: BigNumber.from('1000000000000000000'),
-        decimals: 18,
-      }),
-      nativeTokenSymbol: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
-      getToken: jest.fn().mockImplementation((symbolOrAddress) => {
-        if (symbolOrAddress.toLowerCase() === mockWETH.address.toLowerCase() || symbolOrAddress === 'WETH')
-          return mockWETH;
-        if (symbolOrAddress.toLowerCase() === mockUSDC.address.toLowerCase() || symbolOrAddress === 'USDC')
-          return mockUSDC;
-        return null;
-      }),
-      getTokenByAddress: jest.fn().mockImplementation((address) => {
-        if (address === mockWETH.address) return mockWETH;
-        if (address === mockUSDC.address) return mockUSDC;
-        return null;
-      }),
-      handleTransactionExecution: jest.fn().mockImplementation((tx) => {
-        return {
-          transactionHash: tx.hash,
-          blockHash: '',
-          blockNumber: null,
-          transactionIndex: null,
-          from: tx.from,
-          to: tx.to || null,
-          cumulativeGasUsed: BigNumber.from(0),
-          gasUsed: BigNumber.from(0),
-          contractAddress: null,
-          logs: [],
-          logsBloom: '',
-          status: 1,
-          effectiveGasPrice: BigNumber.from(0),
-        } as providers.TransactionReceipt;
-      }),
-      handleExecuteQuoteTransactionConfirmation: jest
-        .fn()
-        .mockImplementation((txReceipt, inputToken, outputToken, amountIn, amountOut) => {
-          if (!txReceipt) {
-            return { signature: '', status: 0 };
-          }
-          return {
-            signature: txReceipt.transactionHash,
-            status: txReceipt.status,
-            data: {
-              tokenIn: inputToken,
-              tokenOut: outputToken,
-              amountIn,
-              amountOut,
-              fee: 0.006,
-              baseTokenBalanceChange: 0,
-              quoteTokenBalanceChange: 0,
-            },
-          };
-        }),
-    };
-    (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
-    (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue('0x1234567890123456789012345678901234567890');
-
-    const mockZeroXInstance = {
-      formatTokenAmount: jest
-        .fn()
-        .mockReturnValueOnce('0.1') // sellAmount (amountIn)
-        .mockReturnValueOnce('150'), // buyAmount (amountOut)
-    };
-    (ZeroX.getInstance as jest.Mock).mockResolvedValue(mockZeroXInstance);
-
-    const response = await server.inject({
-      method: 'POST',
-      url: '/execute-quote',
-      payload: {
-        chainNetwork: 'ethereum-mainnet',
-        connector: '0x',
-        walletAddress: '0x1234567890123456789012345678901234567890',
-        quoteId: quoteId,
-      },
-    });
+    const response = await execute(server);
 
     expect(response.statusCode).toBe(200);
-    const body = parseWire(response.body);
-    expect(body).toHaveProperty('signature', mockReceipt.transactionHash);
-    expect(body).toHaveProperty('status', 1);
-    expect(Number(body.data.amountIn)).toBe(0.1);
-    expect(body.data).toHaveProperty('amountOut', 150);
-    expect(body.data).toHaveProperty('fee', 0.006);
-    expect(body.data).toHaveProperty('baseTokenBalanceChange', 0);
-    expect(body.data).toHaveProperty('quoteTokenBalanceChange', 0);
-    expect(body.data).toHaveProperty('tokenIn', mockWETH.address);
-    expect(body.data).toHaveProperty('tokenOut', mockUSDC.address);
+    // estimatedGas wins over gas as the limit.
+    expect(ethereum.wallet.sendTransaction).toHaveBeenCalledWith({
+      to: mockQuoteData.to,
+      data: mockQuoteData.data,
+      value: mockQuoteData.value,
+      gasLimit: 200000,
+    });
+    expect(ethereum.handleTransactionExecution).toHaveBeenCalledWith(ethereum.txResponse);
+    expect(ethereum.handleExecuteQuoteTransactionConfirmation).toHaveBeenCalledWith(
+      ethereum.txReceipt,
+      mockWETH.address,
+      mockUSDC.address,
+      0.1,
+      150,
+      undefined,
+      undefined,
+      0.5,
+    );
+    expect(parseWire(response.body)).toMatchObject({ signature: '0xabcdef', status: 1 });
+    expect(quoteCache.get(QUOTE_ID, '0x')).toBeNull();
   });
 
   it('should return 400 if quote not found', async () => {
-    const response = await server.inject({
-      method: 'POST',
-      url: '/execute-quote',
-      payload: {
-        chainNetwork: 'ethereum-mainnet',
-        connector: '0x',
-        walletAddress: '0x1234567890123456789012345678901234567890',
-        quoteId: 'non-existent-quote',
-      },
-    });
+    const response = await execute(server, 'non-existent-quote');
 
     expect(response.statusCode).toBe(400);
-    expect(parseWire(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body).message).toBe('Quote not found or expired');
   });
 
-  it('should throw error if allowance is insufficient', async () => {
-    const quoteId = 'test-quote-id';
-    quoteCache.set(quoteId, '0x', mockQuoteData);
+  it('refuses to send when the allowance does not cover the sell amount, and does not approve', async () => {
+    quoteCache.set(QUOTE_ID, '0x', mockQuoteData, { slippagePct: 0.5 });
+    const ethereum = mockEthereum('0');
 
-    mockWallet.sendTransaction.mockResolvedValue(mockTransaction);
-    mockTransaction.wait.mockResolvedValue(mockReceipt);
-
-    const mockEthereumInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getContract: jest.fn().mockReturnValue({}),
-      getERC20Allowance: jest.fn().mockResolvedValue({ value: BigNumber.from('0') }),
-      approveERC20: jest.fn().mockResolvedValue({}),
-      nativeTokenSymbol: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
-      getToken: jest.fn().mockImplementation((symbolOrAddress) => {
-        if (symbolOrAddress.toLowerCase() === mockWETH.address.toLowerCase() || symbolOrAddress === 'WETH')
-          return mockWETH;
-        if (symbolOrAddress.toLowerCase() === mockUSDC.address.toLowerCase() || symbolOrAddress === 'USDC')
-          return mockUSDC;
-        return null;
-      }),
-      getTokenByAddress: jest.fn().mockImplementation((address) => {
-        if (address === mockWETH.address) return mockWETH;
-        if (address === mockUSDC.address) return mockUSDC;
-        return null;
-      }),
-      handleExecuteQuoteTransactionConfirmation: jest
-        .fn()
-        .mockImplementation((txReceipt, inputToken, outputToken, amountIn, amountOut) => {
-          if (!txReceipt) {
-            return { signature: '', status: 0 };
-          }
-          return {
-            signature: txReceipt.transactionHash,
-            status: txReceipt.status,
-            data: {
-              tokenIn: inputToken,
-              tokenOut: outputToken,
-              amountIn,
-              amountOut,
-              fee: 0.006,
-              baseTokenBalanceChange: 0,
-              quoteTokenBalanceChange: 0,
-            },
-          };
-        }),
-    };
-    (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
-
-    const mockZeroXInstance = {
-      formatTokenAmount: jest.fn().mockReturnValue('0.1'),
-    };
-    (ZeroX.getInstance as jest.Mock).mockResolvedValue(mockZeroXInstance);
-
-    const response = await server.inject({
-      method: 'POST',
-      url: '/execute-quote',
-      payload: {
-        chainNetwork: 'ethereum-mainnet',
-        connector: '0x',
-        walletAddress: '0x1234567890123456789012345678901234567890',
-        quoteId: quoteId,
-      },
-    });
+    const response = await execute(server);
 
     expect(response.statusCode).toBe(400);
-    const body = parseWire(response.body);
-    expect(body.message).toContain('Insufficient allowance');
-    expect(mockEthereumInstance.approveERC20).not.toHaveBeenCalled();
+    expect(parseWire(response.body).message).toBe('Insufficient allowance for WETH. Required: 0.1, Current: 0');
+    expect(ethereum.approveERC20).not.toHaveBeenCalled();
+    expect(ethereum.wallet.sendTransaction).not.toHaveBeenCalled();
   });
 });
