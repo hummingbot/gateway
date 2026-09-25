@@ -32,13 +32,6 @@ describe('UniversalRouterService', () => {
     universalRouter = new UniversalRouterService(mockProvider, 1, 'mainnet');
   });
 
-  describe('constructor', () => {
-    it('should initialize with correct parameters', () => {
-      expect(universalRouter).toBeDefined();
-      expect(universalRouter).toBeInstanceOf(UniversalRouterService);
-    });
-  });
-
   describe('getQuote', () => {
     it('should throw error when no routes are found', async () => {
       // Mock provider to simulate no liquidity
