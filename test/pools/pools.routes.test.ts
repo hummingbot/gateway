@@ -12,6 +12,12 @@ jest.mock('../../src/services/pool-service');
 jest.mock('../../src/services/coingecko-service');
 jest.mock('../../src/services/token-service');
 
+// The connector a pool is read from when the caller doesn't supply its facts.
+const mockGetClmmPoolInfo = jest.fn();
+jest.mock('../../src/connectors/raydium/raydium', () => ({
+  Raydium: { getInstance: jest.fn(async () => ({ getClmmPoolInfo: mockGetClmmPoolInfo })) },
+}));
+
 // Mock @fastify/sensible
 jest.mock('@fastify/sensible', () => {
   const plugin = jest.fn(async (fastify) => {
@@ -393,6 +399,61 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('reading a pool from its connector', () => {
+    const POOL = '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv';
+    const addWithoutFee = () =>
+      fastify.inject({
+        method: 'POST',
+        url: '/',
+        payload: {
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'raydium',
+          type: 'clmm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          address: POOL,
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        },
+      });
+    const save = () =>
+      fastify.inject({
+        method: 'POST',
+        url: `/save/${POOL}`,
+        query: { chainNetwork: 'solana-mainnet-beta', connector: 'raydium', type: 'clmm' },
+      });
+    const readFailure = `Failed to fetch pool info for ${POOL} from raydium clmm: 429 Too Many Requests`;
+
+    it('POST /pools answers a failed read with 500 and its cause, adding nothing', async () => {
+      mockGetClmmPoolInfo.mockRejectedValue(new Error('429 Too Many Requests'));
+      const response = await addWithoutFee();
+      expect(response.statusCode).toBe(500);
+      expect(parseWire(response.payload).message).toBe(readFailure);
+      expect(mockPoolService.addPool).not.toHaveBeenCalled();
+    });
+
+    it('POST /pools answers a pool the connector does not have with 404', async () => {
+      mockGetClmmPoolInfo.mockResolvedValue(null);
+      const response = await addWithoutFee();
+      expect(response.statusCode).toBe(404);
+      expect(parseWire(response.payload).message).toBe(`Pool ${POOL} not found in raydium clmm on mainnet-beta`);
+    });
+
+    it('POST /pools/save answers a failed read with 500 and its cause', async () => {
+      mockGetClmmPoolInfo.mockRejectedValue(new Error('429 Too Many Requests'));
+      const response = await save();
+      expect(response.statusCode).toBe(500);
+      expect(parseWire(response.payload).message).toBe(readFailure);
+    });
+
+    it('POST /pools/save answers a pool the connector does not have with 404', async () => {
+      mockGetClmmPoolInfo.mockResolvedValue(null);
+      const response = await save();
+      expect(response.statusCode).toBe(404);
+      expect(parseWire(response.payload).message).toBe(`Pool ${POOL} not found in raydium clmm on mainnet-beta`);
     });
   });
 

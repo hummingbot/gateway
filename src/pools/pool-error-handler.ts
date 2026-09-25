@@ -29,10 +29,6 @@ export function handlePoolError(fastify: FastifyInstance, error: any, operation:
     throw fastify.httpErrors.badRequest(error.message);
   }
 
-  if (error.message.includes('Unable to fetch pool-info')) {
-    throw fastify.httpErrors.badRequest(error.message);
-  }
-
   if (error.message.includes('Could not resolve symbols')) {
     throw fastify.httpErrors.badRequest(error.message);
   }
