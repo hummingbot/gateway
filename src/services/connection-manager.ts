@@ -54,11 +54,7 @@ export interface Connector {
   // TODO: Add shared connector properties (e.g., config, getQuote, etc.)
 }
 
-export async function getConnector(
-  _chain: string, // Parameter kept for compatibility but no longer used by Uniswap
-  network: string,
-  connector: string | undefined,
-): Promise<Connector> {
+export async function getConnector(network: string, connector: string | undefined): Promise<Connector> {
   // Dynamically import connector classes only when needed
   if (connector === 'uniswap') {
     const { Uniswap } = await import('../connectors/uniswap/uniswap');

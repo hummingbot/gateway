@@ -221,6 +221,3 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
     },
   }) as T;
 }
-
-// Legacy export for backward compatibility
-export { createRateLimitAwareSolanaConnection as createRateLimitAwareConnection };
