@@ -19,6 +19,11 @@ import {
   parsePoolTickSpacing,
   MEMO_PROGRAM_ID,
 } from './pancakeswap-sol.parser';
+import {
+  decodeTickArrayBitmaps,
+  getSwapTickArrayStartIndices,
+  getTickArrayBitmapExtensionAddress,
+} from './pancakeswap-sol.tickarrays';
 
 const clmmIdl = require('./idl/clmm.json') as Idl;
 
@@ -166,9 +171,23 @@ export async function buildSwapV2Instruction(
   // tick_current (4 bytes, i32)
   const tickCurrent = data.readInt32LE(offset);
 
-  // Calculate tick array for current tick
-  const tickArrayStartIndex = getTickArrayStartIndexFromTick(tickCurrent, tickSpacing);
-  const tickArrayAddress = getTickArrayAddress(poolPubkey, tickArrayStartIndex);
+  // The tick arrays the swap walks: the first initialized one in the swap direction, then the
+  // next ones that way, found from the pool's bitmap plus its bitmap extension.
+  if (!inputMint.equals(tokenMint0) && !inputMint.equals(tokenMint1)) {
+    throw new Error(`Input mint ${inputMint} is not in pool ${poolAddress}`);
+  }
+  const zeroForOne = inputMint.equals(tokenMint0);
+  const tickArrayBitmapExtension = getTickArrayBitmapExtensionAddress(poolPubkey);
+  const extensionInfo = await solana.connection.getAccountInfo(tickArrayBitmapExtension);
+  if (!extensionInfo) {
+    throw new Error(`Tick array bitmap extension not found for pool ${poolAddress}: ${tickArrayBitmapExtension}`);
+  }
+  const tickArrayStartIndices = getSwapTickArrayStartIndices(
+    decodeTickArrayBitmaps(data, extensionInfo.data),
+    tickCurrent,
+    tickSpacing,
+    zeroForOne,
+  );
 
   // Determine which vault is input/output based on mints
   const inputVault = inputMint.equals(tokenMint0) ? tokenVault0 : tokenVault1;
@@ -204,10 +223,6 @@ export async function buildSwapV2Instruction(
     is_base_input: isBaseInput,
   });
 
-  // TODO: Implement proper tick array discovery
-  // For now, only include tick array if it exists on-chain
-  const tickArrayInfo = await solana.connection.getAccountInfo(tickArrayAddress);
-
   const accounts = [
     { pubkey: walletPubkey, isSigner: true, isWritable: true }, // payer
     { pubkey: ammConfig, isSigner: false, isWritable: false }, // amm_config
@@ -224,12 +239,11 @@ export async function buildSwapV2Instruction(
     { pubkey: outputMint, isSigner: false, isWritable: false }, // output_vault_mint
   ];
 
-  // Add tick array as remaining account only if it exists
-  if (tickArrayInfo) {
-    accounts.push({ pubkey: tickArrayAddress, isSigner: false, isWritable: true });
-    logger.info(`Including tick array: ${tickArrayAddress.toString()}`);
-  } else {
-    logger.warn(`Tick array not initialized: ${tickArrayAddress.toString()}, skipping`);
+  // Remaining accounts: the bitmap extension (the program recognizes it by address), then the
+  // tick arrays in the order the swap crosses them.
+  accounts.push({ pubkey: tickArrayBitmapExtension, isSigner: false, isWritable: false });
+  for (const startIndex of tickArrayStartIndices) {
+    accounts.push({ pubkey: getTickArrayAddress(poolPubkey, startIndex), isSigner: false, isWritable: true });
   }
 
   const instruction = new TransactionInstruction({
@@ -243,8 +257,8 @@ export async function buildSwapV2Instruction(
     Accounts: ${instruction.keys.length}
     Tick Current: ${tickCurrent}
     Tick Spacing: ${tickSpacing}
-    Tick Array Start: ${tickArrayStartIndex}
-    Tick Array Address: ${tickArrayAddress.toString()}
+    zeroForOne: ${zeroForOne}
+    Tick Arrays: ${tickArrayStartIndices.join(', ')}
     Instruction Data (hex): ${instructionData.toString('hex')}
     amount: ${amount.toString()}
     otherAmountThreshold: ${otherAmountThreshold.toString()}
