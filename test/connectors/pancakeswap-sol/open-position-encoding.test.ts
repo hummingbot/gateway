@@ -1,4 +1,5 @@
 import { BorshCoder } from '@coral-xyz/anchor';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
@@ -30,10 +31,16 @@ const poolAccount = () => {
 };
 
 const decodeBaseFlag = async (baseFlag: boolean | null) => {
-  const solana: any = { connection: { getAccountInfo: jest.fn().mockResolvedValue(poolAccount()) } };
+  // The pool reads as the pool; every other account read is one of its classic SPL mints.
+  const poolAddress = Keypair.generate().publicKey;
+  const pool = poolAccount();
+  const getAccountInfo = jest.fn(async (key: PublicKey) =>
+    key.equals(poolAddress) ? pool : { data: Buffer.alloc(82), owner: TOKEN_PROGRAM_ID },
+  );
+  const solana: any = { connection: { getAccountInfo } };
   const ix = await buildOpenPositionWithToken22NftInstruction(
     solana,
-    Keypair.generate().publicKey,
+    poolAddress,
     Keypair.generate().publicKey,
     Keypair.generate(),
     -100,

@@ -15,19 +15,22 @@ export const MIN_SQRT_PRICE_X64 = new BN('4295048016'); // Minimum sqrt price
 export const MAX_SQRT_PRICE_X64 = new BN('79226673515401279992447579055'); // Maximum sqrt price
 
 /**
- * Helper to detect which token program a mint uses
+ * The token program that owns a mint: classic SPL or Token-2022. Throws when the
+ * mint can't be read, doesn't exist, or is owned by anything else.
  */
 export async function getTokenProgramForMint(solana: Solana, mint: PublicKey): Promise<PublicKey> {
-  // Try Token2022 first
+  let accountInfo;
   try {
-    const accountInfo = await solana.connection.getAccountInfo(mint);
-    if (accountInfo && accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
-      return TOKEN_2022_PROGRAM_ID;
-    }
+    accountInfo = await solana.connection.getAccountInfo(mint);
   } catch (e) {
-    // Fall through to TOKEN_PROGRAM_ID
+    throw new Error(`could not read mint ${mint.toBase58()}: ${e?.message ?? e}`);
   }
-  return TOKEN_PROGRAM_ID;
+  if (!accountInfo) {
+    throw new Error(`mint ${mint.toBase58()} does not exist`);
+  }
+  if (accountInfo.owner.equals(TOKEN_PROGRAM_ID)) return TOKEN_PROGRAM_ID;
+  if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) return TOKEN_2022_PROGRAM_ID;
+  throw new Error(`${mint.toBase58()} is not a token mint: owned by ${accountInfo.owner.toBase58()}`);
 }
 
 /**
