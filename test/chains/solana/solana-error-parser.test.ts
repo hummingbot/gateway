@@ -196,28 +196,15 @@ describe('Solana Error Parser', () => {
         expect(result.errorCode).toBe(6004);
       });
 
-      it('should handle error code 6029 via generic fallback', () => {
-        const errorMessage = `custom program error: 0x178d`;
-        const result = parseSolanaError(errorMessage);
+      it.each([
+        ['0x178d', 6029],
+        ['0x178e', 6030],
+        ['0x178f', 6031],
+      ])('should handle error code %s (%i) via generic fallback', (hex, code) => {
+        const result = parseSolanaError(`custom program error: ${hex}`);
 
         expect(result.type).toBe('SLIPPAGE_EXCEEDED');
-        expect(result.errorCode).toBe(6029);
-      });
-
-      it('should handle error code 6030 via generic fallback', () => {
-        const errorMessage = `custom program error: 0x178e`;
-        const result = parseSolanaError(errorMessage);
-
-        expect(result.type).toBe('SLIPPAGE_EXCEEDED');
-        expect(result.errorCode).toBe(6030);
-      });
-
-      it('should handle error code 6031 via generic fallback', () => {
-        const errorMessage = `custom program error: 0x178f`;
-        const result = parseSolanaError(errorMessage);
-
-        expect(result.type).toBe('SLIPPAGE_EXCEEDED');
-        expect(result.errorCode).toBe(6031);
+        expect(result.errorCode).toBe(code);
       });
     });
 

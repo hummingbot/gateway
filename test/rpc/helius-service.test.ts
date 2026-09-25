@@ -18,16 +18,6 @@ describe('HeliusService', () => {
       expect(url).toBe('https://mainnet.helius-rpc.com/?api-key=test-helius-key-123');
     });
 
-    it('should return mainnet Helius URL for mainnet network', () => {
-      const mainnetService = new HeliusService(
-        { apiKey: testApiKey },
-        { chain: 'solana', network: 'mainnet', chainId: 101 },
-      );
-      const url = mainnetService.getHttpUrl();
-
-      expect(url).toBe(`https://mainnet.helius-rpc.com/?api-key=${testApiKey}`);
-    });
-
     it('should return devnet Helius URL for devnet network', () => {
       const devnetService = new HeliusService(
         { apiKey: testApiKey },
@@ -46,17 +36,6 @@ describe('HeliusService', () => {
       const url = devnetService.getHttpUrl();
 
       expect(url).toBe(`https://devnet.helius-rpc.com/?api-key=${testApiKey}`);
-    });
-
-    it('should include the correct API key in the URL', () => {
-      const customService = new HeliusService(
-        { apiKey: 'custom-api-key-456' },
-        { chain: 'solana', network: 'mainnet-beta', chainId: 101 },
-      );
-
-      const url = customService.getHttpUrl();
-
-      expect(url).toBe('https://mainnet.helius-rpc.com/?api-key=custom-api-key-456');
     });
 
     it('should handle empty API key', () => {

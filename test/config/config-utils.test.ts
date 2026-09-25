@@ -84,6 +84,7 @@ jest.mock('../../src/services/config-manager-v2', () => ({
 }));
 
 // Import after mocking
+import sensible from '@fastify/sensible';
 import { FastifyInstance } from 'fastify';
 
 import { getConfig, updateConfig } from '../../src/config/utils';
@@ -240,12 +241,16 @@ describe('Config Utils - Chain-Network Merge', () => {
       expect(mockSetFn).toHaveBeenCalledWith('solana.defaultWallet', 'directUpdate');
     });
 
-    it('should handle nested paths correctly for chain-level fields', () => {
-      // If someone tries to update a nested path like defaultWallet.something
-      // it should still route to the chain namespace
-      updateConfig(fastify, 'solana-mainnet-beta.defaultWallet', 'value');
+    it('answers 500 with the cause when the config manager refuses the write', async () => {
+      await fastify.register(sensible);
+      await fastify.ready();
+      mockSetFn.mockImplementationOnce(() => {
+        throw new Error('Configuration error');
+      });
 
-      expect(mockSetFn).toHaveBeenCalledWith('solana.defaultWallet', 'value');
+      expect(() => updateConfig(fastify, 'solana-mainnet-beta.nodeURL', 'https://new-rpc.com')).toThrow(
+        expect.objectContaining({ statusCode: 500, message: 'Failed to update configuration: Configuration error' }),
+      );
     });
   });
 });

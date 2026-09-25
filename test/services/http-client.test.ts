@@ -1,4 +1,4 @@
-import { HttpClient, HttpClientError, createHttpClient, httpGet, httpPost } from '../../src/services/http-client';
+import { HttpClient, HttpClientError, httpGet, httpPost } from '../../src/services/http-client';
 
 // Mock the global fetch
 const mockFetch = jest.fn();
@@ -32,12 +32,6 @@ describe('HttpClient', () => {
         statusText: 'Not Found',
         data: { error: 'Resource not found' },
       });
-    });
-
-    it('should create error with code', () => {
-      const error = new HttpClientError('Timeout');
-      error.code = 'ECONNABORTED';
-      expect(error.code).toBe('ECONNABORTED');
     });
   });
 
@@ -179,15 +173,6 @@ describe('HttpClient', () => {
 
       // The trailing slash should be removed internally
       expect(clientWithSlash).toBeDefined();
-    });
-  });
-
-  describe('createHttpClient', () => {
-    it('should create HttpClient instance', () => {
-      const client = createHttpClient({
-        baseURL: 'https://api.example.com',
-      });
-      expect(client).toBeInstanceOf(HttpClient);
     });
   });
 

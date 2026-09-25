@@ -8,7 +8,6 @@ This directory contains comprehensive test suites for the Gateway API. The test 
 /test
   app.integration.test.ts     # Whole-app wiring
   /chains/                    # Chain route tests
-    chain.routes.test.ts      # The parameterized /chains/{chain} table
     /ethereum/                # Ethereum chain + its routes
     /solana/                  # Solana chain + its routes
   /connectors/                # Connector tests, one directory per connector

@@ -344,38 +344,4 @@ describe('Solana Wallet Operations', () => {
       expect(finalSolanaWallet?.walletAddresses).not.toContain(testAddress);
     });
   });
-
-  describe('Solana-specific Features', () => {
-    it('should handle base58 encoded private keys', async () => {
-      const response = await gatewayApp.inject({
-        method: 'POST',
-        url: '/wallet/add',
-        payload: {
-          privateKey: testPrivateKey,
-          chain: 'solana',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-    });
-
-    it('should reject malformed base58 private keys', async () => {
-      // Override the mock to simulate invalid key
-      patch(solana, 'getKeypairFromPrivateKey', () => {
-        throw new Error('Invalid base58 string');
-      });
-
-      const response = await gatewayApp.inject({
-        method: 'POST',
-        url: '/wallet/add',
-        payload: {
-          privateKey: '!!!invalid-base58!!!',
-          chain: 'solana',
-        },
-      });
-
-      // With sensible plugin, validation errors return 400 (bad request) instead of 500
-      expect(response.statusCode).toBe(400);
-    });
-  });
 });

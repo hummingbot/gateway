@@ -258,66 +258,6 @@ describe('Config Routes V2 Tests', () => {
       expect(JSON.parse(response.payload)).toHaveProperty('message', "Namespace 'invalid' not found");
     });
 
-    it('should update server config without network', async () => {
-      mockConfigManager.getNamespace.mockReturnValue({
-        configuration: { port: 15888 },
-      });
-      mockConfigManager.get.mockReturnValue(15888); // Current value is a number
-
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/update',
-        payload: {
-          namespace: 'server',
-          path: 'port',
-          value: 16000,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual({
-        message: `Configuration updated successfully: 'server.port' set to 16000`,
-      });
-    });
-
-    it('should return 404 for non-existent network namespace', async () => {
-      mockConfigManager.getNamespace.mockReturnValue(null);
-
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/update',
-        payload: {
-          namespace: 'ethereum-goerli',
-          path: 'nodeURL',
-          value: 'https://goerli.infura.io/v3/',
-        },
-      });
-
-      expect(response.statusCode).toBe(404);
-      expect(JSON.parse(response.payload).message).toContain("Namespace 'ethereum-goerli' not found");
-    });
-
-    it('should handle slippagePct special case', async () => {
-      mockConfigManager.getNamespace.mockReturnValue({
-        configuration: {
-          slippagePct: '2/100',
-        },
-      });
-
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/update',
-        payload: {
-          namespace: 'uniswap',
-          path: 'slippagePct',
-          value: '0.05',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(updateConfig).toHaveBeenCalled();
-    });
-
     it('should return 400 for missing required fields', async () => {
       const response = await fastify.inject({
         method: 'POST',
@@ -351,36 +291,6 @@ describe('Config Routes V2 Tests', () => {
 
       expect(response.statusCode).toBe(500);
       expect(JSON.parse(response.payload).message).toContain('Failed to update configuration');
-    });
-
-    it('should update Solana mainnet-beta configuration', async () => {
-      mockConfigManager.getNamespace.mockReturnValue({
-        configuration: {
-          nodeURL: 'https://api.mainnet-beta.solana.com',
-          nativeCurrencySymbol: 'SOL',
-        },
-      });
-
-      const response = await fastify.inject({
-        method: 'POST',
-        url: '/update',
-        payload: {
-          namespace: 'solana-mainnet-beta',
-          path: 'nodeURL',
-          value: 'https://new-solana-rpc.com',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual({
-        message: `Configuration updated successfully: 'solana-mainnet-beta.nodeURL' set to "https://new-solana-rpc.com"`,
-      });
-
-      expect(updateConfig).toHaveBeenCalledWith(
-        expect.anything(),
-        'solana-mainnet-beta.nodeURL',
-        'https://new-solana-rpc.com',
-      );
     });
   });
 

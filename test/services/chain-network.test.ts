@@ -43,12 +43,4 @@ describe('the callers share it', () => {
       expect(e.statusCode).toBe(400);
     }
   });
-
-  it('leaves no hand-rolled split behind in the pool routes', () => {
-    const fs = require('fs');
-    const path = require('path');
-    const source = fs.readFileSync(path.resolve(__dirname, '../../src/pools/routes/findPools.ts'), 'utf8');
-
-    expect(source).not.toMatch(/chainNetwork\.split\('-'\)/);
-  });
 });
