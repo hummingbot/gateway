@@ -177,6 +177,48 @@ describe('Orca', () => {
     expect(pool.yieldOverTvl).toBe(expected);
   });
 
+  describe('getPoolInfo: null only for a pool Orca does not have', () => {
+    it('answers null for an empty search result', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) } as any);
+      const orca = await Orca.getInstance('mainnet-beta');
+      await expect(orca.getPoolInfo('pool1')).resolves.toBeNull();
+    });
+
+    it("answers null for the API's 404", async () => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404, statusText: 'Not Found' } as any);
+      const orca = await Orca.getInstance('mainnet-beta');
+      await expect(orca.getPoolInfo('pool1')).resolves.toBeNull();
+    });
+
+    it('throws on any other API status', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 503, statusText: 'Service Unavailable' } as any);
+      const orca = await Orca.getInstance('mainnet-beta');
+      await expect(orca.getPoolInfo('pool1')).rejects.toThrow(
+        'Orca API pool lookup for pool1 failed: 503 Service Unavailable',
+      );
+    });
+
+    it('throws on a network error, with its cause', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('ECONNRESET'));
+      const orca = await Orca.getInstance('mainnet-beta');
+      await expect(orca.getPoolInfo('pool1')).rejects.toThrow('ECONNRESET');
+    });
+
+    it('throws on a body that is not the pool list', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ error: 'nope' }) } as any);
+      const orca = await Orca.getInstance('mainnet-beta');
+      await expect(orca.getPoolInfo('pool1')).rejects.toThrow('Orca API pool lookup for pool1 returned no pool list');
+    });
+
+    it('throws on a pool it cannot decode', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ data: [{ address: 'pool1', feeRate: 400 }] }) } as any);
+      const orca = await Orca.getInstance('mainnet-beta');
+      await expect(orca.getPoolInfo('pool1')).rejects.toThrow(TypeError);
+    });
+  });
+
   it('filters bundles and maps owned positions through the current client/core reader', async () => {
     const first = Keypair.generate().publicKey.toBase58();
     const bundle = Keypair.generate().publicKey.toBase58();

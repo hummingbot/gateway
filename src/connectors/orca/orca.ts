@@ -150,43 +150,30 @@ export class Orca {
   /**
    * Gets comprehensive pool information for a Whirlpool using Orca API v2
    * @param poolAddress The whirlpool address
-   * @returns OrcaPoolInfo or null if not found
+   * @returns OrcaPoolInfo, or null only when Orca has no such pool (a 404 or an empty
+   * search). A network error, any other status, a body that isn't a pool list, or a
+   * pool that doesn't decode throws with its cause.
    */
   async getPoolInfo(poolAddress: string): Promise<OrcaPoolInfo | null> {
-    try {
-      let baseUrl: string;
-      if (this.solana.network === 'mainnet-beta') {
-        baseUrl = 'https://api.orca.so/v2/solana/pools/search';
-      } else {
-        baseUrl = 'https://api.devnet.orca.so/v2/solana/pools/search';
-      }
-      const params = new URLSearchParams();
+    const baseUrl =
+      this.solana.network === 'mainnet-beta'
+        ? 'https://api.orca.so/v2/solana/pools/search'
+        : 'https://api.devnet.orca.so/v2/solana/pools/search';
+    const params = new URLSearchParams({ q: poolAddress, size: '1' });
 
-      // Search by pool address
-      params.append('q', poolAddress);
-      params.append('size', '1');
-
-      const url = `${baseUrl}?${params.toString()}`;
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`Orca API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const pools = data.data || [];
-
-      if (pools.length === 0) {
-        logger.error(`Pool not found: ${poolAddress}`);
-        return null;
-      }
-
-      // Map the first result to OrcaPoolInfo format
-      return this.mapApiPoolToPoolInfo(pools[0]);
-    } catch (error) {
-      logger.error(`Error getting pool info for ${poolAddress}:`, error);
-      return null;
+    const response = await fetch(`${baseUrl}?${params.toString()}`);
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`Orca API pool lookup for ${poolAddress} failed: ${response.status} ${response.statusText}`);
     }
+
+    const data = await response.json();
+    if (!Array.isArray(data?.data)) {
+      throw new Error(`Orca API pool lookup for ${poolAddress} returned no pool list`);
+    }
+    if (data.data.length === 0) return null;
+
+    return this.mapApiPoolToPoolInfo(data.data[0]);
   }
 
   /**

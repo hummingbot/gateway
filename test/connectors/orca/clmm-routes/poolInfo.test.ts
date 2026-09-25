@@ -180,6 +180,24 @@ describe('GET /pool-info', () => {
     expect(info.yieldOverTvl).toBeNull();
   });
 
+  it("answers 500 with the cause when Orca's API lookup fails", async () => {
+    const cause = `Orca API pool lookup for ${mockPoolAddress} failed: 503 Service Unavailable`;
+    (Orca.getInstance as jest.Mock).mockResolvedValue({
+      getWhirlpool: jest.fn().mockResolvedValue(mockWhirlpool),
+      getPoolInfo: jest.fn().mockRejectedValue(new Error(cause)),
+      solanaKitRpc: {},
+      deployment: { programId: 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc' },
+    });
+    const response = await app.inject({
+      method: 'GET',
+      url: '/pool-info',
+      query: { chainNetwork: 'solana-mainnet-beta', connector: 'orca', poolAddress: mockPoolAddress },
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(parseWire(response.body).message).toBe(`Failed to get CLMM pool info: ${cause}`);
+  });
+
   it('carries the API TVL through when Orca reports one', async () => {
     const { getPoolInfo } = await import('../../../../src/connectors/orca/clmm-routes/poolInfo');
     const info: any = await getPoolInfo(app, 'mainnet-beta', mockPoolAddress);
