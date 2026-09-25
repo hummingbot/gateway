@@ -5,6 +5,7 @@ import { FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { PoolInfo } from '../../../schemas/clmm-schema';
+import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { computeOrcaBinDistribution } from '../orca.utils';
 import { OrcaPoolInfo } from '../schemas';
@@ -26,7 +27,12 @@ export async function getPoolInfo(
   // Fetch on-chain whirlpool data for real-time price AND API data for analytics fields
   const [whirlpool, apiPoolInfo] = await Promise.all([
     orca.getWhirlpool(poolAddress),
-    orca.getPoolInfo(poolAddress), // API data for tvlUsdc, yieldOverTvl, etc.
+    // API data for tvlUsdc and yieldOverTvl; the pool itself is read on chain, so an
+    // Orca API outage leaves only those two fields null.
+    orca.getPoolInfo(poolAddress).catch((e) => {
+      logger.warn(`Orca API unavailable for ${poolAddress}, tvlUsdc and yieldOverTvl are null: ${e.message ?? e}`);
+      return null;
+    }),
   ]);
 
   if (!whirlpool) {
