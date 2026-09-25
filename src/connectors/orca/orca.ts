@@ -143,7 +143,7 @@ export class Orca {
       sqrtPrice: apiPool.sqrtPrice,
       tvlUsdc: apiPool.tvlUsdc == null ? null : Number(apiPool.tvlUsdc),
       protocolFeeRate,
-      yieldOverTvl: Number(apiPool.yieldOverTvl),
+      yieldOverTvl: apiPool.yieldOverTvl == null ? null : Number(apiPool.yieldOverTvl),
     };
   }
 

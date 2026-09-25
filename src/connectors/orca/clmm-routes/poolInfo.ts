@@ -71,7 +71,7 @@ export async function getPoolInfo(
     // Analytics fields from API (not available on-chain)
     tvlUsdc: apiPoolInfo ? apiPoolInfo.tvlUsdc : null,
     protocolFeeRate,
-    yieldOverTvl: apiPoolInfo?.yieldOverTvl ?? 0,
+    yieldOverTvl: apiPoolInfo ? apiPoolInfo.yieldOverTvl : null,
   };
 
   // Optionally include the per-bin distribution around the current tick.

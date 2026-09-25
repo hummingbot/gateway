@@ -177,6 +177,7 @@ describe('GET /pool-info', () => {
     const info: any = await getPoolInfo(app, 'mainnet-beta', mockPoolAddress);
 
     expect(info.tvlUsdc).toBeNull();
+    expect(info.yieldOverTvl).toBeNull();
   });
 
   it('carries the API TVL through when Orca reports one', async () => {
@@ -184,6 +185,7 @@ describe('GET /pool-info', () => {
     const info: any = await getPoolInfo(app, 'mainnet-beta', mockPoolAddress);
 
     expect(info.tvlUsdc).toBe(50000);
+    expect(info.yieldOverTvl).toBe(0.05);
   });
 
   it('should return 400 when poolAddress is missing', async () => {

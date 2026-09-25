@@ -13,10 +13,11 @@ export const OrcaPoolInfoSchema = Type.Composite(
     Type.Object({
       liquidity: Type.String(),
       sqrtPrice: Type.String(),
-      // null when Orca's API has no figure for the pool: TVL is an off-chain analytic.
+      // tvlUsdc and yieldOverTvl are off-chain analytics from Orca's API: null when
+      // the API has no figure for the pool.
       tvlUsdc: Type.Union([Type.Number(), Type.Null()]),
       protocolFeeRate: Type.Number(),
-      yieldOverTvl: Type.Number(),
+      yieldOverTvl: Type.Union([Type.Number(), Type.Null()]),
     }),
   ],
   { $id: 'OrcaPoolInfo' },
