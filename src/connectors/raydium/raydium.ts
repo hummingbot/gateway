@@ -174,6 +174,10 @@ export class Raydium {
 
   async getClmmPoolInfo(poolAddress: string): Promise<ClmmPoolInfo | null> {
     try {
+      // PancakeSwap's Solana CLMM is a fork with Raydium's account layout, so a
+      // pool decodes here whichever program owns it; only Raydium's are Raydium's.
+      const account = await this.solana.connection.getAccountInfo(new PublicKey(poolAddress));
+      if (!account || !isValidClmm(account.owner.toBase58())) return null;
       const rawPool = await this.getClmmPoolfromRPC(poolAddress);
 
       // Fetch AMM config account data

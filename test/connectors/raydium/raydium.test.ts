@@ -47,11 +47,17 @@ jest.mock('../../../src/connectors/raydium/raydium.utils', () => ({
 }));
 
 // Import after mocks
-import { Raydium as RaydiumSDK, TxVersion, getPdaPersonalPositionAddress } from '@raydium-io/raydium-sdk-v2';
+import {
+  CLMM_PROGRAM_ID,
+  Raydium as RaydiumSDK,
+  TxVersion,
+  getPdaPersonalPositionAddress,
+} from '@raydium-io/raydium-sdk-v2';
 
 import { Solana } from '../../../src/chains/solana/solana';
 import { Raydium } from '../../../src/connectors/raydium/raydium';
 import { RaydiumConfig } from '../../../src/connectors/raydium/raydium.config';
+import { isValidClmm } from '../../../src/connectors/raydium/raydium.utils';
 import { logger } from '../../../src/services/logger';
 
 describe('Raydium', () => {
@@ -231,7 +237,7 @@ describe('Raydium', () => {
 
     describe('getClmmPoolInfo', () => {
       it('should return CLMM pool info', async () => {
-        const mockPoolAddress = 'test-pool-address';
+        const mockPoolAddress = '2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv';
         const mockRpcData = {
           mintA: { toString: () => 'token-a' },
           mintB: { toString: () => 'token-b' },
@@ -245,6 +251,7 @@ describe('Raydium', () => {
 
         mockRaydiumSDK.clmm.getRpcClmmPoolInfo.mockResolvedValue(mockRpcData);
         mockConnection.getAccountInfo.mockResolvedValue({
+          owner: CLMM_PROGRAM_ID,
           data: Buffer.from(new Array(100).fill(0)),
         });
         mockConnection.getTokenAccountBalance.mockResolvedValue({
@@ -264,6 +271,22 @@ describe('Raydium', () => {
           quoteTokenAmount: 1000,
           activeBinId: 100,
         });
+      });
+
+      it('should not read a pool another program owns, though it decodes as one', async () => {
+        // PancakeSwap's Solana CLMM shares Raydium's account layout.
+        mockRaydiumSDK.clmm.getRpcClmmPoolInfo.mockClear();
+        (isValidClmm as jest.Mock).mockReturnValueOnce(false);
+        mockConnection.getAccountInfo.mockResolvedValue({
+          owner: new PublicKey('HpNfyc2Saw7RKkQd8nEL4khUcuPhQ7WwY1B2qjx8jxFq'),
+          data: Buffer.alloc(1544),
+        });
+
+        const result = await raydiumInstance.getClmmPoolInfo('4QU2NpRaqmKMvPSwVKQDeW4V6JFEKJdkzbzdauumD9qN');
+
+        expect(result).toBeNull();
+        expect(isValidClmm).toHaveBeenCalledWith('HpNfyc2Saw7RKkQd8nEL4khUcuPhQ7WwY1B2qjx8jxFq');
+        expect(mockRaydiumSDK.clmm.getRpcClmmPoolInfo).not.toHaveBeenCalled();
       });
 
       it('should handle pool not found', async () => {
