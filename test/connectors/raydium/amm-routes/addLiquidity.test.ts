@@ -2,6 +2,7 @@ import { VersionedTransaction, MessageV0 } from '@solana/web3.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
+import { httpErrors } from '../../../../src/services/error-handler';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 import { parseWire } from '../../../utils/wire';
 
@@ -84,20 +85,8 @@ const mockPoolKeys = {
   // Mock pool keys
 };
 
-const mockAmmPoolInfo = {
-  address: mockPoolAddress,
-  baseTokenAddress: mockSOL.address,
-  quoteTokenAddress: mockUSDC.address,
-  feePct: 0.0025,
-  price: 150,
-  baseTokenAmount: 1000,
-  quoteTokenAmount: 150000,
-  poolType: 'amm',
-  lpMint: {
-    address: 'lp-mint-address',
-    decimals: 9,
-  },
-};
+// Pool state as the connector reads it from the chain
+const mockPoolFromRpc = { poolType: 'amm', poolInfo: mockPoolInfo, poolKeys: mockPoolKeys, rpcData: {} };
 
 const mockVersionedTransaction = () =>
   new VersionedTransaction(
@@ -134,8 +123,7 @@ const buildSolanaMock = (overrides: any = {}) => ({
 
 const buildRaydiumMock = (overrides: any = {}) => ({
   setOwner: jest.fn().mockResolvedValue(undefined),
-  getAmmPoolInfo: jest.fn().mockResolvedValue(mockAmmPoolInfo),
-  getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, mockPoolKeys]),
+  getAmmPoolFromRpc: jest.fn().mockResolvedValue(mockPoolFromRpc),
   raydiumSDK: {
     liquidity: {
       addLiquidity: jest.fn().mockResolvedValue({ transaction: mockVersionedTransaction() }),
@@ -345,8 +333,7 @@ describe('POST /add-liquidity', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockRaydiumInstance = buildRaydiumMock({
-      getAmmPoolInfo: jest.fn().mockResolvedValue(null),
-      getPoolfromAPI: jest.fn().mockResolvedValue(null),
+      getAmmPoolFromRpc: jest.fn().mockRejectedValue(httpErrors.notFound('Pool account not found: invalid-pool')),
     });
     (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
 
@@ -431,7 +418,7 @@ describe('POST /add-liquidity', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     let setOwnerCallOrder = 0;
-    let getAmmPoolInfoCallOrder = 0;
+    let getAmmPoolFromRpcCallOrder = 0;
     let callCounter = 0;
 
     const mockRaydiumInstance = buildRaydiumMock({
@@ -439,9 +426,9 @@ describe('POST /add-liquidity', () => {
         setOwnerCallOrder = ++callCounter;
         return Promise.resolve(undefined);
       }),
-      getAmmPoolInfo: jest.fn().mockImplementation(() => {
-        getAmmPoolInfoCallOrder = ++callCounter;
-        return Promise.resolve(mockAmmPoolInfo);
+      getAmmPoolFromRpc: jest.fn().mockImplementation(() => {
+        getAmmPoolFromRpcCallOrder = ++callCounter;
+        return Promise.resolve(mockPoolFromRpc);
       }),
     });
     (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
@@ -461,9 +448,9 @@ describe('POST /add-liquidity', () => {
 
     expect(response.statusCode).toBe(200);
 
-    // Verify setOwner was called before getAmmPoolInfo
-    expect(setOwnerCallOrder).toBeLessThan(getAmmPoolInfoCallOrder);
+    // Verify setOwner was called before the pool is read
+    expect(setOwnerCallOrder).toBeLessThan(getAmmPoolFromRpcCallOrder);
     expect(setOwnerCallOrder).toBe(1);
-    expect(getAmmPoolInfoCallOrder).toBe(2);
+    expect(getAmmPoolFromRpcCallOrder).toBe(2);
   });
 });

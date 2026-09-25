@@ -2,6 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
+import { httpErrors } from '../../../../src/services/error-handler';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 import { parseWire } from '../../../utils/wire';
 
@@ -67,6 +68,9 @@ const mockPoolInfo = {
   },
 };
 
+// Pool state as the connector reads it from the chain
+const mockPoolFromRpc = { poolType: 'amm', poolInfo: mockPoolInfo, poolKeys: {}, rpcData: {} };
+
 const mockSwapResponse = {
   allTrade: true,
   swapInDirection: 'base2quote',
@@ -126,15 +130,10 @@ describe('GET /quote-swap', () => {
           decimals: 9,
         },
       }),
-      getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, {}]),
+      getAmmPoolFromRpc: jest.fn().mockResolvedValue(mockPoolFromRpc),
       raydiumSDK: {
         liquidity: {
           computeAmountOut: jest.fn().mockReturnValue(mockSwapResponse),
-          getRpcPoolInfo: jest.fn().mockResolvedValue({
-            baseReserve: '1000000000000',
-            quoteReserve: '150000000000',
-            status: { toNumber: () => 1 },
-          }),
         },
       },
     };
@@ -203,15 +202,10 @@ describe('GET /quote-swap', () => {
           decimals: 9,
         },
       }),
-      getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, {}]),
+      getAmmPoolFromRpc: jest.fn().mockResolvedValue(mockPoolFromRpc),
       raydiumSDK: {
         liquidity: {
           computeAmountIn: jest.fn().mockReturnValue(mockBuyResponse),
-          getRpcPoolInfo: jest.fn().mockResolvedValue({
-            baseReserve: '1000000000000',
-            quoteReserve: '150000000000',
-            status: { toNumber: () => 1 },
-          }),
         },
       },
     };
@@ -258,7 +252,7 @@ describe('GET /quote-swap', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockRaydiumInstance = {
-      getAmmPoolInfo: jest.fn().mockResolvedValue(null),
+      getAmmPoolInfo: jest.fn().mockRejectedValue(httpErrors.notFound('Pool account not found: invalid-pool-address')),
     };
     (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
 
