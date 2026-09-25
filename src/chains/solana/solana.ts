@@ -2094,6 +2094,18 @@ export class Solana {
       if (sendError.statusCode === 429) {
         throw sendError;
       }
+      // The same signed bytes already landed (an identical transaction built on an
+      // unchanged blockhash): its signature is the first one in the wire format, so
+      // report that transaction as it stands on chain rather than a failure.
+      if (/already been processed/.test(sendError.message ?? '')) {
+        const landed = bs58.encode(Uint8Array.from(serializedTx).subarray(1, 65));
+        const txData = await this._fetchTransactionWithRetry(landed, 3, 500);
+        if (!txData) {
+          throw new Error(`RPC reports ${landed} already processed, but it cannot be found`);
+        }
+        logger.info(`Transaction ${landed} had already landed; reporting it`);
+        return { confirmed: txData.meta?.err == null, signature: landed, txData };
+      }
       logger.error(`Failed to send transaction: ${sendError.message}`);
       return { confirmed: false, signature: signature || '', txData: null };
     }
