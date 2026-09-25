@@ -237,16 +237,16 @@ describe('Pool Routes Tests', () => {
       expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', undefined, undefined, 'SOL');
     });
 
-    it('should return 400 for invalid parameters', async () => {
+    it("answers 400 with the pool service's reason when it cannot list", async () => {
       mockPoolService.listPools.mockRejectedValue(new Error('Unsupported chain'));
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chainNetwork=invalid-mainnet',
+        url: '/?chainNetwork=solana-mainnet-beta',
       });
 
       expect(response.statusCode).toBe(400);
-      expect(parseWire(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload).message).toBe('Unsupported chain');
     });
   });
 
