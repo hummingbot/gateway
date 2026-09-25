@@ -109,6 +109,40 @@ describe('Orca', () => {
     expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('q=pool1'));
   });
 
+  it.each([
+    ['a string, as the API sends it, as a number', '25914246.84', 25914246.84],
+    ['a missing figure as null, not 0', undefined, null],
+  ])('maps the API TVL: %s', async (_label, tvlUsdc, expected) => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            address: 'pool1',
+            tokenMintA: 'tokenA',
+            tokenMintB: 'tokenB',
+            feeRate: 400,
+            protocolFeeRate: 100,
+            price: 150.5,
+            tokenBalanceA: '1000000000',
+            tokenBalanceB: '150500000000',
+            tokenA: { decimals: 9 },
+            tokenB: { decimals: 6 },
+            tickSpacing: 64,
+            tickCurrentIndex: 100,
+            liquidity: '1000000',
+            sqrtPrice: '123456789',
+            tvlUsdc,
+            yieldOverTvl: 0.05,
+          },
+        ],
+      }),
+    } as any);
+    const orca = await Orca.getInstance('mainnet-beta');
+    const pool = await orca.getPoolInfo('pool1');
+    expect(pool.tvlUsdc).toBe(expected);
+  });
+
   it('filters bundles and maps owned positions through the current client/core reader', async () => {
     const first = Keypair.generate().publicKey.toBase58();
     const bundle = Keypair.generate().publicKey.toBase58();

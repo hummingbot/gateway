@@ -141,7 +141,7 @@ export class Orca {
       // Orca-specific fields
       liquidity: apiPool.liquidity,
       sqrtPrice: apiPool.sqrtPrice,
-      tvlUsdc: apiPool.tvlUsdc,
+      tvlUsdc: apiPool.tvlUsdc == null ? null : Number(apiPool.tvlUsdc),
       protocolFeeRate,
       yieldOverTvl: Number(apiPool.yieldOverTvl),
     };

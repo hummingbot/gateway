@@ -166,6 +166,26 @@ describe('GET /pool-info', () => {
     expect(info).toHaveProperty('yieldOverTvl');
   });
 
+  it('reports an unknown TVL as null, not 0, when the Orca API has no pool', async () => {
+    (Orca.getInstance as jest.Mock).mockResolvedValue({
+      getWhirlpool: jest.fn().mockResolvedValue(mockWhirlpool),
+      getPoolInfo: jest.fn().mockResolvedValue(null),
+      solanaKitRpc: {},
+      deployment: { programId: 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc' },
+    });
+    const { getPoolInfo } = await import('../../../../src/connectors/orca/clmm-routes/poolInfo');
+    const info: any = await getPoolInfo(app, 'mainnet-beta', mockPoolAddress);
+
+    expect(info.tvlUsdc).toBeNull();
+  });
+
+  it('carries the API TVL through when Orca reports one', async () => {
+    const { getPoolInfo } = await import('../../../../src/connectors/orca/clmm-routes/poolInfo');
+    const info: any = await getPoolInfo(app, 'mainnet-beta', mockPoolAddress);
+
+    expect(info.tvlUsdc).toBe(50000);
+  });
+
   it('should return 400 when poolAddress is missing', async () => {
     const response = await app.inject({
       method: 'GET',

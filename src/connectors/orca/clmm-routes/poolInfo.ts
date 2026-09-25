@@ -69,7 +69,7 @@ export async function getPoolInfo(
     liquidity: whirlpool.liquidity.toString(),
     sqrtPrice: whirlpool.sqrtPrice.toString(), // Real-time from on-chain
     // Analytics fields from API (not available on-chain)
-    tvlUsdc: apiPoolInfo?.tvlUsdc ?? 0,
+    tvlUsdc: apiPoolInfo ? apiPoolInfo.tvlUsdc : null,
     protocolFeeRate,
     yieldOverTvl: apiPoolInfo?.yieldOverTvl ?? 0,
   };
