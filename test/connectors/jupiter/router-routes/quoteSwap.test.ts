@@ -97,9 +97,8 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price', 150);
-    // The connector's raw provider payload (quoteResponse / routerResult) is not part
-    // of the unified router response schema, which serializes the shared quote fields
-    // plus quoteId. Assertions on it moved out with the per-connector route.
+    // Jupiter's priceImpactPct is a fraction; the unified field is a percentage (0-100).
+    expect(body.priceImpactPct).toBeCloseTo(0.1, 10);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
   });
