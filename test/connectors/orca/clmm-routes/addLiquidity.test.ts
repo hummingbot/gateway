@@ -258,6 +258,25 @@ describe('POST /add-liquidity', () => {
       expect(parseWire(response.body).message).toBe('Invalid position address: invalid');
       expect(mockFetchPosition).not.toHaveBeenCalled();
     });
+    it('rejects a malformed wallet address before reading the chain', async () => {
+      seedConnector();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/add',
+        payload: {
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
+          walletAddress: 'not-a-wallet',
+          positionAddress: mockPositionAddress,
+          baseTokenAmount: 1.0,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(parseWire(response.body).message).toBe('Invalid wallet address: not-a-wallet');
+      expect(mockFetchPosition).not.toHaveBeenCalled();
+    });
   });
 
   describe('error handling', () => {
