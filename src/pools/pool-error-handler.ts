@@ -21,7 +21,7 @@ export function handlePoolError(fastify: FastifyInstance, error: any, operation:
     throw fastify.httpErrors.notFound(error.message);
   }
 
-  if (error.message.includes('Unsupported network') || error.message.includes('Unsupported chainNetwork')) {
+  if (error.message.includes('Unsupported network')) {
     throw fastify.httpErrors.badRequest(error.message);
   }
 

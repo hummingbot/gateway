@@ -175,7 +175,6 @@ describe('POST /open-position', () => {
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
       getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
-      findDefaultPool: jest.fn(),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
@@ -258,7 +257,6 @@ describe('POST /open-position', () => {
         return Promise.resolve([mockApiPoolInfo, {}]);
       }),
       getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
-      findDefaultPool: jest.fn(),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
@@ -343,7 +341,6 @@ describe('POST /open-position', () => {
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue(null),
       getClmmPoolfromRPC: jest.fn(),
-      findDefaultPool: jest.fn(),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn(),
@@ -381,7 +378,6 @@ describe('POST /open-position', () => {
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
       getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
-      findDefaultPool: jest.fn(),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
@@ -429,7 +425,6 @@ describe('POST /open-position', () => {
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
       getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
-      findDefaultPool: jest.fn(),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),

@@ -49,6 +49,7 @@ import { FastifyInstance } from 'fastify';
 
 import { poolRoutes } from '../../src/pools/pools.routes';
 import { Pool } from '../../src/pools/types';
+import { parseChainNetwork } from '../../src/services/chain-network';
 import { CoinGeckoService } from '../../src/services/coingecko-service';
 import { PoolService } from '../../src/services/pool-service';
 import { TokenService } from '../../src/services/token-service';
@@ -78,7 +79,6 @@ describe('Pool Routes Tests', () => {
       getPoolByAddress: jest.fn(),
       getPoolByMetadata: jest.fn(),
       getDefaultPools: jest.fn(),
-      getChainForConnector: jest.fn(),
     } as any;
 
     (PoolService.getInstance as jest.Mock).mockReturnValue(mockPoolService);
@@ -91,17 +91,7 @@ describe('Pool Routes Tests', () => {
       getTokenInfo: jest.fn(),
       mapNetworkId: jest.fn(),
       getSupportedNetworks: jest.fn(),
-      parseChainNetwork: jest.fn((chainNetwork: string) => {
-        // Default mock implementation for tests
-        const parts = chainNetwork.split('-');
-        if (parts.length < 2) {
-          throw new Error(`Unsupported chainNetwork format: ${chainNetwork}`);
-        }
-        return {
-          chain: parts[0],
-          network: parts.slice(1).join('-'),
-        };
-      }),
+      parseChainNetwork: jest.fn(parseChainNetwork),
     } as any;
 
     (CoinGeckoService.getInstance as jest.Mock).mockReturnValue(mockCoinGeckoService);
@@ -572,7 +562,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
-      expect(parseWire(response.payload).message).toContain('Unsupported chainNetwork format');
+      expect(parseWire(response.payload).message).toContain("Invalid chainNetwork 'invalid'");
     });
 
     it('should return 500 on service error', async () => {

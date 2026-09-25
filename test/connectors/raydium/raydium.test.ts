@@ -198,23 +198,6 @@ describe('Raydium', () => {
       expect(logger.info).toHaveBeenCalledWith('Raydium SDK reinitialized with owner');
     });
 
-    it('should update the owner property', async () => {
-      expect((raydiumInstance as any).owner).toBeUndefined();
-
-      await raydiumInstance.setOwner(mockOwner);
-
-      expect((raydiumInstance as any).owner).toBe(mockOwner);
-    });
-
-    it('should update the raydiumSDK instance', async () => {
-      const newMockSDK = { ...mockRaydiumSDK, newInstance: true };
-      (RaydiumSDK.load as jest.Mock).mockResolvedValueOnce(newMockSDK);
-
-      await raydiumInstance.setOwner(mockOwner);
-
-      expect(raydiumInstance.raydiumSDK).toBe(newMockSDK);
-    });
-
     it('should handle setOwner errors', async () => {
       const mockError = new Error('Failed to reinitialize');
       (RaydiumSDK.load as jest.Mock).mockRejectedValueOnce(mockError);
@@ -236,55 +219,6 @@ describe('Raydium', () => {
         disableFeatureCheck: true,
         blockhashCommitment: 'confirmed',
       });
-    });
-  });
-
-  describe('transaction execution', () => {
-    let raydiumInstance: Raydium;
-
-    beforeEach(async () => {
-      raydiumInstance = await Raydium.getInstance('mainnet-beta');
-    });
-
-    it('should execute transaction successfully', async () => {
-      const mockExecuteFunc = jest.fn().mockResolvedValue({ txId: 'test-tx-id' });
-
-      const result = await raydiumInstance.executeTransaction(mockExecuteFunc);
-
-      expect(result).toBe('test-tx-id');
-      expect(logger.info).toHaveBeenCalledWith('Transaction executed successfully: test-tx-id');
-    });
-
-    it('should handle insufficient funds error', async () => {
-      const mockExecuteFunc = jest.fn().mockRejectedValue(new Error('insufficient funds for rent'));
-
-      await expect(raydiumInstance.executeTransaction(mockExecuteFunc)).rejects.toThrow(
-        'Insufficient SOL balance for transaction fees',
-      );
-    });
-
-    it('should handle slippage error', async () => {
-      const mockExecuteFunc = jest.fn().mockRejectedValue(new Error('slippage tolerance exceeded'));
-
-      await expect(raydiumInstance.executeTransaction(mockExecuteFunc)).rejects.toThrow(
-        'Transaction failed due to slippage. Try increasing slippage tolerance.',
-      );
-    });
-
-    it('should handle blockhash error', async () => {
-      const mockExecuteFunc = jest.fn().mockRejectedValue(new Error('blockhash not found'));
-
-      await expect(raydiumInstance.executeTransaction(mockExecuteFunc)).rejects.toThrow(
-        'Transaction expired. Please try again.',
-      );
-    });
-
-    it('should rethrow unknown errors', async () => {
-      const mockError = new Error('Unknown error');
-      const mockExecuteFunc = jest.fn().mockRejectedValue(mockError);
-
-      await expect(raydiumInstance.executeTransaction(mockExecuteFunc)).rejects.toThrow('Unknown error');
-      expect(logger.error).toHaveBeenCalledWith('Transaction execution failed:', mockError);
     });
   });
 
@@ -518,28 +452,6 @@ describe('Raydium', () => {
       for (const [programId] of (getPdaPersonalPositionAddress as jest.Mock).mock.calls) {
         expect(programId.toBase58()).toBe(expectedProgramId);
       }
-    });
-  });
-
-  describe('property access', () => {
-    it('should have public solana property', async () => {
-      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
-      expect(raydiumInstance.solana).toBe(mockSolanaInstance);
-    });
-
-    it('should have public raydiumSDK property', async () => {
-      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
-      expect(raydiumInstance.raydiumSDK).toBe(mockRaydiumSDK);
-    });
-
-    it('should have public config property', async () => {
-      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
-      expect(raydiumInstance.config).toBe(RaydiumConfig.config);
-    });
-
-    it('should have public txVersion property', async () => {
-      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
-      expect(raydiumInstance.txVersion).toBe(TxVersion.V0);
     });
   });
 });

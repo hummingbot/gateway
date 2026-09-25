@@ -219,28 +219,4 @@ export class HardwareWalletService {
   public async isDeviceConnected(): Promise<boolean> {
     return await this.transportManager.isDeviceConnected();
   }
-
-  /**
-   * List connected Ledger devices
-   */
-  public async listDevices(): Promise<any[]> {
-    return await this.transportManager.listDevices();
-  }
-
-  /**
-   * Verify that we can communicate with the Ledger device
-   */
-  public async verifyConnection(chain: 'solana' | 'ethereum'): Promise<boolean> {
-    try {
-      if (chain === 'solana') {
-        await this.getSolanaAddress();
-      } else {
-        await this.getEthereumAddress();
-      }
-      return true;
-    } catch (error) {
-      logger.error(`Failed to verify Ledger connection: ${error.message}`);
-      return false;
-    }
-  }
 }

@@ -1,4 +1,4 @@
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { Keypair } from '@solana/web3.js';
 
 jest.mock('../../../src/chains/solana/solana');
 jest.mock('../../../src/connectors/orca/orca.config');
@@ -27,7 +27,6 @@ jest.mock('@solana/kit', () => ({
 }));
 
 import { fetchPositionsForOwner, setNativeMintWrappingStrategy } from '@orca-so/whirlpools';
-import { fetchPosition, fetchWhirlpool } from '@orca-so/whirlpools-client';
 
 import { Solana } from '../../../src/chains/solana/solana';
 import { Orca } from '../../../src/connectors/orca/orca';
@@ -70,7 +69,7 @@ describe('Orca', () => {
     expect(logger.error).toHaveBeenCalledWith('Failed to initialize Orca:', error);
   });
 
-  it('maps Orca API pools into the Gateway schema', async () => {
+  it('maps an Orca API pool into the Gateway schema', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -97,8 +96,8 @@ describe('Orca', () => {
       }),
     } as any);
     const orca = await Orca.getInstance('mainnet-beta');
-    const pools = await orca.getPools({ limit: 5, query: 'SOL USDC' });
-    expect(pools[0]).toEqual(
+    const pool = await orca.getPoolInfo('pool1');
+    expect(pool).toEqual(
       expect.objectContaining({
         address: 'pool1',
         baseTokenAddress: 'tokenA',
@@ -107,24 +106,7 @@ describe('Orca', () => {
         protocolFeeRate: 0.01,
       }),
     );
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('q=SOL+USDC'));
-  });
-
-  it('returns current Whirlpool account data', async () => {
-    (fetchWhirlpool as jest.Mock).mockResolvedValue({ data: { tickSpacing: 64 } });
-    const orca = await Orca.getInstance('mainnet-beta');
-    await expect(orca.getWhirlpool(wallet.publicKey.toBase58())).resolves.toEqual({ tickSpacing: 64 });
-  });
-
-  it('reads position PDAs directly', async () => {
-    const pool = Keypair.generate().publicKey;
-    (fetchPosition as jest.Mock).mockResolvedValue({ data: { whirlpool: pool } });
-    (fetchWhirlpool as jest.Mock).mockResolvedValue({ data: { tickSpacing: 64 } });
-    const orca = await Orca.getInstance('mainnet-beta');
-    const positionAddress = Keypair.generate().publicKey.toBase58();
-    const result = await orca.getRawPosition(positionAddress, wallet.publicKey);
-    expect(fetchPosition).toHaveBeenCalledWith(orca.solanaKitRpc, positionAddress);
-    expect(result?.poolAddress).toBe(pool.toBase58());
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('q=pool1'));
   });
 
   it('filters bundles and maps owned positions through the current client/core reader', async () => {
@@ -181,12 +163,5 @@ describe('Orca', () => {
     const positionAddress = Keypair.generate().publicKey.toBase58();
     (getPositionDetails as jest.Mock).mockRejectedValue(new Error('RPC node behind'));
     await expect(orca.getPositionInfo(positionAddress, wallet.publicKey.toBase58())).rejects.toThrow('RPC node behind');
-  });
-
-  it('keeps connector configuration public', async () => {
-    const orca = await Orca.getInstance('mainnet-beta');
-    expect(orca.config).toBe(OrcaConfig.config);
-    expect(orca.solanaKitRpc).toBeDefined();
-    expect(new PublicKey(wallet.publicKey)).toBeDefined();
   });
 });

@@ -63,7 +63,7 @@ const requestPositions = (app: any, walletAddress: string) =>
   });
 
 const mockRaydiumWith = (getPositionsForWalletAddress: jest.Mock) => {
-  const mockRaydium = { getPositionsForWalletAddress, prepareWallet: jest.fn(), setOwner: jest.fn() };
+  const mockRaydium = { getPositionsForWalletAddress, setOwner: jest.fn() };
   (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydium);
   return mockRaydium;
 };
@@ -109,7 +109,6 @@ describe('GET /positions-owned', () => {
 
     expect(response.statusCode).toBe(200);
     expect(mockRaydium.getPositionsForWalletAddress).toHaveBeenCalledWith(mockWalletAddress);
-    expect(mockRaydium.prepareWallet).not.toHaveBeenCalled();
     expect(mockRaydium.setOwner).not.toHaveBeenCalled();
   });
 

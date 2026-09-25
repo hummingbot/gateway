@@ -98,7 +98,7 @@ describe('POST /execute-quote', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    quoteCache.clear();
+    quoteCache.delete('test-quote-id');
 
     // Mock TokenService
     const mockTokenService = {
