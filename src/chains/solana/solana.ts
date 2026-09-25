@@ -77,6 +77,20 @@ interface TokenAccount {
   value: any;
 }
 
+/**
+ * What the compute-budget instructions cost themselves, in compute units.
+ *
+ * Simulation runs the transaction *without* them and reports only what the
+ * caller's instructions used, but the prepared transaction carries two — set
+ * limit and set price — at 150 units each. A percentage margin cannot cover a
+ * fixed cost: a plain SOL transfer simulates at ~150 units, gets a limit of
+ * ceil(150 x 1.1) = 165, and then spends 450. It lands on chain and fails with
+ * "Computational budget exceeded" pointing at the ComputeBudget program, after
+ * the user has signed. Every expensive instruction hides this behind its own
+ * margin, so it only bites the cheapest transactions.
+ */
+const COMPUTE_BUDGET_OVERHEAD_UNITS = 450;
+
 export class Solana {
   public connection: Connection;
   public network: string;
@@ -1515,10 +1529,11 @@ export class Solana {
     if (simulationResult) {
       Solana.throwIfSimulationReturnedError(simulationResult);
       if (simulationResult.unitsConsumed) {
-        // Add 10% margin for safety
-        computeUnitsToUse = Math.ceil(simulationResult.unitsConsumed * 1.1);
+        // Add 10% margin for safety, plus what the compute-budget instructions cost
+        computeUnitsToUse = Math.ceil(simulationResult.unitsConsumed * 1.1) + COMPUTE_BUDGET_OVERHEAD_UNITS;
         logger.info(
-          `Simulation consumed ${simulationResult.unitsConsumed} units, using ${computeUnitsToUse} with 10% margin`,
+          `Simulation consumed ${simulationResult.unitsConsumed} units, using ${computeUnitsToUse} ` +
+            `with 10% margin and ${COMPUTE_BUDGET_OVERHEAD_UNITS} for the compute budget`,
         );
       } else {
         logger.warn('Simulation did not return units consumed, using default');
@@ -1667,7 +1682,7 @@ export class Solana {
     if (simulationResult) {
       Solana.throwIfSimulationReturnedError(simulationResult);
       computeUnitsToUse = simulationResult.unitsConsumed
-        ? Math.ceil(simulationResult.unitsConsumed * 1.1)
+        ? Math.ceil(simulationResult.unitsConsumed * 1.1) + COMPUTE_BUDGET_OVERHEAD_UNITS
         : this.config.defaultComputeUnits;
     }
 
