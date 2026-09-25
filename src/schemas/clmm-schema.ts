@@ -1,6 +1,6 @@
 import { Type, Static } from '@sinclair/typebox';
 
-import { DecimalNumber } from './decimal-field';
+import { DecimalNumber, NullableDecimalNumber } from './decimal-field';
 
 export const FetchPoolsRequest = Type.Object(
   {
@@ -47,8 +47,8 @@ export const PoolListItemSchema = Type.Object(
     price: DecimalNumber({
       description: 'Current price',
     }),
-    tvl: DecimalNumber({
-      description: 'Total value locked in USD',
+    tvl: NullableDecimalNumber({
+      description: 'Total value locked in USD; null when the venue has no figure for the pool',
     }),
     apr: Type.Optional(
       DecimalNumber({

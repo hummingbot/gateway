@@ -41,7 +41,8 @@ export async function fetchPools(args: OrcaFetchPoolsArgs): Promise<FetchPoolsRe
     binStep: pool.tickSpacing,
     baseFee: Number(pool.feeRate) / 10000, // Convert to percentage
     price: Number(pool.price),
-    tvl: Number(pool.tvlUsdc) || 0,
+    // Orca sends TVL as a string, and omits it for pools it hasn't measured.
+    tvl: pool.tvlUsdc == null ? null : Number(pool.tvlUsdc),
     apr: pool.feeApr?.day ? Number(pool.feeApr.day) * 100 : undefined, // Convert to percentage
     apy: pool.totalApr?.day ? Number(pool.totalApr.day) * 100 : undefined,
     volume24h: pool.volume?.day ? Number(pool.volume.day) : undefined,

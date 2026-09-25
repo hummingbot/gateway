@@ -1025,7 +1025,8 @@
           },
           "tvl": {
             "format": "decimal",
-            "description": "Total value locked in USD",
+            "nullable": true,
+            "description": "Total value locked in USD; null when the venue has no figure for the pool",
             "type": "string"
           },
           "apr": {
