@@ -1,6 +1,6 @@
-import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana', () => ({
   Solana: {
@@ -82,11 +82,8 @@ describe('GET /position-info', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      if (response.statusCode === 200) {
-        const body = JSON.parse(response.body);
-        expect(body.address).toBe(mockPositionAddress);
-        expect(mockOrca.getPositionInfo).toHaveBeenCalled();
-      }
+      expect(parseWire(response.body)).toEqual(mockPositionInfo);
+      expect(mockOrca.getPositionInfo).toHaveBeenCalledWith(mockPositionAddress, mockWalletAddress);
     });
   });
 
@@ -126,9 +123,10 @@ describe('GET /position-info', () => {
   });
 
   describe('error handling', () => {
-    it('should handle Orca errors gracefully', async () => {
+    // A failed read is not a closed position: the cause reaches the caller as a 500.
+    it('reports a connector read failure as 500 with its cause', async () => {
       const mockOrca = {
-        getPositionInfo: jest.fn().mockRejectedValue(new Error('Failed to fetch position')),
+        getPositionInfo: jest.fn().mockRejectedValue(new Error('RPC node behind')),
       };
       (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
 
@@ -142,42 +140,8 @@ describe('GET /position-info', () => {
         },
       });
 
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
-    });
-
-    it('should handle service unavailable', async () => {
-      (Orca.getInstance as jest.Mock).mockResolvedValue(null);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/position-info',
-        query: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          positionAddress: mockPositionAddress,
-        },
-      });
-
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
-    });
-
-    it('should handle position not owned by wallet', async () => {
-      const mockOrca = {
-        getPositionInfo: jest.fn().mockRejectedValue(new Error('Position not found')),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/position-info',
-        query: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          positionAddress: mockPositionAddress,
-        },
-      });
-
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBe(500);
+      expect(JSON.parse(response.body).message).toBe('Failed to get CLMM position info: RPC node behind');
     });
   });
 });

@@ -1,4 +1,5 @@
 import { NATIVE_MINT } from '@solana/spl-token';
+import { PublicKey } from '@solana/web3.js';
 
 import { accountLifecycleSol, liquidityWithoutRent } from '../../../src/chains/solana/solana.utils';
 
@@ -182,5 +183,25 @@ describe('accountLifecycleSol', () => {
     const one = tx([{ pre: 1_000_000_000, post: 0 }]);
 
     expect(accountLifecycleSol(one).closed).toBe(1);
+  });
+});
+
+// The transactions above already carry the rent out of a native side, in both directions
+// and down to the clamp at zero. These are the cases none of them reaches.
+describe('liquidityWithoutRent', () => {
+  const RENT = 0.0099;
+
+  it('leaves a non-native side untouched, since no rent rode on it', () => {
+    expect(liquidityWithoutRent(-3000, new PublicKey(OTHER_MINT), RENT)).toBe(3000);
+  });
+
+  it('is a no-op when no rent moved', () => {
+    expect(liquidityWithoutRent(-0.0152083, NATIVE_MINT, 0)).toBeCloseTo(0.0152083, 7);
+  });
+
+  it('would clamp every native side to zero if handed lamports', () => {
+    // Why accountLifecycleSol returns SOL and says so. The units have to agree; if they
+    // do not, this is the shape of the failure — silent, and total.
+    expect(liquidityWithoutRent(-0.0152083, NATIVE_MINT, RENT * 1e9)).toBe(0);
   });
 });

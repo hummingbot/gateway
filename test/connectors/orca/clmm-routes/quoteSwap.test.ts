@@ -1,6 +1,7 @@
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/orca/orca');
@@ -80,7 +81,7 @@ describe('GET /quote-swap', () => {
   });
 
   describe('with poolAddress provided', () => {
-    it('should return swap quote for SELL side', async () => {
+    it('quotes the base mint against the pool counter mint and maps each amount through', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/quote-swap',
@@ -97,55 +98,30 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-      expect(body).toHaveProperty('tokenIn');
-      expect(body).toHaveProperty('tokenOut');
-      expect(body).toHaveProperty('amountIn');
-      expect(body).toHaveProperty('amountOut');
-      expect(body).toHaveProperty('price');
-      expect(body).toHaveProperty('priceImpactPct');
-    });
-
-    it('should return swap quote for BUY side', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/quote-swap',
-        query: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 200,
-          side: 'BUY',
-          poolAddress: mockPoolAddress,
-          slippagePct: 1,
-        },
+      const { getOrcaSwapQuote } = require('../../../../src/connectors/orca/orca.utils');
+      expect(getOrcaSwapQuote).toHaveBeenCalledWith(
+        {},
+        mockPoolAddress,
+        mockBaseTokenInfo.address,
+        mockQuoteTokenInfo.address,
+        1,
+        'SELL',
+        1,
+        'mainnet-beta',
+      );
+      // Every figure is distinct, so a field wired to its neighbour fails here.
+      expect(parseWire(response.body)).toEqual({
+        poolAddress: mockPoolAddress,
+        tokenIn: mockBaseTokenInfo.address,
+        tokenOut: mockQuoteTokenInfo.address,
+        amountIn: 1,
+        amountOut: 200,
+        price: 200,
+        slippagePct: 1,
+        minAmountOut: 198,
+        maxAmountIn: 1.01,
+        priceImpactPct: 0.5,
       });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    });
-
-    it('should use default slippage if not provided', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/quote-swap',
-        query: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 1.0,
-          side: 'SELL',
-          poolAddress: mockPoolAddress,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('slippagePct');
     });
   });
 

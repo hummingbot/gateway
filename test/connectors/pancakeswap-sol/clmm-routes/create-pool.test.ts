@@ -76,11 +76,12 @@ describe('POST /create-pool (PancakeSwap Solana CLMM)', () => {
     expect(JSON.parse(response.body).message).toMatch(/must be different/);
   });
 
-  it('rejects when ammConfig is missing', async () => {
+  it('rejects a fee-config index with no amm_config account on chain', async () => {
+    const getAccountInfo = jest.fn(() => Promise.resolve(null));
     (Solana.getInstance as jest.Mock).mockResolvedValue({
       network: 'mainnet-beta',
       getToken: jest.fn((t: string) => Promise.resolve(t === 'SOL' ? mockSOL : mockUSDC)),
-      connection: { getAccountInfo: jest.fn(() => Promise.resolve(null)) },
+      connection: { getAccountInfo },
     });
 
     const response = await server.inject({
@@ -93,10 +94,13 @@ describe('POST /create-pool (PancakeSwap Solana CLMM)', () => {
         baseToken: 'SOL',
         quoteToken: 'USDC',
         initialPrice: 150,
-        // ammConfig intentionally omitted — the schema requires it, so this is rejected as a bad request.
+        ammConfigIndex: 7,
       },
     });
 
+    // Both seed encodings of the index are looked up; neither account exists.
     expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body).message).toMatch(/^No amm_config account found on-chain for index 7 \(tried /);
+    expect(getAccountInfo).toHaveBeenCalledTimes(2);
   });
 });

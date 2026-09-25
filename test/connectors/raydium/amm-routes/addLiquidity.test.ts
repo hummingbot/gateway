@@ -244,7 +244,7 @@ describe('POST /add-liquidity', () => {
     expect(body.data.quoteTokenAmountAdded).toBe(0.848971);
   });
 
-  it('should handle base-limited liquidity addition', async () => {
+  it('fixes the base side and bounds the quote side by the quoted amount when base limits', async () => {
     const { quoteLiquidity } = require('../../../../src/connectors/raydium/amm-routes/quoteLiquidity');
     quoteLiquidity.mockResolvedValue({
       baseLimited: true,
@@ -278,7 +278,13 @@ describe('POST /add-liquidity', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalled();
+    // The user's 1 SOL is the fixed side; the quote side may reach the quoted 150 USDC
+    // plus 1% slippage, never the 200 offered, and must not fall below 150 minus 1%.
+    const [args] = mockRaydiumInstance.raydiumSDK.liquidity.addLiquidity.mock.calls[0];
+    expect(args.fixedSide).toBe('a');
+    expect(args.amountInA.raw.toString()).toBe('1000000000');
+    expect(args.amountInB.raw.toString()).toBe('151500000');
+    expect(args.otherAmountMin.raw.toString()).toBe('148500000');
   });
 
   it('should return an error when sending the transaction fails', async () => {

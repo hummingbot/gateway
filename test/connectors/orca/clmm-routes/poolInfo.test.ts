@@ -112,7 +112,20 @@ describe('GET /pool-info', () => {
     await app.close();
   });
 
-  it('should return pool information', async () => {
+  it('reads the fee from hundredths of a basis point and scales each vault by its own mint', async () => {
+    // SOL (9 decimals) against USDC (6): a shared divisor would misreport one side.
+    fetchAllMintMock.mockResolvedValue([{ data: { decimals: 9 } }, { data: { decimals: 6 } }]);
+    const { sqrtPriceToPrice } = await import('@orca-so/whirlpools-core');
+    const vaultBalances: Record<string, string> = {
+      [mockWhirlpool.tokenVaultA]: '1000000000000', // 1000 SOL
+      [mockWhirlpool.tokenVaultB]: '200500000000', // 200,500 USDC
+    };
+    (Solana.getInstance as jest.Mock).mockResolvedValue({
+      connection: {
+        getTokenAccountBalance: jest.fn(async (vault: any) => ({ value: { amount: vaultBalances[vault.toBase58()] } })),
+      },
+    });
+
     const response = await app.inject({
       method: 'GET',
       url: '/pool-info',
@@ -124,16 +137,18 @@ describe('GET /pool-info', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = parseWire(response.body);
-    expect(body).toHaveProperty('address', mockPoolAddress);
-    expect(body).toHaveProperty('baseTokenAddress');
-    expect(body).toHaveProperty('quoteTokenAddress');
-    expect(body).toHaveProperty('binStep');
-    expect(body).toHaveProperty('feePct');
-    expect(body).toHaveProperty('price');
-    expect(body).toHaveProperty('baseTokenAmount');
-    expect(body).toHaveProperty('quoteTokenAmount');
-    expect(body).toHaveProperty('activeBinId');
+    expect(parseWire(response.body)).toEqual({
+      address: mockPoolAddress,
+      baseTokenAddress: mockWhirlpool.tokenMintA,
+      quoteTokenAddress: mockWhirlpool.tokenMintB,
+      binStep: 64,
+      feePct: 0.04, // feeRate 400
+      price: 200.5,
+      baseTokenAmount: 1000,
+      quoteTokenAmount: 200500,
+      activeBinId: -28800,
+    });
+    expect(sqrtPriceToPrice).toHaveBeenCalledWith(mockWhirlpool.sqrtPrice, 9, 6);
   });
 
   // Orca's connector-specific pool fields (liquidity, sqrtPrice, tvlUsdc, ...) are not

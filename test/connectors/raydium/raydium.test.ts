@@ -249,26 +249,30 @@ describe('Raydium', () => {
           ammConfig: 'config-address',
         };
 
+        // The AMM config account carries the trade fee rate, in millionths, at offset 47.
+        const configData = Buffer.alloc(100);
+        configData.writeUInt32LE(2500, 47);
+
         mockRaydiumSDK.clmm.getRpcClmmPoolInfo.mockResolvedValue(mockRpcData);
-        mockConnection.getAccountInfo.mockResolvedValue({
-          owner: CLMM_PROGRAM_ID,
-          data: Buffer.from(new Array(100).fill(0)),
-        });
-        mockConnection.getTokenAccountBalance.mockResolvedValue({
-          value: { uiAmount: 1000 },
-        });
+        mockConnection.getAccountInfo
+          .mockResolvedValueOnce({ owner: CLMM_PROGRAM_ID, data: Buffer.alloc(0) })
+          .mockResolvedValueOnce({ owner: CLMM_PROGRAM_ID, data: configData });
+        mockConnection.getTokenAccountBalance
+          .mockResolvedValueOnce({ value: { uiAmount: 1000 } })
+          .mockResolvedValueOnce({ value: { uiAmount: 150500 } });
 
         const result = await raydiumInstance.getClmmPoolInfo(mockPoolAddress);
 
+        expect(mockConnection.getAccountInfo).toHaveBeenLastCalledWith('config-address');
         expect(result).toEqual({
           address: mockPoolAddress,
           baseTokenAddress: 'token-a',
           quoteTokenAddress: 'token-b',
           binStep: 64,
-          feePct: 0, // Updated to match actual behavior
+          feePct: 0.25,
           price: 150.5,
           baseTokenAmount: 1000,
-          quoteTokenAmount: 1000,
+          quoteTokenAmount: 150500,
           activeBinId: 100,
         });
       });

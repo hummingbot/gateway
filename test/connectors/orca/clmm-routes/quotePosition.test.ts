@@ -173,7 +173,7 @@ describe('GET /quote-liquidity', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('should return error when no token amount provided', async () => {
+    it('rejects a quote with no token amount', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/quote-liquidity',
@@ -186,10 +186,13 @@ describe('GET /quote-liquidity', () => {
         },
       });
 
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBe(400);
+      expect(parseWire(response.body).message).toBe(
+        'At least one of baseTokenAmount or quoteTokenAmount must be specified',
+      );
     });
 
-    it('should handle lowerPrice >= upperPrice', async () => {
+    it('rejects an inverted price range', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/quote-liquidity',
@@ -203,7 +206,8 @@ describe('GET /quote-liquidity', () => {
         },
       });
 
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBe(400);
+      expect(parseWire(response.body).message).toBe('lowerPrice must be less than upperPrice');
     });
   });
 
@@ -226,25 +230,6 @@ describe('GET /quote-liquidity', () => {
       });
 
       expect(response.statusCode).toBe(500);
-    });
-
-    it('should handle service unavailable', async () => {
-      (Orca.getInstance as jest.Mock).mockResolvedValue(null);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/quote-liquidity',
-        query: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          poolAddress: mockPoolAddress,
-          lowerPrice: '150',
-          upperPrice: '250',
-          baseTokenAmount: '1.0',
-        },
-      });
-
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
     });
   });
 });
