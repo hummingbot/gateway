@@ -1,5 +1,6 @@
 import { httpErrors } from '../services/error-handler';
 import { logger } from '../services/logger';
+import { toRawAmount } from '../services/raw-amount';
 
 /**
  * Minimal token shape needed for BUY approximation (subset of chain TokenInfo).
@@ -119,7 +120,7 @@ export async function approximateBuyViaSellLeg<TQuote>({
   quoteToken,
   baseAmount,
 }: ApproximateBuyParams<TQuote>): Promise<ApproximateBuyResult<TQuote>> {
-  const baseAmountRaw = Math.floor(baseAmount * 10 ** baseToken.decimals).toString();
+  const baseAmountRaw = toRawAmount(baseAmount, baseToken.decimals);
 
   logger.info(
     `Approximating BUY of ${baseAmount} ${baseToken.symbol} via sell-leg quote (router lacks ExactOut support)`,

@@ -4,6 +4,7 @@ import { BigNumber } from 'ethers';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { QuoteLiquidityResponseType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
+import { toRawAmount } from '../../../services/raw-amount';
 import { Pancakeswap } from '../pancakeswap';
 import { IPancakeswapV2PairABI, getPancakeswapV2RouterAddress } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
@@ -92,12 +93,10 @@ export async function getPancakeswapAmmLiquidityQuote(
     const quoteReserve = token0IsBase ? reserve1 : reserve0;
 
     // Convert amounts to BigNumber with proper decimals
-    const baseAmountRaw = baseTokenAmount
-      ? BigNumber.from(Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals)).toString())
-      : null;
+    const baseAmountRaw = baseTokenAmount ? BigNumber.from(toRawAmount(baseTokenAmount, baseTokenObj.decimals)) : null;
 
     const quoteAmountRaw = quoteTokenAmount
-      ? BigNumber.from(Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals)).toString())
+      ? BigNumber.from(toRawAmount(quoteTokenAmount, quoteTokenObj.decimals))
       : null;
 
     // Calculate optimal amounts based on the reserves ratio
@@ -146,13 +145,9 @@ export async function getPancakeswapAmmLiquidityQuote(
   const routerAddress = getPancakeswapV2RouterAddress(networkToUse);
 
   // Convert final amounts to raw values for execution
-  const rawBaseTokenAmount = BigNumber.from(
-    Math.floor(baseTokenAmountOptimal * Math.pow(10, baseTokenObj.decimals)).toString(),
-  );
+  const rawBaseTokenAmount = BigNumber.from(toRawAmount(baseTokenAmountOptimal, baseTokenObj.decimals));
 
-  const rawQuoteTokenAmount = BigNumber.from(
-    Math.floor(quoteTokenAmountOptimal * Math.pow(10, quoteTokenObj.decimals)).toString(),
-  );
+  const rawQuoteTokenAmount = BigNumber.from(toRawAmount(quoteTokenAmountOptimal, quoteTokenObj.decimals));
 
   return {
     baseLimited,
