@@ -256,6 +256,46 @@ describe('GET /quote-swap', () => {
     expect(mockJupiterInstance.getQuote).toHaveBeenCalledTimes(3);
   });
 
+  it('should pass a 401 from Jupiter through as the API key, not as a missing route, and skip the fallback', async () => {
+    const mockSolanaInstance = {
+      getToken: jest.fn().mockResolvedValueOnce(mockSOL).mockResolvedValueOnce(mockUSDC),
+    };
+    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
+
+    // what Jupiter.getQuote throws for an upstream 401: an HttpError with the status and no code
+    const unauthorized = Object.assign(
+      new Error(
+        'Jupiter answered HTTP 401 on quote: no API key is configured, and the keyless endpoint no longer serves requests.',
+      ),
+      { statusCode: 401 },
+    );
+    const mockJupiterInstance = {
+      getQuote: jest.fn().mockRejectedValue(unauthorized),
+    };
+    (Jupiter.getInstance as jest.Mock).mockResolvedValue(mockJupiterInstance);
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/quote-swap',
+      query: {
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'jupiter',
+        baseToken: 'SOL',
+        quoteToken: 'USDC',
+        amount: '0.1',
+        side: 'BUY',
+        slippagePct: '0.5',
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+    const body = parseWire(response.body);
+    expect(body.message).toContain('API key');
+    expect(body.message).not.toContain('No route');
+    expect(body.code).not.toBe('NO_ROUTE_FOUND');
+    expect(mockJupiterInstance.getQuote).toHaveBeenCalledTimes(1);
+  });
+
   it('should return 400 for BUY when ExactOut is unsupported and approximation is disabled', async () => {
     const mockSolanaInstance = {
       getToken: jest.fn().mockResolvedValueOnce(mockSOL).mockResolvedValueOnce(mockUSDC),
