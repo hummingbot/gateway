@@ -10,7 +10,7 @@ import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { transactionFailed } from '../../services/error-handler';
+import { badRequest, serviceUnavailable, transactionFailed } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
@@ -325,6 +325,61 @@ export class Ethereum {
     } catch (error: any) {
       logger.error(`Failed to estimate gas price: ${error.message}`);
       throw error; // Throw error instead of returning fallback
+    }
+  }
+
+  /**
+   * A gas limit for one contract call: the node's estimate with a margin, never below the
+   * route's fixed figure.
+   *
+   * The fixed figures were chosen for the common case, and a call that needs more reverts
+   * out of gas after paying for every unit up to the limit - a Uniswap CLMM close on mainnet
+   * used 394k of its 400k and failed (#629). The margin covers the state moving between the
+   * estimate and the block; the floor keeps a low estimate from tightening what worked.
+   * When the node cannot estimate - the call would revert, or the RPC did not answer - the
+   * call is refused with that reason and nothing is sent: a transaction sent blind at the
+   * fixed figure either reverts on-chain with the fee paid, or runs out of gas the same way.
+   */
+  public async gasLimitWithMargin(
+    // the shape both ethers' and @ethersproject/contracts' Contract satisfy
+    contract: { estimateGas: Record<string, (...args: any[]) => Promise<BigNumber>> },
+    method: string,
+    args: unknown[],
+    overrides: Record<string, unknown>,
+    floor: number,
+    marginPct: number = 25,
+  ): Promise<number> {
+    try {
+      const estimate: BigNumber = await contract.estimateGas[method](...args, overrides);
+      const withMargin = estimate
+        .mul(100 + marginPct)
+        .div(100)
+        .toNumber();
+      if (withMargin > floor) {
+        logger.info(`Gas limit for ${method}: ${withMargin} (estimate ${estimate.toString()} +${marginPct}%)`);
+        return withMargin;
+      }
+      return floor;
+    } catch (error: any) {
+      // A throttled RPC is already classified by the provider's interceptor (429 RATE_LIMITED);
+      // it goes up as it is, retry-after and all.
+      if (error?.statusCode === 429 || error?.code === 'RATE_LIMITED') {
+        throw error;
+      }
+      // A revert reason is the contract's and safe to pass on. A transport error's message
+      // can carry the RPC URL, and an Infura or Chainstack URL carries the credential, so
+      // the caller gets the error code only and the log gets the redacted text.
+      logger.warn(`Gas estimate for ${method} failed: ${redactUrl(error?.message ?? String(error))}`);
+      const revertReason = error?.reason ?? error?.error?.reason;
+      if (typeof revertReason === 'string') {
+        // the contract refused the call: a 400, the request itself is wrong
+        throw badRequest(`Could not estimate gas for ${method}: ${revertReason}. The transaction was not sent.`);
+      }
+      // the node did not answer: a 503, the same request may go through on a retry
+      throw serviceUnavailable(
+        `Could not estimate gas for ${method}: the node did not answer${error?.code ? ` (${error.code})` : ''}. ` +
+          `The transaction was not sent; retry.`,
+      );
     }
   }
 
