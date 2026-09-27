@@ -37,7 +37,7 @@ export const chainNetworkField = ({ defaulted = true, description }: ChainNetwor
       description ?? 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
     enum: SUPPORTED_CHAIN_NETWORKS,
     // A default is a convenience on a route that reads, and a hazard on one that writes:
-    // Fastify injects it before the handler runs, so `DELETE /pools/{address}` with no
+    // Fastify injects it before the handler runs, so `DELETE /pools/{tradingPairOrAddress}` with no
     // chainNetwork would pick a network and delete from it. The data-management routes
     // ask for it rather than guess.
     ...(defaulted ? { default: DEFAULT_CHAIN_NETWORK } : {}),

@@ -37,16 +37,16 @@ export const OPERATION_IDS: Record<string, string> = {
   'GET /tokens/{symbolOrAddress}': 'getToken',
   'GET /tokens/find/{address}': 'findToken',
   'POST /tokens/save/{address}': 'saveToken',
-  'DELETE /tokens/{address}': 'removeToken',
+  'DELETE /tokens/{symbolOrAddress}': 'removeToken',
 
   // Pools
   'GET /pools/': 'listPools',
   'POST /pools/': 'addPool',
-  'GET /pools/{tradingPair}': 'getPool',
+  'GET /pools/{tradingPairOrAddress}': 'getPool',
   'GET /pools/find': 'findPools',
   'GET /pools/find/{address}': 'findPool',
   'POST /pools/save/{address}': 'savePool',
-  'DELETE /pools/{address}': 'removePool',
+  'DELETE /pools/{tradingPairOrAddress}': 'removePool',
 
   // Chains
   'GET /chains/{chain}/status': 'getChainStatus',
