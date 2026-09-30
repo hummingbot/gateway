@@ -72,6 +72,7 @@ jest.mock('../../src/services/config-manager-v2', () => ({
         return namespaces[namespace] || null;
       }),
       set: mockSetFn,
+      getSupportedChainNetworks: () => ['solana-mainnet-beta', 'solana-devnet', 'ethereum-mainnet'],
       allConfigurations: {
         solana: mockSolanaChainConfig.configuration,
         'solana-mainnet-beta': mockSolanaNetworkConfig.configuration,
@@ -84,6 +85,7 @@ jest.mock('../../src/services/config-manager-v2', () => ({
 }));
 
 // Import after mocking
+import fastifySensible from '@fastify/sensible';
 import { FastifyInstance } from 'fastify';
 
 import { getConfig, updateConfig } from '../../src/config/utils';
@@ -95,6 +97,7 @@ describe('Config Utils - Chain-Network Merge', () => {
 
   beforeEach(async () => {
     fastify = fastifyWithTypeProvider();
+    await fastify.register(fastifySensible);
     jest.clearAllMocks();
   });
 
@@ -238,6 +241,37 @@ describe('Config Utils - Chain-Network Merge', () => {
       updateConfig(fastify, 'solana.defaultWallet', 'directUpdate');
 
       expect(mockSetFn).toHaveBeenCalledWith('solana.defaultWallet', 'directUpdate');
+    });
+
+    it('should reject a defaultNetworks list that names a network the chain has no config for', () => {
+      expect(() => updateConfig(fastify, 'ethereum.defaultNetworks', ['mainnet', 'ralphhandsome'])).toThrow(
+        expect.objectContaining({
+          statusCode: 400,
+          message: 'Unknown ethereum network: ralphhandsome. Configured networks: mainnet',
+        }),
+      );
+
+      expect(mockSetFn).not.toHaveBeenCalled();
+    });
+
+    it('should reject a defaultNetwork that the chain has no config for, also when routed from a network namespace', () => {
+      expect(() => updateConfig(fastify, 'solana-mainnet-beta.defaultNetwork', 'testnet')).toThrow(
+        expect.objectContaining({ statusCode: 400 }),
+      );
+
+      expect(mockSetFn).not.toHaveBeenCalled();
+    });
+
+    it('should accept a defaultNetworks list made of configured networks', () => {
+      updateConfig(fastify, 'solana.defaultNetworks', ['mainnet-beta', 'devnet']);
+
+      expect(mockSetFn).toHaveBeenCalledWith('solana.defaultNetworks', ['mainnet-beta', 'devnet']);
+    });
+
+    it('should leave a wrongly typed defaultNetworks value to the JSON schema', () => {
+      updateConfig(fastify, 'solana.defaultNetworks', 'mainnet-beta,devnet');
+
+      expect(mockSetFn).toHaveBeenCalledWith('solana.defaultNetworks', 'mainnet-beta,devnet');
     });
 
     it('should handle nested paths correctly for chain-level fields', () => {
