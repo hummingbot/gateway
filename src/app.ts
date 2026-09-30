@@ -26,14 +26,18 @@ import * as routerSchemas from './schemas/router-schema';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { httpErrors } from './services/error-handler';
 import {
+  clearAuthFailures,
   constantTimeEqual,
   extractBearerToken,
   getBindAddress,
+  isAuthLockedOut,
   isExposedHost,
   isLoopbackAddress,
   isSensitivePath,
   isTrustedLocalAddress,
+  isWeakApiKey,
   loadOrCreateApiKey,
+  recordAuthFailure,
 } from './services/gateway-security';
 import { logger } from './services/logger';
 import { OPERATION_IDS } from './services/operation-ids';
@@ -313,15 +317,37 @@ const configureGatewayServer = () => {
   const requireAuth = process.env.GATEWAY_REQUIRE_AUTH === 'true' || !!process.env.GATEWAY_API_KEY;
   if (requireAuth) {
     const gatewayApiKey = loadOrCreateApiKey(`${rootPath()}/conf`);
+    if (isWeakApiKey(gatewayApiKey)) {
+      logger.warn(
+        'GATEWAY_API_KEY is shorter than 16 characters — prefer a high-entropy value (the ' +
+          'auto-generated key is 256-bit). A weak token is brute-forceable from a private-network ' +
+          'source, which the general rate limiter does not throttle.',
+      );
+    }
     logger.info('API-token authentication is enabled for network requests to fund-moving routes.');
     server.addHook('onRequest', async (request, reply) => {
       if (isLoopbackAddress(request.ip)) return; // trusted
       if (!isSensitivePath(request.url)) return; // only gate sensitive routes
+      // Lock out a source that keeps failing the token check. The global rate limiter
+      // allow-lists private-network sources (isTrustedLocalAddress), so without this a
+      // LAN/compose-adjacent attacker could brute-force the token unthrottled (#660 §2).
+      if (isAuthLockedOut(request.ip)) {
+        logger.warn(`Locked out ${request.ip} after repeated failed auth: ${request.method} ${request.url}`);
+        reply.code(429).send({
+          statusCode: 429,
+          error: 'Too Many Requests',
+          message: 'Too many failed authentication attempts; try again later.',
+        });
+        return;
+      }
       const token = extractBearerToken(request.headers['authorization'] as string | undefined);
       if (!constantTimeEqual(token, gatewayApiKey)) {
+        recordAuthFailure(request.ip);
         logger.warn(`Rejected unauthenticated request from ${request.ip}: ${request.method} ${request.url}`);
         reply.code(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Invalid or missing API key' });
+        return;
       }
+      clearAuthFailures(request.ip); // successful auth resets the counter for this source
     });
   }
 
