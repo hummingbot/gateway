@@ -2,8 +2,7 @@ import {
   ApiCpmmConfigInfo,
   CREATE_CPMM_POOL_PROGRAM,
   CREATE_CPMM_POOL_FEE_ACC,
-  DEV_CREATE_CPMM_POOL_PROGRAM,
-  DEV_CREATE_CPMM_POOL_FEE_ACC,
+  DEVNET_PROGRAM_ID,
 } from '@raydium-io/raydium-sdk-v2';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getMint } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
@@ -156,8 +155,8 @@ export async function createPool(
   // Select the CPMM program + create-pool fee account for the connector's cluster, mirroring how
   // raydium.ts derives mainnet vs devnet from solana.network.
   const isMainnet = solana.network === 'mainnet-beta';
-  const programId = isMainnet ? CREATE_CPMM_POOL_PROGRAM : DEV_CREATE_CPMM_POOL_PROGRAM;
-  const poolFeeAccount = isMainnet ? CREATE_CPMM_POOL_FEE_ACC : DEV_CREATE_CPMM_POOL_FEE_ACC;
+  const programId = isMainnet ? CREATE_CPMM_POOL_PROGRAM : DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM;
+  const poolFeeAccount = isMainnet ? CREATE_CPMM_POOL_FEE_ACC : DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_FEE_ACC;
 
   // NOTE on mint ordering: the CPMM program requires the pool's token0 < token1 (byte-compared
   // mint pubkeys). raydium.cpmm.createPool sorts (mintA, mintB) internally and swaps

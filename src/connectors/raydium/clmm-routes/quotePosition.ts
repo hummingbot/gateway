@@ -1,4 +1,4 @@
-import { TickUtils, PoolUtils } from '@raydium-io/raydium-sdk-v2';
+import { PoolUtils } from '@raydium-io/raydium-sdk-v2';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 
@@ -7,6 +7,7 @@ import { QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
+import { priceToTick } from '../raydium.utils';
 
 export async function quotePosition(
   network: string,
@@ -40,16 +41,19 @@ export async function quotePosition(
     const rpcData = await raydium.getClmmPoolfromRPC(poolAddressToUse);
     poolInfo.price = rpcData.currentPrice;
 
-    const { tick: lowerTick } = TickUtils.getPriceAndTick({
-      poolInfo,
-      price: new Decimal(lowerPrice),
-      baseIn: true,
-    });
-    const { tick: upperTick } = TickUtils.getPriceAndTick({
-      poolInfo,
-      price: new Decimal(upperPrice),
-      baseIn: true,
-    });
+    const { tickSpacing } = poolInfo.config;
+    const lowerTick = priceToTick(
+      new Decimal(lowerPrice),
+      tickSpacing,
+      poolInfo.mintA.decimals,
+      poolInfo.mintB.decimals,
+    );
+    const upperTick = priceToTick(
+      new Decimal(upperPrice),
+      tickSpacing,
+      poolInfo.mintA.decimals,
+      poolInfo.mintB.decimals,
+    );
 
     const baseAmountBN = baseTokenAmount
       ? new BN(new Decimal(baseTokenAmount).mul(10 ** poolInfo.mintA.decimals).toFixed(0))
@@ -126,6 +130,20 @@ export async function quotePosition(
       });
     }
 
+    // The most the position may take of each side: the side the caller fixed is
+    // exact, the other one gets the slippage allowance on top. (The SDK's
+    // amountSlippage{A,B} are minimums for a withdrawal, below the amount even
+    // when `add` is set, so they cannot bound a deposit.)
+    const maxAmount = (amount: BN, fixed: boolean): number =>
+      Number(
+        fixed
+          ? amount.toString()
+          : new Decimal(amount.toString())
+              .mul(1 + slippage)
+              .ceil()
+              .toFixed(),
+      );
+
     // If both base and quote amounts are provided, use the one with less liquidity
     let res;
     let baseLimited = false;
@@ -144,8 +162,8 @@ export async function quotePosition(
       baseLimited,
       baseTokenAmount: Number(res.amountA.amount.toString()) / 10 ** poolInfo.mintA.decimals,
       quoteTokenAmount: Number(res.amountB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
-      baseTokenAmountMax: Number(res.amountSlippageA.amount.toString()) / 10 ** poolInfo.mintA.decimals,
-      quoteTokenAmountMax: Number(res.amountSlippageB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
+      baseTokenAmountMax: maxAmount(res.amountA.amount, baseLimited) / 10 ** poolInfo.mintA.decimals,
+      quoteTokenAmountMax: maxAmount(res.amountB.amount, !baseLimited) / 10 ** poolInfo.mintB.decimals,
       liquidity: res.liquidity,
     };
   } catch (error) {
