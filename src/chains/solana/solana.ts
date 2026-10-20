@@ -996,13 +996,11 @@ export class Solana {
           const accountInfo = AccountLayout.decode(data);
           const mintAddress = accountInfo.mint.toString();
 
-          // Get decimals from token list (only process tokens in our list)
+          // Decimals come from the token list when the mint is listed. An unlisted mint is
+          // kept too, so a caller asking for it by address gets its balance, with decimals
+          // read from the mint (getTokenBalanceWithMintInfo). The default list-only view
+          // still leaves it out, since processTokenListOnly walks the list, not this map.
           const tokenInList = tokenList.find((t) => t.address === mintAddress);
-          if (!tokenInList) {
-            // Skip tokens not in our token list
-            logger.debug(`Skipping token ${mintAddress} - not in token list`);
-            continue;
-          }
 
           // Store in the same format as parsed accounts
           tokenAccountsMap.set(mintAddress, {
@@ -1010,8 +1008,8 @@ export class Solana {
               mint: accountInfo.mint,
               owner: accountInfo.owner,
               amount: accountInfo.amount,
-              decimals: tokenInList.decimals,
-              uiAmount: Number(accountInfo.amount) / Math.pow(10, tokenInList.decimals),
+              decimals: tokenInList?.decimals,
+              uiAmount: tokenInList ? Number(accountInfo.amount) / Math.pow(10, tokenInList.decimals) : undefined,
               isNative: accountInfo.isNative !== null && accountInfo.isNativeOption === 1,
               delegatedAmount: accountInfo.delegateOption ? accountInfo.delegatedAmount : BigInt(0),
               delegate: accountInfo.delegateOption ? accountInfo.delegate : null,
@@ -1222,24 +1220,23 @@ export class Solana {
    * Get token balance with mint info lookup
    */
   private async getTokenBalanceWithMintInfo(tokenAccount: TokenAccount, mintAddress: string): Promise<number> {
-    try {
-      const programId = tokenAccount.value.account.owner;
-      const mintInfo = await Promise.race([
-        getMint(this.connection, new PublicKey(mintAddress), undefined, programId),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Mint info timeout')), 1000)),
-      ]);
-
-      // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
-      return (
-        tokenAccount.parsedAccount.uiAmount ??
-        Number(tokenAccount.parsedAccount.amount) / Math.pow(10, mintInfo.decimals)
-      );
-    } catch (error) {
-      // Use default 9 decimals if mint info fails
-      logger.debug(`Failed to get mint info for ${mintAddress}, using default decimals`);
-      // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
-      return tokenAccount.parsedAccount.uiAmount ?? Number(tokenAccount.parsedAccount.amount) / Math.pow(10, 9);
+    if (tokenAccount.parsedAccount.uiAmount !== undefined) {
+      return tokenAccount.parsedAccount.uiAmount;
     }
+    // Read the mint through the token program that owns the account (legacy or
+    // Token-2022). Guessing the decimals would report a wrong balance as if it were right.
+    const programId: PublicKey = tokenAccount.value.account.owner;
+    let mintInfo: Awaited<ReturnType<typeof getMint>>;
+    try {
+      mintInfo = await getMint(this.connection, new PublicKey(mintAddress), undefined, programId);
+    } catch (error) {
+      // A rate limit stays a 429, so the route reports it as one.
+      if ((error as any).statusCode === 429) throw error;
+      throw new Error(
+        `Failed to read mint ${mintAddress} through token program ${programId.toBase58()}: ${(error as Error).message}`,
+      );
+    }
+    return Number(tokenAccount.parsedAccount.amount) / Math.pow(10, mintInfo.decimals);
   }
 
   /**
