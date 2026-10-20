@@ -48,7 +48,7 @@ import { TransactionStatusCode } from '../../schemas/chain-schema';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { httpErrors, HttpError } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
-import { encryptSecret, decryptSecret } from '../../services/secure-keystore';
+import { encryptSecret } from '../../services/secure-keystore';
 import { TokenService } from '../../services/token-service';
 import { externalWalletRefusal, getSolanaSigner } from '../../wallet/signers/registry';
 import { SolanaSigner } from '../../wallet/signers/types';
@@ -471,14 +471,6 @@ export class Solana {
    */
   async encrypt(secret: string, password: string): Promise<string> {
     return encryptSecret(secret, password);
-  }
-
-  /**
-   * Decrypt a wallet secret. Reads both the hardened format and the legacy
-   * (PBKDF2-5000 + AES-256-CTR) format so existing wallets keep working.
-   */
-  async decrypt(encryptedSecret: string, password: string): Promise<string> {
-    return decryptSecret(encryptedSecret, password);
   }
 
   /**

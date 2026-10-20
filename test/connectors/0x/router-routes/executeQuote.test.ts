@@ -244,7 +244,6 @@ describe('POST /execute-quote', () => {
       getWallet: jest.fn().mockResolvedValue(mockWallet),
       getContract: jest.fn().mockReturnValue({}),
       getERC20Allowance: jest.fn().mockResolvedValue({ value: BigNumber.from('0') }),
-      approveERC20: jest.fn().mockResolvedValue({}),
       nativeTokenSymbol: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
       getToken: jest.fn().mockImplementation((symbolOrAddress) => {
         if (symbolOrAddress.toLowerCase() === mockWETH.address.toLowerCase() || symbolOrAddress === 'WETH')
@@ -300,6 +299,5 @@ describe('POST /execute-quote', () => {
     expect(response.statusCode).toBe(400);
     const body = parseWire(response.body);
     expect(body.message).toContain('Insufficient allowance');
-    expect(mockEthereumInstance.approveERC20).not.toHaveBeenCalled();
   });
 });

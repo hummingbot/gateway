@@ -88,7 +88,14 @@ describe('only the signer seam signs', () => {
       .map((path) => relative(SRC, path))
       .sort();
 
-  it('decrypts keys only in the local backend', () => {
+  it('decrypts key files only in the local backend', () => {
+    expect(filesMatching(/\bdecryptSecret\(|\.fromEncryptedJson\(/)).toEqual([
+      'services/secure-keystore.ts', // where decryptSecret is defined
+      'wallet/signers/local.ts',
+    ]);
+  });
+
+  it('loads a decrypted key only in the local backend', () => {
     expect(filesMatching(/\bloadSolanaKeypair\(|\bloadEthereumWallet\(/)).toEqual([
       'chains/ethereum/ethereum.ts', // Ethereum.getWallet, for the INV-438 routes below
       'wallet/signers/local.ts',

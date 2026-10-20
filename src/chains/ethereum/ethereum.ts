@@ -1,5 +1,5 @@
 import { Provider, TransactionResponse } from '@ethersproject/abstract-provider';
-import { BigNumber, Contract, ContractTransaction, providers, utils, Wallet, ethers } from 'ethers';
+import { BigNumber, Contract, providers, utils, Wallet, ethers } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 
 import { ChainstackService } from '../../rpc/chainstack-service';
@@ -708,16 +708,15 @@ export class Ethereum {
    * Only the routes that still pass a wallet to a contract call use this; they are
    * listed as build gaps in src/wallet/signers/transaction-routes.ts and move to
    * sendTransactionForWallet with their build twins. A wallet with any other signer
-   * is refused here with the same message the seam gives.
+   * is refused here, naming its signer.
    */
   public async getWallet(address: string): Promise<Wallet> {
     const validatedAddress = Ethereum.validateAddress(address);
     const record = await getWalletRecord('ethereum', validatedAddress);
     if (record.signer !== 'local') {
-      throw externalWalletRefusal(
-        'ethereum',
-        validatedAddress,
-        `this route needs a local key and the wallet's signer is ${record.signer}`,
+      throw httpErrors.badRequest(
+        `Wallet ${validatedAddress} is a ${record.signer} wallet, and this route still signs with a key ` +
+          'stored in Gateway, so it serves local wallets only. Use a local wallet for this operation.',
       );
     }
     return (await loadEthereumWallet(validatedAddress)).connect(this.provider);
@@ -822,14 +821,6 @@ export class Ethereum {
   }
 
   /**
-   * Decrypt an encrypted private key
-   */
-  public async decrypt(encryptedPrivateKey: string, password: string): Promise<Wallet> {
-    const wallet = await Wallet.fromEncryptedJson(encryptedPrivateKey, password);
-    return wallet.connect(this.provider);
-  }
-
-  /**
    * Get native token balance by address
    */
   public async getNativeBalanceByAddress(address: string): Promise<TokenValue> {
@@ -904,28 +895,6 @@ export class Ethereum {
    */
   public async getTransactionReceipt(txHash: string): Promise<providers.TransactionReceipt | null> {
     return this.provider.getTransactionReceipt(txHash);
-  }
-
-  /**
-   * Approve ERC-20 token spending
-   */
-  public async approveERC20(
-    contract: Contract,
-    wallet: Wallet,
-    spender: string,
-    amount: BigNumber,
-  ): Promise<providers.TransactionResponse> {
-    logger.info(`Approving ${amount.toString()} tokens for spender ${spender}`);
-
-    // Prepare gas options for approval transaction
-    const gasOptions = await this.prepareGasOptions();
-    const params: any = {
-      ...gasOptions,
-      nonce: await this.provider.getTransactionCount(wallet.address),
-    };
-
-    // Don't add gasPrice when using EIP-1559 parameters
-    return contract.approve(spender, amount, params);
   }
 
   /**
@@ -1039,32 +1008,6 @@ export class Ethereum {
   public isWrappedNativeToken(tokenAddress: string): boolean {
     const wrappedAddress = this.getWrappedNativeTokenAddress();
     return tokenAddress.toLowerCase() === wrappedAddress.toLowerCase();
-  }
-
-  /**
-   * Wraps native ETH to WETH (or equivalent on other chains)
-   * @param wallet The wallet to use for wrapping
-   * @param amountInWei The amount of ETH to wrap in wei (as a BigNumber)
-   * @returns The transaction receipt
-   */
-  public async wrapNativeToken(wallet: Wallet, amountInWei: BigNumber): Promise<ContractTransaction> {
-    const wrappedAddress = this.getWrappedNativeTokenAddress();
-
-    // Create wrapped token contract instance
-    const wrappedContract = new Contract(wrappedAddress, Ethereum.WETH9ABI, wallet);
-
-    // Prepare gas options for wrap transaction
-    const gasOptions = await this.prepareGasOptions();
-    const params: any = {
-      ...gasOptions,
-      nonce: await this.provider.getTransactionCount(wallet.address),
-      value: amountInWei, // Send native token with the transaction
-    };
-
-    // Don't add gasPrice when using EIP-1559 parameters
-    // Create transaction to call deposit() function
-    logger.info(`Wrapping ${utils.formatEther(amountInWei)} ETH to WETH`);
-    return await wrappedContract.deposit(params);
   }
 
   /**
