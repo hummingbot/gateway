@@ -93,5 +93,12 @@
     "name": "Meteora",
     "address": "METvsvVRapdj9cFLzq4Tr43xK4tAjQfwX76z3n6mWQL",
     "decimals": 6
+  },
+  {
+    "chainId": 101,
+    "name": "Condor",
+    "symbol": "CNDR",
+    "address": "ESqMjA15hbH5NnHqjXo4S1A4CU4hPuKjkvi2mJ3oEihC",
+    "decimals": 6
   }
 ]
