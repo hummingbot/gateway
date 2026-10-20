@@ -282,8 +282,11 @@ async function createWithNewLookupTable(
     },
   });
   const { blockhash } = await solana.connection.getLatestBlockhash('confirmed');
+  // Compiled with the build's fee payer already in place: moving it later decompiles the
+  // message, which reads the table from the chain, where it does not exist yet.
+  const payerKey = getBuildModeContext()?.feePayer ?? wallet;
   const createTx = new VersionedTransaction(
-    new TransactionMessage({ payerKey: wallet, recentBlockhash: blockhash, instructions }).compileToV0Message([table]),
+    new TransactionMessage({ payerKey, recentBlockhash: blockhash, instructions }).compileToV0Message([table]),
   );
   logger.info(`pump create with a dev buy: lookup table ${tableAddress.toBase58()} made for it first`);
 

@@ -131,4 +131,18 @@ describe('pump create with a dev buy', () => {
     expect(steps[1].computeUnits).toBe(CREATE_WITH_DEV_BUY_COMPUTE_UNITS);
     expect(solana.sendAndConfirmTransactionForWallet).not.toHaveBeenCalled();
   });
+
+  it('compiles the create against the new table with the build fee payer already in place', async () => {
+    const payer = Keypair.generate().publicKey;
+    const prepared = await prepareCreateToken(params);
+    await expect(
+      captureUnsignedTransaction({ feePayer: payer.toBase58() }, () =>
+        createToken('mainnet-beta', WALLET.toBase58(), params, prepared),
+      ),
+    ).rejects.toThrow('captured');
+    const [steps] = solana.captureSequenceForExternalSigner.mock.calls[0] as unknown as [
+      { transaction: VersionedTransaction }[],
+    ];
+    expect(steps[1].transaction.message.staticAccountKeys[0].toBase58()).toBe(payer.toBase58());
+  });
 });
