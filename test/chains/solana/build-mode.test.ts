@@ -9,6 +9,7 @@
  */
 import {
   AddressLookupTableAccount,
+  ComputeBudgetProgram,
   Keypair,
   PublicKey,
   SystemProgram,
@@ -40,6 +41,7 @@ const chokepoint = (Solana.prototype as any).sendAndConfirmTransactionForWallet 
 ) => Promise<{ signature: string; fee: number }>;
 
 const fakeSolana = () => ({
+  captureSequenceForExternalSigner: (Solana.prototype as any).captureSequenceForExternalSigner,
   captureForExternalSigner: (Solana.prototype as any).captureForExternalSigner,
   collectAppliedSignatures: (Solana.prototype as any).collectAppliedSignatures,
   instructionsOf: (Solana.prototype as any).instructionsOf,
@@ -544,5 +546,99 @@ describe('build shape: Solana Pay references', () => {
     const dup = one();
     expect(() => parseReferences([dup, dup])).toThrow(/repeats/);
     expect(parseReferences(undefined)).toEqual([]);
+  });
+});
+
+describe('build mode: an operation of several transactions', () => {
+  const wallet = Keypair.generate();
+  const walletAddress = wallet.publicKey.toBase58();
+  const sequence = (Solana.prototype as any).captureSequenceForExternalSigner as (
+    this: unknown,
+    steps: { transaction: Transaction; signers?: Keypair[]; computeUnits?: number }[],
+    address: string,
+  ) => Promise<never>;
+  const limitOf = (built: { transaction?: string }) =>
+    Transaction.from(Buffer.from(built.transaction!, 'base64'))
+      .instructions.find((ix) => ix.programId.equals(ComputeBudgetProgram.programId) && ix.data[0] === 2)!
+      .data.readUInt32LE(1);
+
+  it('returns the first transaction simulated and the rest in order, each with its own ephemeral signers', async () => {
+    const fake = fakeSolana();
+    const first = Keypair.generate();
+    const second = Keypair.generate();
+    const third = Keypair.generate();
+    const withLimit = legacyTx(wallet.publicKey, third.publicKey);
+    withLimit.instructions.unshift(ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }));
+
+    const built = await captureUnsignedTransaction({ memo: 'app:ref=1' }, () =>
+      sequence.call(
+        fake,
+        [
+          { transaction: legacyTx(wallet.publicKey, first.publicKey), signers: [first] },
+          { transaction: legacyTx(wallet.publicKey, second.publicKey), signers: [second], computeUnits: 300_000 },
+          { transaction: withLimit, signers: [third] },
+        ],
+        walletAddress,
+      ),
+    );
+
+    // Only the first is simulated; the others run against state it creates.
+    expect(fake.simulateWithErrorHandling).toHaveBeenCalledTimes(1);
+    expect(built.extraSigners.map((s) => s.pubkey)).toEqual([first.publicKey.toBase58()]);
+    expect(built.followingTransactions!.map((b) => b.extraSigners.map((s) => s.pubkey))).toEqual([
+      [second.publicKey.toBase58()],
+      [third.publicKey.toBase58()],
+    ]);
+    expect(built.followingTransactions!.map(limitOf)).toEqual([300_000, 1_400_000]);
+    // The caller's memo goes on the first transaction alone.
+    const programs = (b: { transaction?: string }) =>
+      Transaction.from(Buffer.from(b.transaction!, 'base64')).instructions.map((ix) => ix.programId.toBase58());
+    expect(programs(built)).toContain(MEMO_PROGRAM_ID.toBase58());
+    expect(programs(built.followingTransactions![0])).not.toContain(MEMO_PROGRAM_ID.toBase58());
+  });
+
+  it('answers one transaction exactly as a single build does', async () => {
+    const fake = fakeSolana();
+    const ephemeral = Keypair.generate();
+    const built = await captureUnsignedTransaction({}, () =>
+      sequence.call(
+        fake,
+        [{ transaction: legacyTx(wallet.publicKey, ephemeral.publicKey), signers: [ephemeral] }],
+        walletAddress,
+      ),
+    );
+    expect(built.followingTransactions).toBeUndefined();
+  });
+
+  it('refuses a following transaction with no compute limit', async () => {
+    const fake = fakeSolana();
+    await expect(
+      captureUnsignedTransaction({}, () =>
+        sequence.call(
+          fake,
+          [
+            { transaction: legacyTx(wallet.publicKey, Keypair.generate().publicKey) },
+            { transaction: legacyTx(wallet.publicKey, Keypair.generate().publicKey) },
+          ],
+          walletAddress,
+        ),
+      ),
+    ).rejects.toThrow('Transaction 2 of 2 cannot be simulated before the ones ahead of it land');
+  });
+
+  it('refuses format "instructions" for several transactions', async () => {
+    const fake = fakeSolana();
+    await expect(
+      captureUnsignedTransaction({ format: 'instructions' }, () =>
+        sequence.call(
+          fake,
+          [
+            { transaction: legacyTx(wallet.publicKey, Keypair.generate().publicKey) },
+            { transaction: legacyTx(wallet.publicKey, Keypair.generate().publicKey), computeUnits: 1 },
+          ],
+          walletAddress,
+        ),
+      ),
+    ).rejects.toThrow('This operation takes 2 transactions');
   });
 });

@@ -55,6 +55,7 @@ import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from 
 
 import {
   BuildModeContext,
+  BuildStep,
   BuiltUnsignedTransaction,
   decompileVersioned,
   getBuildModeContext,
@@ -1902,6 +1903,79 @@ export class Solana {
         `(${built.extraSigners.length} ephemeral signature(s), blockhash valid to height ${lastValidBlockHeight})`,
     );
     return new UnsignedTransactionCaptured(built);
+  }
+
+  /**
+   * Build mode, for an operation of several transactions: prepare each for the external
+   * signer and return them as one capture — the first transaction, with the rest in
+   * `followingTransactions` in the order they are submitted. A connector calls it in
+   * place of its send loop when `getBuildModeContext()` is set; it never returns.
+   *
+   * The first transaction is prepared as a single build is: the caller's extra
+   * instructions, memo, references and Gateway's platform instructions go on it, and it
+   * is simulated. The following ones run against state the first creates (a position
+   * account, a lookup table, a locker), so they are not simulated and carry their step's
+   * compute limit. Each gets its own blockhash; the caller signs them together and
+   * submits them in order, each after the one before it confirms.
+   */
+  public async captureSequenceForExternalSigner(steps: BuildStep[], address: string): Promise<never> {
+    const buildContext = getBuildModeContext();
+    if (!buildContext) {
+      throw httpErrors.internalServerError('captureSequenceForExternalSigner is for build mode only');
+    }
+    if (steps.length === 0) {
+      throw httpErrors.internalServerError('A build sequence needs at least one transaction');
+    }
+    if (steps.length > 1 && buildContext.format === 'instructions') {
+      throw httpErrors.badRequest(
+        `This operation takes ${steps.length} transactions, and format "instructions" returns the ` +
+          'instructions of one. Build it with format "transaction".',
+      );
+    }
+    const walletPk = new PublicKey(address);
+    const built: BuiltUnsignedTransaction[] = [];
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      const tx = step.transaction;
+      if (!(tx instanceof VersionedTransaction) && !tx.feePayer) tx.feePayer = walletPk;
+      const signers = (step.signers ?? []).filter((s) => !s.publicKey.equals(walletPk));
+      let context = buildContext;
+      if (i > 0) {
+        const units = step.computeUnits ?? Solana.computeUnitLimitOf(tx);
+        if (!units) {
+          throw httpErrors.internalServerError(
+            `Transaction ${i + 1} of ${steps.length} cannot be simulated before the ones ahead of it land, ` +
+              'and names no compute limit',
+          );
+        }
+        context = {
+          ...buildContext,
+          extraInstructions: [],
+          prependInstructions: [],
+          appendInstructions: [],
+          references: [],
+          unsimulated: true,
+          minComputeUnits: units,
+        };
+      }
+      const captured = await this.captureForExternalSigner(tx, walletPk, signers, context);
+      built.push(captured.built);
+    }
+    const [first, ...following] = built;
+    throw new UnsignedTransactionCaptured(following.length ? { ...first, followingTransactions: following } : first);
+  }
+
+  /** The SetComputeUnitLimit a transaction carries, or undefined. */
+  static computeUnitLimitOf(tx: Transaction | VersionedTransaction): number | undefined {
+    const instructions =
+      tx instanceof VersionedTransaction
+        ? tx.message.compiledInstructions.map((ix) => ({
+            programId: tx.message.staticAccountKeys[ix.programIdIndex],
+            data: Buffer.from(ix.data),
+          }))
+        : tx.instructions.map((ix) => ({ programId: ix.programId, data: Buffer.from(new Uint8Array(ix.data)) }));
+    const limit = instructions.find((ix) => ix.programId?.equals(ComputeBudgetProgram.programId) && ix.data[0] === 2);
+    return limit ? limit.data.readUInt32LE(1) : undefined;
   }
 
   /** The non-fee-payer signatures already applied to a prepared transaction, base64-encoded. */

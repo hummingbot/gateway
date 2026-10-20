@@ -12,8 +12,9 @@
  *
  * Abort-by-throw is deliberate: connector code after the chokepoint reads the confirmed
  * transaction (balance changes, rent, fees), none of which exists for a build. A connector
- * whose operation spans several sequential transactions is captured at its FIRST
- * transaction — the caller signs and submits it, then calls build again for the next one.
+ * whose operation spans several sequential transactions hands all of them to
+ * `Solana.captureSequenceForExternalSigner` instead: the response is the first
+ * transaction, with the rest in order in `followingTransactions`.
  *
  * The context also carries caller-supplied extra instructions (e.g. a client program's
  * own registration), appended to the transaction BEFORE simulation and the ephemeral
@@ -25,6 +26,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 import {
   AddressLookupTableAccount,
   Connection,
+  Keypair,
   PublicKey,
   SystemProgram,
   Transaction,
@@ -73,6 +75,21 @@ export interface BuiltUnsignedTransaction {
   computeUnitPriceMicroLamports?: number;
   /** `format: "instructions"`: the ephemeral keypairs the instructions need, secret keys base58. */
   ephemeralSigners?: { pubkey: string; secretKey: string }[];
+  /** An operation of several transactions: the ones after this, in the order they are submitted. */
+  followingTransactions?: BuiltUnsignedTransaction[];
+}
+
+/**
+ * One transaction of an operation that takes several (a wide position funded in chunks,
+ * a migration that makes its locker first). Only the first is simulated: the others run
+ * against state the first creates, so their compute limit is `computeUnits`, or the
+ * SetComputeUnitLimit the transaction already carries.
+ */
+export interface BuildStep {
+  transaction: Transaction | VersionedTransaction;
+  /** Ephemeral keypairs this transaction needs (a position account, an NFT mint). */
+  signers?: Keypair[];
+  computeUnits?: number;
 }
 
 /** The caller's shaping of a build, beside the operation itself. */

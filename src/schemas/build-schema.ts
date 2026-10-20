@@ -39,103 +39,118 @@ export type BuildInstructionType = Static<typeof BuildInstruction>;
  * 3. The blockhash is valid to `lastValidBlockHeight` (~60-90s). If signing takes longer
  *    (a person deliberating in a wallet popup), call build again for a fresh transaction.
  *
- * An operation that spans several sequential transactions returns its FIRST transaction;
- * submit it, then call build again for the next one until the operation reports there is
- * nothing left to sign.
+ * An operation that spans several transactions (a wide Meteora position funded in chunks,
+ * a DBC migration that makes its locker first, a pump launch with a dev buy and a lookup
+ * table made for it) returns them all in one response: the first at the top level, the
+ * rest in `followingTransactions`. Sign them together and submit them in order, each
+ * after the one before it confirms. A one-transaction build is unchanged: it has no
+ * `followingTransactions`.
  */
-export const BuildTransactionResponse = Type.Object(
-  {
-    transaction: Type.Optional(
-      Type.String({
-        description:
-          'Base64-serialized transaction, ready for the wallet to sign. Ephemeral keypairs (e.g. a position ' +
-          'NFT mint) have already partial-signed; the fee-payer slot is empty. Sign it AS-IS — any mutation ' +
-          'invalidates the ephemeral signatures. Absent with format "instructions".',
-      }),
-    ),
-    feePayer: Type.String({
+const builtTransactionFields = {
+  transaction: Type.Optional(
+    Type.String({
       description:
-        'Who must sign the fee-payer slot (base58): walletAddress, or the feePayer the request named. With a ' +
-        'separate fee payer the wallet signs too, as the owner of what the operation moves.',
+        'Base64-serialized transaction, ready for the wallet to sign. Ephemeral keypairs (e.g. a position ' +
+        'NFT mint) have already partial-signed; the fee-payer slot is empty. Sign it AS-IS — any mutation ' +
+        'invalidates the ephemeral signatures. Absent with format "instructions".',
     }),
-    recentBlockhash: Type.String({ description: 'Blockhash embedded in the transaction' }),
-    lastValidBlockHeight: Type.Number({
+  ),
+  feePayer: Type.String({
+    description:
+      'Who must sign the fee-payer slot (base58): walletAddress, or the feePayer the request named. With a ' +
+      'separate fee payer the wallet signs too, as the owner of what the operation moves.',
+  }),
+  recentBlockhash: Type.String({ description: 'Blockhash embedded in the transaction' }),
+  lastValidBlockHeight: Type.Number({
+    description:
+      'The transaction is valid until this block height (~60-90s). Signing after expiry fails at submit; ' +
+      'call build again for a fresh transaction.',
+  }),
+  currentBlockHeight: Type.Number({
+    description:
+      'Block height when the transaction was built, fetched alongside the blockhash — so a client can ' +
+      'render an expiry countdown ((lastValidBlockHeight − currentBlockHeight) blocks, ~0.4s each) ' +
+      'without an RPC call of its own.',
+  }),
+  extraSigners: Type.Array(
+    Type.Object({
+      pubkey: Type.String({ description: 'Ephemeral signer address (base58)' }),
+      signature: Type.String({ description: 'Its signature over the message, base64' }),
+    }),
+    {
       description:
-        'The transaction is valid until this block height (~60-90s). Signing after expiry fails at submit; ' +
-        'call build again for a fresh transaction.',
-    }),
-    currentBlockHeight: Type.Number({
+        'Ephemeral signatures already applied to the transaction. Pass these to /chains/{chain}/submit ' +
+        'so it can re-merge them in case the signer did not preserve them. For a position open, the ' +
+        'position account / NFT mint address is among these pubkeys. The keypairs themselves are ' +
+        'discarded after the build — Gateway stores nothing.',
+    },
+  ),
+  instructions: Type.Optional(
+    Type.Array(BuildInstruction, {
       description:
-        'Block height when the transaction was built, fetched alongside the blockhash — so a client can ' +
-        'render an expiry countdown ((lastValidBlockHeight − currentBlockHeight) blocks, ~0.4s each) ' +
-        'without an RPC call of its own.',
+        'format "instructions": the operation\'s instructions, in order, compute-budget ones excluded. ' +
+        'The caller compiles its own transaction around them.',
     }),
-    extraSigners: Type.Array(
+  ),
+  addressLookupTableAddresses: Type.Optional(
+    Type.Array(Type.String(), {
+      description: 'format "instructions": lookup tables the instructions were compiled against (base58)',
+    }),
+  ),
+  computeUnits: Type.Optional(
+    Type.Integer({ description: 'format "instructions": the compute limit the transaction would have set' }),
+  ),
+  computeUnitPriceMicroLamports: Type.Optional(
+    Type.Integer({ description: 'format "instructions": the compute-unit price, in micro-lamports' }),
+  ),
+  ephemeralSigners: Type.Optional(
+    Type.Array(
       Type.Object({
         pubkey: Type.String({ description: 'Ephemeral signer address (base58)' }),
-        signature: Type.String({ description: 'Its signature over the message, base64' }),
+        secretKey: Type.String({ description: 'Its secret key, base58' }),
       }),
       {
         description:
-          'Ephemeral signatures already applied to the transaction. Pass these to /chains/{chain}/submit ' +
-          'so it can re-merge them in case the signer did not preserve them. For a position open, the ' +
-          'position account / NFT mint address is among these pubkeys. The keypairs themselves are ' +
-          'discarded after the build — Gateway stores nothing.',
+          'format "instructions": the keypairs made for this build (a new mint, a position account). ' +
+          'Signatures would not survive the caller rebuilding the message, so the keys are handed over; ' +
+          'nothing else holds them.',
       },
     ),
-    instructions: Type.Optional(
-      Type.Array(BuildInstruction, {
-        description:
-          'format "instructions": the operation\'s instructions, in order, compute-budget ones excluded. ' +
-          'The caller compiles its own transaction around them.',
-      }),
-    ),
-    addressLookupTableAddresses: Type.Optional(
-      Type.Array(Type.String(), {
-        description: 'format "instructions": lookup tables the instructions were compiled against (base58)',
-      }),
-    ),
-    computeUnits: Type.Optional(
-      Type.Integer({ description: 'format "instructions": the compute limit the transaction would have set' }),
-    ),
-    computeUnitPriceMicroLamports: Type.Optional(
-      Type.Integer({ description: 'format "instructions": the compute-unit price, in micro-lamports' }),
-    ),
-    ephemeralSigners: Type.Optional(
-      Type.Array(
-        Type.Object({
-          pubkey: Type.String({ description: 'Ephemeral signer address (base58)' }),
-          secretKey: Type.String({ description: 'Its secret key, base58' }),
+  ),
+  platformFee: Type.Optional(
+    Type.Object(
+      {
+        bps: Type.Integer({ description: 'the fee asked, in basis points' }),
+        amount: Type.String({
+          description: 'the fee the transaction pays, in UI units of mint as a decimal string (rounded down as built)',
         }),
-        {
-          description:
-            'format "instructions": the keypairs made for this build (a new mint, a position account). ' +
-            'Signatures would not survive the caller rebuilding the message, so the keys are handed over; ' +
-            'nothing else holds them.',
-        },
-      ),
+        mint: Type.String({
+          description: 'the fee mint (wSOL, So11111111111111111111111111111111111111112, for SOL)',
+        }),
+        symbol: Type.String({
+          description: "the fee mint's symbol in Gateway's token list, or the mint if unlisted",
+        }),
+      },
+      {
+        description:
+          'The platform fee this transaction carries, echoed when the build was asked for one (platformFee in ' +
+          'the request); absent otherwise.',
+      },
     ),
-    platformFee: Type.Optional(
-      Type.Object(
-        {
-          bps: Type.Integer({ description: 'the fee asked, in basis points' }),
-          amount: Type.String({
-            description:
-              'the fee the transaction pays, in UI units of mint as a decimal string (rounded down as built)',
-          }),
-          mint: Type.String({
-            description: 'the fee mint (wSOL, So11111111111111111111111111111111111111112, for SOL)',
-          }),
-          symbol: Type.String({
-            description: "the fee mint's symbol in Gateway's token list, or the mint if unlisted",
-          }),
-        },
-        {
-          description:
-            'The platform fee this transaction carries, echoed when the build was asked for one (platformFee in ' +
-            'the request); absent otherwise.',
-        },
-      ),
+  ),
+};
+
+export const BuildTransactionResponse = Type.Object(
+  {
+    ...builtTransactionFields,
+    followingTransactions: Type.Optional(
+      Type.Array(Type.Object(builtTransactionFields), {
+        description:
+          'An operation of several transactions: the ones after this one, in the order they are submitted. ' +
+          'Each has its own extraSigners for /chains/{chain}/submit. They were not simulated (they run against ' +
+          'state the transactions before them create), so submit each only after the one before it confirms; ' +
+          'if one fails, stop. Absent when the operation is one transaction.',
+      }),
     ),
   },
   { $id: 'BuildTransactionResponse' },
