@@ -110,6 +110,22 @@ describe('gateway-security', () => {
       '/chains/ethereum/wrap',
       '/chains/solana/unwrap',
       '/chains/ethereum/APPROVE',
+      // Launch curves trade with the hot wallet like any other venue.
+      '/trading/launch/execute-swap',
+      '/trading/launch/execute-quote',
+      '/trading/launch/create-token',
+      '/trading/launch/claim-creator-fees',
+      '/trading/launch/migrate',
+      // Build routes run the same connector write paths as their execute counterparts.
+      '/trading/launch/build-swap',
+      '/trading/launch/build-create-token',
+      '/trading/router/build-swap',
+      '/trading/router/build-quote',
+      '/trading/clmm/build-swap',
+      '/trading/clmm/build-open',
+      '/trading/amm/build-swap',
+      '/trading/amm/build-add',
+      '/chains/solana/build-transaction',
     ])('sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(true);
     });
@@ -133,6 +149,11 @@ describe('gateway-security', () => {
       '/trading/clmm/fetch-pools',
       '/trading/amm/pool-info',
       '/trading/amm/quote-liquidity',
+      '/trading/launch/quote-swap',
+      '/trading/launch/pool-info',
+      '/trading/launch/creator-fees',
+      '/trading/launch/launch-history',
+      '/chains/solana/submit',
     ])('not sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(false);
     });

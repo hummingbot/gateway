@@ -1,6 +1,7 @@
 import { Static, Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
+import { Solana } from '../../chains/solana/solana';
 import { addLiquidity as meteoraAddLiquidity } from '../../connectors/meteora/clmm-routes/addLiquidity';
 import { addLiquidity as orcaAddLiquidity } from '../../connectors/orca/clmm-routes/addLiquidity';
 import { addLiquidity as pancakeswapAddLiquidity } from '../../connectors/pancakeswap/clmm-routes/addLiquidity';
@@ -9,6 +10,17 @@ import { addLiquidity as raydiumAddLiquidity } from '../../connectors/raydium/cl
 import { addLiquidity as uniswapAddLiquidity } from '../../connectors/uniswap/clmm-routes/addLiquidity';
 import { AddLiquidityResponseType, AddLiquidityResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
+import {
+  assertBuildSupported,
+  BuildTransactionResponse,
+  BuildTransactionResponseType,
+  buildUnsigned,
+  buildShapeFields,
+  extraInstructionsField,
+  priorityField,
+} from '../build-common';
+import { getUnifiedPoolInfo } from '../clmm/pools';
+import { getUnifiedPositionInfo } from '../clmm/positions';
 import {
   chainNetworkField,
   CLMM_CONNECTORS,
@@ -20,6 +32,7 @@ import {
   withIdentifiers,
   slippagePctField,
 } from '../common';
+import { lpPlatformFee, platformFeeField } from '../platform-fee';
 
 // Constants for examples (using Meteora CLMM values)
 const BASE_TOKEN_AMOUNT = 0.01;
@@ -64,9 +77,181 @@ export const UnifiedAddLiquidityRequest = Type.Object(
   { $id: 'ClmmAddRequest', additionalProperties: false },
 );
 
-// Import connector functions
+/** Same body as the execute route, plus the build-only extras. */
+export const BuildAddLiquidityRequest = Type.Object(
+  {
+    ...UnifiedAddLiquidityRequest.properties,
+    extraInstructions: extraInstructionsField(),
+    ...buildShapeFields(),
+    priority: priorityField(),
+    platformFee: platformFeeField(
+      "A platform fee of bps of the deposit's value in the pool's quote token (quoteAmount + baseAmount × the " +
+        "pool's price, read at build time), paid to recipient in the quote token after the deposit.",
+    ),
+  },
+  { $id: 'ClmmBuildAddRequest', additionalProperties: false },
+);
+
+type AddLiquidityParams = {
+  network: string;
+  walletAddress: string;
+  positionAddress: string;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+  slippagePct?: number;
+  strategyType?: number;
+};
+
+async function dispatchAddLiquidity(connector: string, p: AddLiquidityParams): Promise<AddLiquidityResponseType> {
+  switch (connector) {
+    case 'uniswap':
+      return await uniswapAddLiquidity(
+        p.network,
+        p.walletAddress,
+        p.positionAddress,
+        p.baseTokenAmount,
+        p.quoteTokenAmount,
+        p.slippagePct,
+      );
+
+    case 'pancakeswap':
+      return await pancakeswapAddLiquidity(
+        p.network,
+        p.walletAddress,
+        p.positionAddress,
+        p.baseTokenAmount,
+        p.quoteTokenAmount,
+        p.slippagePct,
+      );
+
+    case 'raydium':
+      return await raydiumAddLiquidity(
+        p.network,
+        p.walletAddress,
+        p.positionAddress,
+        p.baseTokenAmount,
+        p.quoteTokenAmount,
+        p.slippagePct,
+      );
+
+    case 'meteora':
+      return await meteoraAddLiquidity(
+        p.network,
+        p.walletAddress,
+        p.positionAddress,
+        p.baseTokenAmount,
+        p.quoteTokenAmount,
+        p.slippagePct,
+        p.strategyType,
+      );
+
+    case 'pancakeswap-sol':
+      return await pancakeswapSolAddLiquidity(
+        p.network,
+        p.walletAddress,
+        p.positionAddress,
+        p.baseTokenAmount,
+        p.quoteTokenAmount,
+        p.slippagePct,
+      );
+
+    case 'orca':
+      return await orcaAddLiquidity(
+        p.network,
+        p.walletAddress,
+        p.positionAddress,
+        p.baseTokenAmount,
+        p.quoteTokenAmount,
+        p.slippagePct,
+      );
+
+    default:
+      throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
+  }
+}
+
+/** Single-sided deposits are valid; the omitted side deposits 0. */
+function normalizeAddAmounts(baseTokenAmount?: number, quoteTokenAmount?: number): { base: number; quote: number } {
+  const base = baseTokenAmount ?? 0;
+  const quote = quoteTokenAmount ?? 0;
+  if (base <= 0 && quote <= 0) {
+    throw httpErrors.badRequest('At least one of baseTokenAmount or quoteTokenAmount must be greater than 0');
+  }
+  return { base, quote };
+}
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
+  fastify.post<{
+    Body: Static<typeof BuildAddLiquidityRequest>;
+    Reply: BuildTransactionResponseType;
+  }>(
+    '/build-add',
+    {
+      schema: {
+        description:
+          'Build the unsigned transaction that /add would sign and send, for the caller to sign with ' +
+          'its own wallet and broadcast via /chains/{chain}/submit.',
+        tags: ['/trading/clmm'],
+        body: BuildAddLiquidityRequest,
+        response: {
+          200: BuildTransactionResponse,
+        },
+      },
+    },
+    async (request) => {
+      try {
+        const {
+          connector,
+          chainNetwork,
+          walletAddress: requestedWallet,
+          positionAddress,
+          baseTokenAmount,
+          quoteTokenAmount,
+          slippagePct,
+          strategyType,
+          extraInstructions,
+          feePayer,
+          format,
+          memo,
+          references,
+          priority,
+          platformFee,
+        } = request.body;
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
+        const { base, quote } = normalizeAddAmounts(baseTokenAmount, quoteTokenAmount);
+        let fee;
+        if (platformFee) {
+          assertBuildSupported(connector, chain);
+          // An add names its position; the price is its pool's.
+          const position = await getUnifiedPositionInfo(fastify, connector, chainNetwork, positionAddress);
+          const pool = await getUnifiedPoolInfo(fastify, connector, chainNetwork, position.poolAddress);
+          fee = await lpPlatformFee(await Solana.getInstance(network), walletAddress, pool, base, quote, platformFee);
+        }
+        const built = await buildUnsigned(
+          chain,
+          connector,
+          { extraInstructions, feePayer, format, memo, references },
+          () =>
+            dispatchAddLiquidity(connector, {
+              network,
+              walletAddress,
+              positionAddress,
+              baseTokenAmount: base,
+              quoteTokenAmount: quote,
+              slippagePct,
+              strategyType,
+            }),
+          priority,
+          fee?.platform,
+        );
+        return fee ? { ...built, platformFee: fee.charged } : built;
+      } catch (e: any) {
+        rethrowRouteError(e, 'Failed to build add-liquidity transaction');
+      }
+    },
+  );
+
   fastify.post<{
     Body: Static<typeof UnifiedAddLiquidityRequest>;
     Reply: AddLiquidityResponseType;
@@ -99,81 +284,17 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
 
-        // Single-sided deposits are valid; the omitted side deposits 0.
-        const baseAmount = baseTokenAmount ?? 0;
-        const quoteAmount = quoteTokenAmount ?? 0;
-        if (baseAmount <= 0 && quoteAmount <= 0) {
-          throw httpErrors.badRequest('At least one of baseTokenAmount or quoteTokenAmount must be greater than 0');
-        }
+        const { base, quote } = normalizeAddAmounts(baseTokenAmount, quoteTokenAmount);
 
-        // Route to appropriate connector
-        const result = await (async () => {
-          switch (connector) {
-            case 'uniswap':
-              return await uniswapAddLiquidity(
-                network,
-                walletAddress,
-                positionAddress,
-                baseAmount,
-                quoteAmount,
-                slippagePct,
-              );
-
-            case 'pancakeswap':
-              return await pancakeswapAddLiquidity(
-                network,
-                walletAddress,
-                positionAddress,
-                baseAmount,
-                quoteAmount,
-                slippagePct,
-              );
-
-            case 'raydium':
-              return await raydiumAddLiquidity(
-                network,
-                walletAddress,
-                positionAddress,
-                baseAmount,
-                quoteAmount,
-                slippagePct,
-              );
-
-            case 'meteora':
-              return await meteoraAddLiquidity(
-                network,
-                walletAddress,
-                positionAddress,
-                baseAmount,
-                quoteAmount,
-                slippagePct,
-                strategyType,
-              );
-
-            case 'pancakeswap-sol':
-              return await pancakeswapSolAddLiquidity(
-                network,
-                walletAddress,
-                positionAddress,
-                baseAmount,
-                quoteAmount,
-                slippagePct,
-              );
-
-            case 'orca':
-              return await orcaAddLiquidity(
-                network,
-                walletAddress,
-                positionAddress,
-                baseAmount,
-                quoteAmount,
-                slippagePct,
-              );
-
-            default:
-              throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
-          }
-        })();
+        const result = await dispatchAddLiquidity(connector, {
+          network,
+          walletAddress,
+          positionAddress,
+          baseTokenAmount: base,
+          quoteTokenAmount: quote,
+          slippagePct,
+          strategyType,
+        });
 
         // poolAddress comes from the connector, which already loaded the position.
         return withIdentifiers(result, { positionAddress });

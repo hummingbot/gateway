@@ -9,11 +9,22 @@ export async function executeQuote(
   walletAddress: string,
   network: string,
   quoteId: string,
+  /** The token account Jupiter pays a quote's platform fee into (see trading/platform-fee). */
+  feeAccount?: string,
 ): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote
-  const quote = quoteCache.get(quoteId);
+  const quote = quoteCache.get(quoteId, 'jupiter');
   if (!quote) {
     throw httpErrors.badRequest('Quote not found or expired');
+  }
+  const platformFeeBps = quoteCache.getRequest(quoteId, 'jupiter')?.platformFeeBps;
+  if (platformFeeBps !== undefined && !feeAccount) {
+    throw httpErrors.badRequest(
+      `Quote ${quoteId} carries a ${platformFeeBps} bps platform fee; it is built with platformFee, which names its recipient`,
+    );
+  }
+  if (platformFeeBps === undefined && feeAccount) {
+    throw httpErrors.badRequest(`Quote ${quoteId} was made without platformFeeBps; it takes no fee account`);
   }
 
   // Parse the quote to get token information
@@ -33,7 +44,13 @@ export async function executeQuote(
   logger.info(
     `Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol}, slippageBps=${quote.slippageBps}`,
   );
-  const transaction = await jupiter.buildSwapTransactionForHardwareWallet(walletAddress, quote);
+  const transaction = await jupiter.buildSwapTransactionForHardwareWallet(
+    walletAddress,
+    quote,
+    undefined,
+    undefined,
+    feeAccount,
+  );
 
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
   // Re-fetch with retry; a landed-but-failed transaction throws instead of being

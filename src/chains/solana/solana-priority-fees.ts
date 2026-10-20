@@ -10,6 +10,26 @@ import { SolanaNetworkConfig } from './solana.config';
 export type PriorityFeeLevel = 'Min' | 'Low' | 'Medium' | 'High' | 'VeryHigh' | 'UnsafeMax';
 
 /**
+ * What a caller means by "priority" on a build request, and what it costs.
+ *
+ * The level is what the estimator is asked for. The multiplier raises the FLOOR
+ * only, which is what makes a priority mean something when no estimator answers:
+ * without an API key every level collapses to the configured minimum, and a
+ * caller who asked to pay more should still pay more.
+ *
+ * Both are bounded by the network's configured maxPriorityFeePerCU, so where that
+ * ceiling is low `high` and `urgent` can land on the same fee. The ceiling is
+ * deliberate: a priority raises what a transaction pays toward the limit an
+ * operator set, it does not lift the limit.
+ */
+export type TransactionPriority = 'normal' | 'high' | 'urgent';
+export const PRIORITY_LEVELS: Record<TransactionPriority, { level?: PriorityFeeLevel; multiplier: number }> = {
+  normal: { multiplier: 1 },
+  high: { level: 'VeryHigh', multiplier: 2 },
+  urgent: { level: 'UnsafeMax', multiplier: 4 },
+};
+
+/**
  * Detailed result from priority fee estimation
  */
 export interface PriorityFeeResult {
@@ -69,7 +89,7 @@ export class SolanaPriorityFees {
   // Cache TTL in milliseconds (10 seconds)
   private static readonly CACHE_TTL_MS = 10_000;
 
-  // Cache keyed by network name
+  // Cache keyed by `${network}:${priority}` — a level is part of what was asked for
   private static cache: Map<string, CachedFeeResult> = new Map();
 
   // Default accounts used when no specific accounts are provided
@@ -81,10 +101,10 @@ export class SolanaPriorityFees {
   /**
    * Get cached result if valid
    */
-  private static getCached(network: string): PriorityFeeResult | null {
-    const cached = SolanaPriorityFees.cache.get(network);
+  private static getCached(key: string): PriorityFeeResult | null {
+    const cached = SolanaPriorityFees.cache.get(key);
     if (cached && Date.now() - cached.timestamp < SolanaPriorityFees.CACHE_TTL_MS) {
-      logger.debug(`[${network}] Using cached priority fee estimate`);
+      logger.debug(`[${key}] Using cached priority fee estimate`);
       return cached.result;
     }
     return null;
@@ -93,8 +113,8 @@ export class SolanaPriorityFees {
   /**
    * Store result in cache
    */
-  private static setCache(network: string, result: PriorityFeeResult): void {
-    SolanaPriorityFees.cache.set(network, {
+  private static setCache(key: string, result: PriorityFeeResult): void {
+    SolanaPriorityFees.cache.set(key, {
       result,
       timestamp: Date.now(),
     });
@@ -107,8 +127,12 @@ export class SolanaPriorityFees {
    * @param network Network name for caching
    * @returns Final fee per compute unit in lamports
    */
-  public static async estimatePriorityFee(config: SolanaNetworkConfig, network: string): Promise<number> {
-    const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(config, network);
+  public static async estimatePriorityFee(
+    config: SolanaNetworkConfig,
+    network: string,
+    priority?: TransactionPriority,
+  ): Promise<number> {
+    const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(config, network, priority);
     return result.feePerComputeUnit;
   }
 
@@ -122,16 +146,22 @@ export class SolanaPriorityFees {
   public static async estimatePriorityFeeDetailed(
     config: SolanaNetworkConfig,
     network: string,
+    priority: TransactionPriority = 'normal',
   ): Promise<PriorityFeeResult> {
-    // Check cache first
-    const cached = SolanaPriorityFees.getCached(network);
+    const { level: levelOverride, multiplier } = PRIORITY_LEVELS[priority] ?? PRIORITY_LEVELS.normal;
+    const level: PriorityFeeLevel = levelOverride ?? ((config.priorityFeeLevel as PriorityFeeLevel) || 'High');
+    // Cached per level, not per network: two priorities asked for in the same
+    // ten seconds must not answer each other's fee.
+    const cacheKey = `${network}:${priority}`;
+    const cached = SolanaPriorityFees.getCached(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const level: PriorityFeeLevel = (config.priorityFeeLevel as PriorityFeeLevel) || 'High';
-    const minimumFee = config.minPriorityFeePerCU || 0.1;
     const maximumFee = config.maxPriorityFeePerCU || 1.0;
+    // The floor rises with the priority, so a caller who asked to pay more does,
+    // even where no estimator answers — but never past the configured ceiling.
+    const minimumFee = Math.min((config.minPriorityFeePerCU || 0.1) * multiplier, maximumFee);
 
     try {
       // Get Helius API key from config or nodeURL
@@ -144,7 +174,7 @@ export class SolanaPriorityFees {
           priorityFeeLevel: level,
           priorityFeePerCUEstimate: null,
         };
-        SolanaPriorityFees.setCache(network, result);
+        SolanaPriorityFees.setCache(cacheKey, result);
         return result;
       }
 
@@ -176,7 +206,7 @@ export class SolanaPriorityFees {
           priorityFeeLevel: level,
           priorityFeePerCUEstimate: null,
         };
-        SolanaPriorityFees.setCache(network, result);
+        SolanaPriorityFees.setCache(cacheKey, result);
         return result;
       }
 
@@ -189,7 +219,7 @@ export class SolanaPriorityFees {
           priorityFeeLevel: level,
           priorityFeePerCUEstimate: null,
         };
-        SolanaPriorityFees.setCache(network, result);
+        SolanaPriorityFees.setCache(cacheKey, result);
         return result;
       }
 
@@ -202,11 +232,13 @@ export class SolanaPriorityFees {
           priorityFeeLevel: level,
           priorityFeePerCUEstimate: null,
         };
-        SolanaPriorityFees.setCache(network, result);
+        SolanaPriorityFees.setCache(cacheKey, result);
         return result;
       }
 
-      // Convert from micro-lamports to lamports per compute unit
+      // Convert from micro-lamports to lamports per compute unit. The priority is
+      // already in the level this estimate was requested at; it raises the floor
+      // below, not the estimate itself.
       const priorityFeeLamports = priorityFeeEstimate / 1_000_000;
 
       // Clamp fee between minimum and maximum
@@ -224,7 +256,7 @@ export class SolanaPriorityFees {
         priorityFeeLevel: level,
         priorityFeePerCUEstimate: priorityFeeLamports,
       };
-      SolanaPriorityFees.setCache(network, result);
+      SolanaPriorityFees.setCache(cacheKey, result);
       return result;
     } catch (error: any) {
       logger.error(`[${level}] Failed to fetch priority fee estimate: ${error.message}, using minimum fee`);
@@ -233,15 +265,8 @@ export class SolanaPriorityFees {
         priorityFeeLevel: level,
         priorityFeePerCUEstimate: null,
       };
-      SolanaPriorityFees.setCache(network, result);
+      SolanaPriorityFees.setCache(cacheKey, result);
       return result;
     }
-  }
-
-  /**
-   * Clear the cache (useful for testing)
-   */
-  public static clearCache(): void {
-    SolanaPriorityFees.cache.clear();
   }
 }

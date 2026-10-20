@@ -1,4 +1,5 @@
 export { createPoolRoute } from './create-pool';
+export { buildCreatePoolRoute } from './build-create-pool';
 export { poolInfoRoute } from './pool-info';
 export { positionInfoRoute } from './position-info';
 export { positionsOwnedRoute } from './positions-owned';
@@ -10,8 +11,8 @@ export { removeLiquidityRoute } from './remove';
 // the POSTs appear here: the GET routes carry their fields as `parameters`, which never
 // enter components.schemas.
 export { UnifiedCreatePoolRequest } from './create-pool';
-export { UnifiedAmmAddLiquidityRequest } from './add';
-export { UnifiedAmmRemoveLiquidityRequest } from './remove';
+export { UnifiedAmmAddLiquidityRequest, BuildAmmAddLiquidityRequest } from './add';
+export { UnifiedAmmRemoveLiquidityRequest, BuildAmmRemoveLiquidityRequest } from './remove';
 
 // The GET querystrings. Registering these publishes them as components; the routes still
 // expand their fields into `parameters`, so the operations are unchanged and a generated
@@ -20,3 +21,4 @@ export { UnifiedAmmPoolInfoRequest } from './pool-info';
 export { UnifiedAmmPositionInfoRequest } from './position-info';
 export { UnifiedAmmPositionsOwnedRequest } from './positions-owned';
 export { UnifiedAmmQuoteLiquidityRequest } from './quote-liquidity';
+export { AmmBuildCreatePoolRequest, AmmBuildCreatePoolResponse } from './build-create-pool';

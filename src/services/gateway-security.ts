@@ -78,8 +78,11 @@ const SENSITIVE_PREFIXES = [/^\/wallet(\/|$)/, /^\/config\/update(\/|$)/, /^\/re
 // surface, so it has to cover every fund-moving verb that surface carried —
 // including the AMM add/remove/create-pool routes, which the previous /trading
 // pattern omitted only because /connectors was still gating them.
+// The build-* routes are gated with their execute counterparts: they do not touch the
+// hot wallet, but they run the same connector write paths, partial-sign with ephemeral
+// keypairs, and return signatures — a write-shaped surface, not a read.
 const SENSITIVE_TRADING =
-  /^\/trading\/(router\/(execute-swap|execute-quote)|(clmm|amm)\/(execute-swap|open|close|add|remove|collect-fees|create-pool))(\/|$)/i;
+  /^\/trading\/(router\/(execute-swap|execute-quote|build-swap|build-quote)|(clmm|amm)\/(execute-swap|build-swap|open|close|add|remove|collect-fees|create-pool|build-open|build-close|build-add|build-remove|build-collect-fees|build-create-pool)|launch\/(create-token|build-create-token|execute-swap|execute-quote|build-swap|claim-creator-fees|migrate))(\/|$)/i;
 
 // Chain-level routes that sign with the hot wallet. `approve` is the sharpest of them —
 // an unauthenticated caller reaching it can have the wallet approve an unlimited
@@ -88,7 +91,9 @@ const SENSITIVE_TRADING =
 // the native balance. The read-only chain routes (status, estimate-gas, balances, poll,
 // allowances) stay public, as the read-only trading routes do: nothing signs, and gating
 // them would break a co-located bot's polling for no security gain.
-const SENSITIVE_CHAINS = /^\/chains\/[^/]+\/(approve|wrap|unwrap)(\/|$)/i;
+// build-transaction is gated with the /trading build-* routes for the same reason: a
+// write-shaped surface that prepares and partially describes fund movement.
+const SENSITIVE_CHAINS = /^\/chains\/[^/]+\/(approve|wrap|unwrap|build-transaction)(\/|$)/i;
 
 export function isSensitivePath(url: string): boolean {
   const pathOnly = url.split('?')[0];

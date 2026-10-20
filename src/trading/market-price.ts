@@ -44,6 +44,11 @@ export async function getSwapQuote(
     });
   }
 
+  // Only the swap-capable types can price a pair; 'launch' has no quote surface.
+  if (type !== 'clmm' && type !== 'amm') {
+    throw httpErrors.badRequest(`Cannot quote a swap through a '${type}' provider`);
+  }
+
   const poolAddress = await resolvePoolAddress(
     chain,
     network,

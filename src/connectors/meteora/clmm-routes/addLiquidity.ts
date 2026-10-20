@@ -5,6 +5,7 @@ import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { getBuildModeContext } from '../../../chains/solana/solana-build-mode';
 import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -117,6 +118,18 @@ export async function addLiquidity(
   });
 
   const transactions = Array.isArray(addLiquidityTxs) ? addLiquidityTxs : [addLiquidityTxs];
+
+  // Same limit as the chunked open: build mode captures the first transaction and returns
+  // it, so a deposit needing several would silently fund only the first slice of the
+  // range. Repeating the call does not resume it either — the SDK re-splits the full
+  // amount each time, so the first slice would be deposited twice.
+  if (transactions.length > 1 && getBuildModeContext()) {
+    throw httpErrors.badRequest(
+      `This position spans ${maxBinId - minBinId + 1} bins, so the deposit takes ${transactions.length} ` +
+        `transactions, and build mode returns a single unsigned transaction. Add to a narrower position, ` +
+        `or use the execute path.`,
+    );
+  }
 
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
   // simulates internally). A narrow position is still one transaction; a wide one deposits

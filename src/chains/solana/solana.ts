@@ -53,9 +53,20 @@ import { encryptSecret, decryptSecret, isLegacyKeystore } from '../../services/s
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
+import {
+  BuildModeContext,
+  BuiltUnsignedTransaction,
+  decompileVersioned,
+  getBuildModeContext,
+  insertInstructions,
+  referenceInstruction,
+  toWireInstruction,
+  UnsignedTransactionCaptured,
+  withFeePayer,
+} from './solana-build-mode';
 import { parseSolanaError } from './solana-error-parser';
 import { SolanaLedger } from './solana-ledger';
-import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
+import { PriorityFeeResult, SolanaPriorityFees, TransactionPriority } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 import { accountLifecycleSol } from './solana.utils';
 
@@ -76,6 +87,20 @@ interface TokenAccount {
   parsedAccount: any;
   value: any;
 }
+
+/**
+ * What the compute-budget instructions cost themselves, in compute units.
+ *
+ * Simulation runs the transaction *without* them and reports only what the
+ * caller's instructions used, but the prepared transaction carries two — set
+ * limit and set price — at 150 units each. A percentage margin cannot cover a
+ * fixed cost: a plain SOL transfer simulates at ~150 units, gets a limit of
+ * ceil(150 x 1.1) = 165, and then spends 450. It lands on chain and fails with
+ * "Computational budget exceeded" pointing at the ComputeBudget program, after
+ * the user has signed. Every expensive instruction hides this behind its own
+ * margin, so it only bites the cheapest transactions.
+ */
+const COMPUTE_BUDGET_OVERHEAD_UNITS = 450;
 
 export class Solana {
   public connection: Connection;
@@ -1325,6 +1350,17 @@ export class Solana {
   }
 
   // returns the current block number
+  /**
+   * The current BLOCK HEIGHT — the value a transaction's lastValidBlockHeight is
+   * measured against. Distinct from getCurrentBlockNumber, which returns a slot:
+   * slots include the ones no leader produced, so a slot number runs ahead of the
+   * block height and comparing it with lastValidBlockHeight declares live
+   * transactions expired.
+   */
+  async getCurrentBlockHeight(): Promise<number> {
+    return await this.connection.getBlockHeight('confirmed');
+  }
+
   async getCurrentBlockNumber(): Promise<number> {
     return await this.connection.getSlot('processed');
   }
@@ -1376,8 +1412,8 @@ export class Solana {
    * Estimate priority fee per compute unit
    * Uses config's priorityFeeLevel and caches result for 10 seconds
    */
-  async estimateGasPrice(): Promise<number> {
-    return await SolanaPriorityFees.estimatePriorityFee(this.config, this.network);
+  async estimateGasPrice(priority?: TransactionPriority): Promise<number> {
+    return await SolanaPriorityFees.estimatePriorityFee(this.config, this.network, priority);
   }
 
   /**
@@ -1638,6 +1674,14 @@ export class Solana {
       tx.feePayer = new PublicKey(address);
     }
 
+    // Build mode (stateless signing, #682): prepare the transaction for an external
+    // signer and hand it back instead of signing. Checked before prepareWallet because
+    // the wallet is not stored in Gateway at all — the address is just a public key.
+    const buildContext = getBuildModeContext();
+    if (buildContext) {
+      throw await this.captureForExternalSigner(tx, walletPk, extraSigners, buildContext, priorityFeePerCU);
+    }
+
     // Pre-flight simulate here (once, for every connector) so callers get a clear error
     // instead of a failed on-chain send; this is why connectors no longer simulate
     // themselves.
@@ -1711,6 +1755,219 @@ export class Solana {
     }
     await this.throwIfLandedWithError(signature);
     throw this.confirmationTimeoutError(signature);
+  }
+
+  /**
+   * Build mode: prepare the transaction exactly as the hardware path would — append any
+   * caller-supplied extra instructions, simulate, add the compute budget, refresh the
+   * blockhash, partial-sign the ephemeral keypairs, leave the fee-payer slot empty —
+   * then return it as a capture sentinel instead of signing and broadcasting.
+   *
+   * The blockhash is refreshed even when the connector set one, so the external signer
+   * (a person in a wallet popup) gets the full ~60-90s validity window from now, not
+   * from whenever the connector's SDK fetched its blockhash.
+   *
+   * Returns (rather than throws) the sentinel so the caller controls the throw and
+   * TypeScript sees the never-completing control flow at the call site.
+   */
+  private async captureForExternalSigner(
+    tx: Transaction | VersionedTransaction,
+    walletPk: PublicKey,
+    extraSigners: Keypair[],
+    buildContext: BuildModeContext,
+    priorityFeePerCU?: number,
+  ): Promise<UnsignedTransactionCaptured> {
+    // The caller's extra instructions after the operation's own, then Gateway's
+    // (a platform fee) around both.
+    tx = await insertInstructions(
+      tx,
+      buildContext.prependInstructions,
+      [...buildContext.extraInstructions, ...buildContext.appendInstructions],
+      walletPk,
+      this.connection,
+    );
+    // The fee payer: the wallet, or the caller's (a separate payer; the wallet still
+    // signs as the owner of what the operation moves).
+    const payer = buildContext.feePayer ?? walletPk;
+    tx = await withFeePayer(tx, payer, this.connection);
+    // Solana Pay references, on a no-op transfer the payer (already a signer) signs.
+    if (buildContext.references.length > 0) {
+      tx = await insertInstructions(
+        tx,
+        [],
+        [referenceInstruction(payer, buildContext.references)],
+        payer,
+        this.connection,
+      );
+    }
+
+    // Refresh the blockhash BEFORE the pre-flight simulation, not after. Whatever the
+    // connector or aggregator embedded is about to be discarded (the external signer
+    // gets a fresh validity window), so simulating against it only checks a blockhash
+    // nobody will broadcast.
+    // The height is fetched alongside so the countdown clients render from
+    // (lastValidBlockHeight − currentBlockHeight) is coherent with this blockhash.
+    const [
+      {
+        value: { lastValidBlockHeight, blockhash },
+      },
+      currentBlockHeight,
+    ] = await Promise.all([
+      this.connection.getLatestBlockhashAndContext('confirmed'),
+      this.connection.getBlockHeight('confirmed'),
+    ]);
+    if (tx instanceof VersionedTransaction) {
+      // Nothing has signed yet, so the message is still mutable.
+      tx.message.recentBlockhash = blockhash;
+    } else {
+      tx.recentBlockhash = blockhash;
+      tx.lastValidBlockHeight = lastValidBlockHeight;
+    }
+
+    if (!buildContext.unsimulated) await this.simulateWithErrorHandling(tx);
+
+    // Same compute-unit estimation the send paths use.
+    const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice(buildContext.priority));
+    let computeUnitsToUse = this.config.defaultComputeUnits;
+    let simulationResult: { err: unknown; logs?: string[] | null; unitsConsumed?: number } | undefined;
+    if (buildContext.unsimulated) {
+      // Nothing to size from: the limit is the caller's (captureUnsignedTransaction
+      // refuses an unsimulated build without one).
+      computeUnitsToUse = buildContext.minComputeUnits!;
+    } else {
+      try {
+        const sim =
+          tx instanceof VersionedTransaction
+            ? await this.connection.simulateTransaction(tx, { replaceRecentBlockhash: true, sigVerify: false })
+            : await this.connection.simulateTransaction(tx);
+        simulationResult = sim.value;
+      } catch (error) {
+        logger.warn(`Failed to simulate for compute units: ${(error as Error).message}, using default`);
+      }
+    }
+    if (simulationResult) {
+      Solana.throwIfSimulationReturnedError(simulationResult);
+      computeUnitsToUse = simulationResult.unitsConsumed
+        ? Math.ceil(simulationResult.unitsConsumed * 1.1) + COMPUTE_BUDGET_OVERHEAD_UNITS
+        : this.config.defaultComputeUnits;
+    }
+    // Honor a caller-requested compute floor (build mode): an instruction that lands
+    // hotter than it simulates (e.g. one that reallocs or rehashes an account) would
+    // otherwise be sized below its actual cost and fail post-broadcast. Only raises the budget, never lowers it.
+    if (buildContext.minComputeUnits && buildContext.minComputeUnits > computeUnitsToUse) {
+      computeUnitsToUse = buildContext.minComputeUnits;
+    }
+
+    if (buildContext.format === 'instructions') {
+      return new UnsignedTransactionCaptured(
+        await this.instructionsOf(tx, payer, extraSigners, {
+          recentBlockhash: blockhash,
+          lastValidBlockHeight,
+          currentBlockHeight,
+          computeUnits: computeUnitsToUse,
+          computeUnitPriceMicroLamports: Math.floor(currentPriorityFee * 1_000_000),
+        }),
+      );
+    }
+
+    let prepared: Transaction | VersionedTransaction;
+    if (tx instanceof VersionedTransaction) {
+      // The blockhash was refreshed above; prepareVersionedTx adds the compute budget
+      // and partial-signs the extras over the final message.
+      prepared = await this.prepareVersionedTx(tx, currentPriorityFee, computeUnitsToUse, extraSigners);
+    } else {
+      const priorityFeeMicroLamports = Math.floor(currentPriorityFee * 1_000_000);
+      tx.instructions = [
+        ...tx.instructions.filter((inst) => !Solana.isReplacedComputeBudgetInstruction(inst.programId, inst.data)),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeeMicroLamports }),
+        ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnitsToUse }),
+      ];
+      if (extraSigners.length) tx.partialSign(...extraSigners);
+      prepared = tx;
+    }
+
+    const built: BuiltUnsignedTransaction = {
+      transaction:
+        prepared instanceof VersionedTransaction
+          ? Buffer.from(prepared.serialize()).toString('base64')
+          : prepared.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64'),
+      feePayer: payer.toBase58(),
+      recentBlockhash: blockhash,
+      lastValidBlockHeight,
+      currentBlockHeight,
+      extraSigners: this.collectAppliedSignatures(prepared, [walletPk, payer]),
+    };
+    logger.info(
+      `Build mode: captured unsigned transaction for ${walletPk.toBase58()} ` +
+        `(${built.extraSigners.length} ephemeral signature(s), blockhash valid to height ${lastValidBlockHeight})`,
+    );
+    return new UnsignedTransactionCaptured(built);
+  }
+
+  /** The non-fee-payer signatures already applied to a prepared transaction, base64-encoded. */
+  private collectAppliedSignatures(
+    tx: Transaction | VersionedTransaction,
+    outside: PublicKey[],
+  ): { pubkey: string; signature: string }[] {
+    const isOutside = (key: PublicKey) => outside.some((o) => o.equals(key));
+    if (tx instanceof VersionedTransaction) {
+      const required = tx.message.staticAccountKeys.slice(0, tx.message.header.numRequiredSignatures);
+      return required.flatMap((key, i) => {
+        const signature = tx.signatures[i];
+        if (isOutside(key) || !signature || signature.every((b) => b === 0)) return [];
+        return [{ pubkey: key.toBase58(), signature: Buffer.from(signature).toString('base64') }];
+      });
+    }
+    return tx.signatures
+      .filter((s) => s.signature !== null && !isOutside(s.publicKey))
+      .map((s) => ({ pubkey: s.publicKey.toBase58(), signature: s.signature!.toString('base64') }));
+  }
+
+  /**
+   * `format: "instructions"`: the operation's instructions for a caller that compiles
+   * its own transaction around them (a smart wallet's execute instruction). The compute
+   * budget is returned as numbers, not instructions — the outer transaction sets it —
+   * and so are the lookup tables. Signatures over this message would not survive being
+   * wrapped, so the ephemeral keypairs (a new mint, a position account) are handed over
+   * instead: they were made for this build alone and Gateway keeps nothing.
+   */
+  private async instructionsOf(
+    tx: Transaction | VersionedTransaction,
+    payer: PublicKey,
+    extraSigners: Keypair[],
+    at: {
+      recentBlockhash: string;
+      lastValidBlockHeight: number;
+      currentBlockHeight: number;
+      computeUnits: number;
+      computeUnitPriceMicroLamports: number;
+    },
+  ): Promise<BuiltUnsignedTransaction> {
+    let instructions: TransactionInstruction[];
+    let lookupTableAddresses: string[] = [];
+    if (tx instanceof VersionedTransaction) {
+      const { message, lookupTables } = await decompileVersioned(tx, this.connection);
+      instructions = message.instructions;
+      lookupTableAddresses = lookupTables.map((t) => t.key.toBase58());
+    } else {
+      instructions = tx.instructions;
+    }
+    const operation = instructions.filter((ix) => !Solana.isReplacedComputeBudgetInstruction(ix.programId, ix.data));
+    return {
+      feePayer: payer.toBase58(),
+      recentBlockhash: at.recentBlockhash,
+      lastValidBlockHeight: at.lastValidBlockHeight,
+      currentBlockHeight: at.currentBlockHeight,
+      extraSigners: [],
+      instructions: operation.map(toWireInstruction),
+      addressLookupTableAddresses: lookupTableAddresses,
+      computeUnits: at.computeUnits,
+      computeUnitPriceMicroLamports: at.computeUnitPriceMicroLamports,
+      ephemeralSigners: extraSigners.map((k) => ({
+        pubkey: k.publicKey.toBase58(),
+        secretKey: bs58.encode(k.secretKey),
+      })),
+    };
   }
 
   /**
@@ -2071,6 +2328,15 @@ export class Solana {
   private async _sendAndConfirmRawTransaction(
     serializedTx: Buffer | Uint8Array,
   ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
+    // Build mode must never reach a broadcast: the chokepoint captures before signing,
+    // but a connector that signs and sends outside the chokepoint would otherwise
+    // silently EXECUTE a request that only asked to build. Fail loudly instead.
+    if (getBuildModeContext()) {
+      throw httpErrors.internalServerError(
+        'A transaction broadcast was attempted during a build request. This connector does not route ' +
+          'through the wallet chokepoint and cannot support build mode; nothing was sent.',
+      );
+    }
     const { lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
 
     let signature: string | null = null;
@@ -2100,6 +2366,13 @@ export class Solana {
   }
 
   async sendRawTransaction(rawTx: Buffer | Uint8Array | Array<number>, lastValidBlockHeight: number): Promise<string> {
+    // See _sendAndConfirmRawTransaction: build requests must never broadcast.
+    if (getBuildModeContext()) {
+      throw httpErrors.internalServerError(
+        'A transaction broadcast was attempted during a build request. This connector does not route ' +
+          'through the wallet chokepoint and cannot support build mode; nothing was sent.',
+      );
+    }
     const blockheight = await this.connection.getBlockHeight({
       commitment: 'confirmed',
     });

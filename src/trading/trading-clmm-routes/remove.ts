@@ -10,6 +10,14 @@ import { removeLiquidity as uniswapRemoveLiquidity } from '../../connectors/unis
 import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import {
+  BuildTransactionResponse,
+  BuildTransactionResponseType,
+  buildUnsigned,
+  buildShapeFields,
+  extraInstructionsField,
+  priorityField,
+} from '../build-common';
+import {
   chainNetworkField,
   CLMM_CONNECTORS,
   connectorField,
@@ -49,9 +57,107 @@ export const UnifiedRemoveLiquidityRequest = Type.Object(
   { $id: 'ClmmRemoveRequest', additionalProperties: false },
 );
 
-// Import connector functions
+/** Same body as the execute route, plus the build-only extras. */
+export const BuildRemoveLiquidityRequest = Type.Object(
+  {
+    ...UnifiedRemoveLiquidityRequest.properties,
+    extraInstructions: extraInstructionsField(),
+    ...buildShapeFields(),
+    priority: priorityField(),
+  },
+  { $id: 'ClmmBuildRemoveRequest', additionalProperties: false },
+);
+
+async function dispatchRemoveLiquidity(
+  connector: string,
+  network: string,
+  walletAddress: string,
+  positionAddress: string,
+  percentageToRemove: number,
+  slippagePct?: number,
+): Promise<RemoveLiquidityResponseType> {
+  switch (connector) {
+    case 'uniswap':
+      return await uniswapRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove, slippagePct);
+
+    case 'pancakeswap':
+      return await pancakeswapRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove, slippagePct);
+
+    case 'raydium':
+      return await raydiumRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
+
+    case 'meteora':
+      return await meteoraRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
+
+    case 'pancakeswap-sol':
+      return await pancakeswapSolRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
+
+    case 'orca':
+      return await orcaRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove, slippagePct);
+
+    default:
+      throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
+  }
+}
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
+  fastify.post<{
+    Body: Static<typeof BuildRemoveLiquidityRequest>;
+    Reply: BuildTransactionResponseType;
+  }>(
+    '/build-remove',
+    {
+      schema: {
+        description:
+          'Build the unsigned transaction that /remove would sign and send, for the caller to sign with ' +
+          'its own wallet and broadcast via /chains/{chain}/submit. A removal that spans several ' +
+          'transactions returns the first; submit it and call build again.',
+        tags: ['/trading/clmm'],
+        body: BuildRemoveLiquidityRequest,
+        response: {
+          200: BuildTransactionResponse,
+        },
+      },
+    },
+    async (request) => {
+      try {
+        const {
+          connector,
+          chainNetwork,
+          walletAddress: requestedWallet,
+          positionAddress,
+          percentageToRemove,
+          slippagePct,
+          extraInstructions,
+          feePayer,
+          format,
+          memo,
+          references,
+          priority,
+        } = request.body;
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
+        return await buildUnsigned(
+          chain,
+          connector,
+          { extraInstructions, feePayer, format, memo, references },
+          () =>
+            dispatchRemoveLiquidity(
+              connector,
+              network,
+              walletAddress,
+              positionAddress,
+              percentageToRemove,
+              slippagePct,
+            ),
+          priority,
+        );
+      } catch (e: any) {
+        rethrowRouteError(e, 'Failed to build remove-liquidity transaction');
+      }
+    },
+  );
+
   fastify.post<{
     Body: Static<typeof UnifiedRemoveLiquidityRequest>;
     Reply: RemoveLiquidityResponseType;
@@ -82,49 +188,14 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
 
-        // Route to appropriate connector
-        const result = await (async () => {
-          switch (connector) {
-            case 'uniswap':
-              return await uniswapRemoveLiquidity(
-                network,
-                walletAddress,
-                positionAddress,
-                percentageToRemove,
-                slippagePct,
-              );
-
-            case 'pancakeswap':
-              return await pancakeswapRemoveLiquidity(
-                network,
-                walletAddress,
-                positionAddress,
-                percentageToRemove,
-                slippagePct,
-              );
-
-            case 'raydium':
-              return await raydiumRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
-
-            case 'meteora':
-              return await meteoraRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
-
-            case 'pancakeswap-sol':
-              return await pancakeswapSolRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
-
-            case 'orca':
-              return await orcaRemoveLiquidity(
-                network,
-                walletAddress,
-                positionAddress,
-                percentageToRemove,
-                slippagePct,
-              );
-
-            default:
-              throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
-          }
-        })();
+        const result = await dispatchRemoveLiquidity(
+          connector,
+          network,
+          walletAddress,
+          positionAddress,
+          percentageToRemove,
+          slippagePct,
+        );
 
         // poolAddress comes from the connector, which already loaded the position.
         return withIdentifiers(result, { positionAddress });

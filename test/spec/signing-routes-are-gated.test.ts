@@ -45,13 +45,17 @@ const requestProps = (operation: any) => propertyNames(operation?.requestBody?.c
 
 const signingRoutes: string[] = [];
 const reportingRoutes: string[] = [];
+// A GET that answers with signatures is reading history (a launch's past trades), not
+// signing. They are listed exactly below, so a new one has to be looked at rather than
+// slipping through on its method.
+const historyRoutes: string[] = [];
 for (const [route, operations] of Object.entries<any>(spec.paths)) {
   for (const [method, operation] of Object.entries<any>(operations)) {
     if (method === 'parameters') continue;
     if (!responseProps(operation).has('signature')) continue;
-    (requestProps(operation).has('signature') ? reportingRoutes : signingRoutes).push(
-      route.replace(/\{(\w+)\}/g, 'ethereum'),
-    );
+    const path = route.replace(/\{(\w+)\}/g, 'ethereum');
+    if (method === 'get') historyRoutes.push(path);
+    else (requestProps(operation).has('signature') ? reportingRoutes : signingRoutes).push(path);
   }
 }
 
@@ -69,8 +73,16 @@ describe('every route that signs a transaction is behind the API-token gate', ()
   it('does not gate a route that only reports on a signature it was given', () => {
     // /chains/{chain}/poll is how a bot follows a transaction it already sent. Gating it
     // would break polling for a co-located bot without protecting anything: it signs
-    // nothing.
-    expect(reportingRoutes).toEqual(['/chains/ethereum/poll']);
+    // nothing. /chains/{chain}/submit broadcasts a transaction the CALLER fully signed —
+    // Gateway signs nothing for it; anyone could broadcast the same bytes through any RPC,
+    // so like poll it stays public.
+    expect(reportingRoutes).toEqual(['/chains/ethereum/poll', '/chains/ethereum/submit']);
     expect(isSensitivePath('/chains/solana/poll')).toBe(false);
+    expect(isSensitivePath('/chains/solana/submit')).toBe(false);
+  });
+
+  it('does not gate a read that lists past signatures', () => {
+    expect(historyRoutes.sort()).toEqual(['/trading/launch/launch-history']);
+    for (const route of historyRoutes) expect(isSensitivePath(route)).toBe(false);
   });
 });

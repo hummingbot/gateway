@@ -103,7 +103,7 @@ async function quoteSwap(
     },
   };
 
-  quoteCache.set(quoteId, cachedQuote);
+  quoteCache.set(quoteId, 'pancakeswap', cachedQuote);
 
   logger.info(
     `[quoteSwap] Cached quote ${quoteId}: ${estimatedAmountIn} ${inputToken.symbol} -> ${estimatedAmountOut} ${outputToken.symbol}`,

@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "slippagePct": {
+      "type": "number",
+      "description": "Default slippage percentage (e.g., 1 for 1%)"
+    },
+    "metadataUploadUrl": {
+      "type": "string",
+      "description": "IPFS metadata upload endpoint used by create-token when given an imageUrl"
+    },
+    "lookupTableAddress": {
+      "type": "string",
+      "description": "Address lookup table that fits create-token + dev buy in one v0 transaction; empty refuses a create with a dev buy"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["slippagePct", "metadataUploadUrl"]
+}

@@ -172,6 +172,7 @@ export class Jupiter {
    * @param onlyDirectRoutes Whether to only use direct routes. Defaults to config value
    * @param restrictIntermediateTokens Whether to restrict intermediate tokens to highly liquid ones. Defaults to config value
    * @param swapMode Whether the amount is for input ('ExactIn') or output ('ExactOut'). Defaults to 'ExactIn'
+   * @param platformFeeBps A platform fee Jupiter takes into the swap's `feeAccount`; none when omitted
    * @returns Promise resolving to the quote response from Jupiter API
    * @throws Error if tokens are not found or if no route is available
    */
@@ -183,6 +184,7 @@ export class Jupiter {
     onlyDirectRoutes: boolean = JupiterConfig.config.onlyDirectRoutes,
     restrictIntermediateTokens: boolean = JupiterConfig.config.restrictIntermediateTokens,
     swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn',
+    platformFeeBps?: number,
   ): Promise<QuoteResponse> {
     const inputToken = await this.solana.getToken(inputTokenIdentifier);
     const outputToken = await this.solana.getToken(outputTokenIdentifier);
@@ -210,6 +212,7 @@ export class Jupiter {
       swapMode: swapMode,
       onlyDirectRoutes: onlyDirectRoutes.toString(),
       restrictIntermediateTokens: restrictIntermediateTokens.toString(),
+      ...(platformFeeBps !== undefined ? { platformFeeBps: platformFeeBps.toString() } : {}),
     };
 
     logger.debug(`Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol} with params:`, params);
@@ -355,6 +358,8 @@ export class Jupiter {
     quote: QuoteResponse,
     maxLamports?: number,
     priorityLevel?: string,
+    /** The token account Jupiter pays the quote's platform fee into; none when omitted. */
+    feeAccount?: string,
   ): Promise<VersionedTransaction> {
     // Use provided values or fall back to config
     const feeLamports = maxLamports ? Math.floor(maxLamports) : Math.floor(this.config.maxLamports);
@@ -384,6 +389,7 @@ export class Jupiter {
               priorityLevel: level,
             },
           },
+          ...(feeAccount ? { feeAccount } : {}),
         };
 
         const response = await this.withRateLimitRetry('swap', () =>

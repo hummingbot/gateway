@@ -16,10 +16,13 @@ import sensible from '@fastify/sensible';
 import { Type } from '@sinclair/typebox';
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
+import { BuildTransactionResponse } from '../schemas/build-schema';
 import {
   BalanceRequestSchema,
   BalanceRequestType,
   BalanceResponseSchema,
+  BuildTransactionRequestSchema,
+  BuildTransactionRequestType,
   EstimateGasRequestSchema,
   EstimateGasRequestType,
   EstimateGasResponseSchema,
@@ -29,6 +32,9 @@ import {
   StatusRequestSchema,
   StatusRequestType,
   StatusResponseSchema,
+  SubmitRequestSchema,
+  SubmitRequestType,
+  SubmitResponseSchema,
   UnwrapRequestSchema,
   UnwrapRequestType,
   WrapRequestSchema,
@@ -52,9 +58,11 @@ import { getEthereumStatus } from './ethereum/routes/status';
 import { unwrapEthereum } from './ethereum/routes/unwrap';
 import { wrapEthereum } from './ethereum/routes/wrap';
 import { getSolanaBalances } from './solana/routes/balances';
+import { buildSolanaTransaction } from './solana/routes/build-transaction';
 import { estimateGasSolana } from './solana/routes/estimate-gas';
 import { pollSolanaTransaction } from './solana/routes/poll';
 import { getSolanaStatus } from './solana/routes/status';
+import { submitSolanaTransaction } from './solana/routes/submit';
 import { unwrapSolana } from './solana/routes/unwrap';
 import { wrapSolana } from './solana/routes/wrap';
 import { getSolanaChainConfig, getSolanaNetworkConfig, networks as solanaNetworks } from './solana/solana.config';
@@ -66,6 +74,29 @@ interface ChainOps {
   estimateGas: (fastify: FastifyInstance, network: string) => Promise<any>;
   balances: (fastify: FastifyInstance, network: string, address: string, tokens?: string[]) => Promise<any>;
   poll: (fastify: FastifyInstance, network: string, signature: string) => Promise<any>;
+  /**
+   * Build an unsigned transaction from caller-supplied instructions (the generic half
+   * of build/sign/submit, #682). Optional, like submit.
+   */
+  buildTransaction?: (
+    fastify: FastifyInstance,
+    network: string,
+    walletAddress: string,
+    instructions: BuildTransactionRequestType['instructions'],
+    minComputeUnits?: number,
+    references?: string[],
+  ) => Promise<any>;
+  /**
+   * Broadcast a caller-signed transaction (the submit half of build/sign/submit, #682).
+   * Optional: chains without build support do not implement it, and the route reports
+   * that clearly instead of the path not existing.
+   */
+  submit?: (
+    fastify: FastifyInstance,
+    network: string,
+    signedTransaction: string,
+    extraSigners?: { pubkey: string; signature: string }[],
+  ) => Promise<any>;
   wrap: (fastify: FastifyInstance, network: string, address: string, amount: string) => Promise<any>;
   unwrap: (fastify: FastifyInstance, network: string, address: string, amount?: string) => Promise<any>;
   /** EVM chains require an explicit unwrap amount; Solana unwraps the full balance. */
@@ -80,6 +111,10 @@ const CHAINS: Record<string, ChainOps> = {
     estimateGas: (_fastify, network) => estimateGasSolana(network),
     balances: (fastify, network, address, tokens) => getSolanaBalances(fastify, network, address, tokens),
     poll: (fastify, network, signature) => pollSolanaTransaction(fastify, network, signature),
+    buildTransaction: (fastify, network, walletAddress, instructions, minComputeUnits, references) =>
+      buildSolanaTransaction(fastify, network, walletAddress, instructions, minComputeUnits, references),
+    submit: (fastify, network, signedTransaction, extraSigners) =>
+      submitSolanaTransaction(fastify, network, signedTransaction, extraSigners),
     wrap: (fastify, network, address, amount) => wrapSolana(fastify, network, address, amount),
     unwrap: (fastify, network, address, amount) => unwrapSolana(fastify, network, address, amount),
     unwrapRequiresAmount: false,
@@ -216,6 +251,66 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const { ops, network } = resolveChain(request.params.chain, request.body.network);
       return ops.poll(fastify, network, request.body.signature);
+    },
+  );
+
+  fastify.post<{ Params: ChainParams; Body: BuildTransactionRequestType }>(
+    '/:chain/build-transaction',
+    {
+      schema: {
+        description:
+          'Build an unsigned transaction from caller-supplied instructions — the generic counterpart of ' +
+          'the /trading build-* routes, for operations Gateway has no connector for. Gateway simulates, ' +
+          'sizes the compute budget, sets the priority fee and a fresh blockhash, and leaves the ' +
+          'fee-payer slot empty; the result signs and submits like any other build response. Only the ' +
+          'wallet may be named as a signer.',
+        tags: ['/chains'],
+        params: ChainParamsSchema,
+        body: BuildTransactionRequestSchema,
+        response: { 200: BuildTransactionResponse },
+      },
+    },
+    async (request) => {
+      const { chain } = request.params;
+      const { ops, network } = resolveChain(chain, request.body.network);
+      if (!ops.buildTransaction) {
+        throw httpErrors.badRequest(`Building transactions is not supported for ${chain} yet.`);
+      }
+      return ops.buildTransaction(
+        fastify,
+        network,
+        request.body.walletAddress,
+        request.body.instructions,
+        request.body.minComputeUnits,
+        request.body.references,
+      );
+    },
+  );
+
+  fastify.post<{ Params: ChainParams; Body: SubmitRequestType }>(
+    '/:chain/submit',
+    {
+      schema: {
+        description:
+          'Broadcast a transaction signed by the caller (the submit half of the build/sign/submit flow: ' +
+          'see the /trading build-* routes). Re-merges the ephemeral signatures from the build response ' +
+          'and verifies every signature locally before broadcasting, so a mutated message fails here ' +
+          'with a clear error rather than being dropped silently by the network.',
+        tags: ['/chains'],
+        params: ChainParamsSchema,
+        body: SubmitRequestSchema,
+        response: { 200: SubmitResponseSchema },
+      },
+    },
+    async (request) => {
+      const { chain } = request.params;
+      const { ops, network } = resolveChain(chain, request.body.network);
+      if (!ops.submit) {
+        throw httpErrors.badRequest(
+          `Submit is not supported for ${chain} yet — its connectors sign and broadcast in their execute routes.`,
+        );
+      }
+      return ops.submit(fastify, network, request.body.signedTransaction, request.body.extraSigners);
     },
   );
 

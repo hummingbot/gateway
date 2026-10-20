@@ -1,0 +1,15 @@
+# Global settings for pump.fun (bonding curve + PumpSwap AMM)
+# Default slippage percentage for swaps (e.g., 1 = 1%)
+slippagePct: 2
+
+# Endpoint used to upload token image + metadata to IPFS when creating a token
+# via /trading/launch/create-token with an imageUrl. Callers who pin their own
+# metadata pass metadataUri instead and this endpoint is never called.
+metadataUploadUrl: 'https://pump.fun/api/ipfs'
+
+# An address lookup table to compile create-token transactions that carry an
+# atomic dev buy: create + ATA + buy exceed the legacy transaction size limit,
+# so they are compiled as a v0 message against this table. Empty: a create
+# with devBuyAmount is refused with an error; create, then buy through
+# /trading/router.
+lookupTableAddress: ''

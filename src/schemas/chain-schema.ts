@@ -3,6 +3,7 @@ import { Type, Static } from '@sinclair/typebox';
 import { networks as ethereumNetworks } from '../chains/ethereum/ethereum.config';
 import { networks as solanaNetworks } from '../chains/solana/solana.config';
 
+import { BuildInstruction } from './build-schema';
 import { DecimalNumber } from './decimal-field';
 
 /**
@@ -133,6 +134,92 @@ export const PollRequestSchema = Type.Object(
 );
 export type PollRequestType = Static<typeof PollRequestSchema>;
 
+/**
+ * Build an unsigned transaction from caller-supplied instructions — the generic
+ * counterpart of the /trading build-* routes, for operations Gateway has no connector
+ * for (e.g. a client's own on-chain program). Gateway contributes what the build flow
+ * always contributes: preflight simulation, compute-budget sizing, priority fee, a
+ * fresh blockhash, and the empty fee-payer slot. Only the wallet may be named as a
+ * signer; the result signs and submits exactly like any other build response.
+ */
+export const BuildTransactionRequestSchema = Type.Object(
+  {
+    network: networkField(),
+    walletAddress: Type.String({ description: 'Wallet that will sign and pay for the transaction' }),
+    instructions: Type.Array(BuildInstruction, {
+      minItems: 1,
+      description:
+        'The instructions of the transaction, in order. Only the wallet may be named as a signer — a ' +
+        'transaction needing other keypairs cannot be completed by the wallet alone.',
+    }),
+    minComputeUnits: Type.Optional(
+      Type.Number({
+        minimum: 0,
+        description:
+          'A compute-unit floor for the built transaction. The build path sizes the compute budget from ' +
+          'simulation × a safety margin; for a very cheap transaction (e.g. a bare SOL transfer) that ' +
+          'sized limit can fall below what the transaction actually needs once the compute-budget ' +
+          "instructions' own cost is counted, and it fails post-broadcast. Set a small floor (a few tens " +
+          'of thousands of CU) to guarantee enough budget. Only raises the budget, never lowers it.',
+      }),
+    ),
+    references: Type.Optional(
+      Type.Array(Type.String(), {
+        maxItems: 3,
+        description:
+          'Up to 3 Solana Pay references (base58): read-only, non-signer accounts attached on a 0-lamport ' +
+          'self-transfer by the wallet, so the transaction can be found by getSignaturesForAddress(reference).',
+      }),
+    ),
+  },
+  { $id: 'BuildTransactionRequest', additionalProperties: false },
+);
+export type BuildTransactionRequestType = Static<typeof BuildTransactionRequestSchema>;
+
+/**
+ * Broadcast a transaction the caller signed itself — the submit half of the
+ * build/sign/submit flow (see the /trading build-* routes). Signature validity is
+ * checked locally before broadcast, so a message mutated after build fails here with
+ * a clear error instead of being silently dropped by the network.
+ */
+export const SubmitRequestSchema = Type.Object(
+  {
+    network: networkField(),
+    signedTransaction: Type.String({
+      description: 'The base64-serialized transaction from a build-* route, signed by the wallet',
+    }),
+    extraSigners: Type.Optional(
+      Type.Array(
+        Type.Object({
+          pubkey: Type.String({ description: 'Ephemeral signer address (base58)' }),
+          signature: Type.String({ description: 'Its signature over the message, base64' }),
+        }),
+        {
+          description:
+            'The extraSigners array from the build response, passed back verbatim. Re-merged into the ' +
+            'transaction before broadcast, restoring any ephemeral signature the signing wallet dropped.',
+        },
+      ),
+    ),
+  },
+  { $id: 'SubmitRequest', additionalProperties: false },
+);
+export type SubmitRequestType = Static<typeof SubmitRequestSchema>;
+
+export const SubmitResponseSchema = Type.Object(
+  {
+    signature: Type.String({ description: 'Transaction signature/hash' }),
+    status: Type.Number({
+      description: '1 = confirmed, 0 = broadcast but not yet confirmed (track with /chains/{chain}/poll)',
+    }),
+    fee: Type.Union([Type.Number(), Type.Null()], {
+      description: 'Transaction fee in the native token, when confirmed',
+    }),
+  },
+  { $id: 'SubmitResponse' },
+);
+export type SubmitResponseType = Static<typeof SubmitResponseSchema>;
+
 // Values reported in PollResponse.txStatus, shared by all chains.
 export enum TransactionStatusCode {
   NOT_FOUND = -2, // unknown to the chain: never received or dropped
@@ -143,7 +230,19 @@ export enum TransactionStatusCode {
 
 export const PollResponseSchema = Type.Object(
   {
-    currentBlock: Type.Number(),
+    currentBlock: Type.Number({
+      description:
+        "The chain's current block number. On Solana this is a SLOT (getSlot), which counts skipped slots too — " +
+        "it is not comparable with a transaction's lastValidBlockHeight. Use currentBlockHeight for that.",
+    }),
+    currentBlockHeight: Type.Optional(
+      Type.Number({
+        description:
+          "Solana only: the current BLOCK HEIGHT (getBlockHeight), the value a transaction's lastValidBlockHeight " +
+          'is measured against. currentBlockHeight > lastValidBlockHeight means the blockhash has expired and the ' +
+          'transaction can never land, whatever its poll status says.',
+      }),
+    ),
     signature: Type.String(),
     txBlock: Type.Union([Type.Number(), Type.Null()]),
     txStatus: Type.Number({

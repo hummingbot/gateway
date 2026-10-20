@@ -4,6 +4,7 @@ import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { getBuildModeContext } from '../../../chains/solana/solana-build-mode';
 import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -118,6 +119,24 @@ export async function openPosition(
   // quote-liquidity reports that count up front via `transactionCount`.
   const positionWidth = maxBinId - minBinId + 1;
   const needsChunkedOpen = positionWidth > Meteora.MAX_POSITION_BIN_WIDTH;
+
+  // Build mode returns ONE unsigned transaction for an external signer, so a chunked open
+  // cannot be expressed: the capture fires on the first transaction — the position
+  // creation — and the deposit chunks below never run. The caller would sign a valid
+  // transaction that opens an EMPTY position and reports no error. Nor can it be resumed
+  // the way build-close is ("submit it and call build again"), because each call mints a
+  // fresh position keypair, so calling again opens a second empty position rather than
+  // funding the first. Refuse instead, and let the caller narrow the range or open it
+  // through the execute path.
+  if (needsChunkedOpen && getBuildModeContext()) {
+    const binStepPct = dlmmPool.lbPair.binStep / 100;
+    throw httpErrors.badRequest(
+      `Price range ${lowerPrice}-${upperPrice} spans ${positionWidth} bins, which has to be funded over ` +
+        `several transactions, and a build returns a single unsigned transaction. At this pool's ` +
+        `${binStepPct}% bin step, keep the range within ${Meteora.MAX_POSITION_BIN_WIDTH} bins, or open it ` +
+        `through the execute path. quote-liquidity reports transactionCount for a range before you open it.`,
+    );
+  }
 
   // Don't add SOL rent to the liquidity amounts - rent is separate
   const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.mint.decimals));
