@@ -27,4 +27,6 @@ export {
   LaunchCreatorFeesResponse,
   LaunchMigrateRequestSchema,
   LaunchMigrateResponse,
+  LaunchBuildClaimCreatorFeesRequestSchema,
+  LaunchBuildMigrateRequestSchema,
 } from './creator-fees';

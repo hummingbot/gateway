@@ -100,6 +100,8 @@ export const OPERATION_IDS: Record<string, string> = {
   'GET /trading/launch/creator-fees': 'getCreatorFees',
   'POST /trading/launch/claim-creator-fees': 'claimCreatorFees',
   'POST /trading/launch/migrate': 'migrateLaunchCurve',
+  'POST /trading/launch/build-claim-creator-fees': 'buildClaimCreatorFees',
+  'POST /trading/launch/build-migrate': 'buildMigrateLaunchCurve',
   'GET /trading/launch/launch-history': 'getLaunchHistory',
 
   // Constant product
