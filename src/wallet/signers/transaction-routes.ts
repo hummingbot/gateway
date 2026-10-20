@@ -102,6 +102,8 @@ export const TRANSACTION_ROUTES: TransactionRoute[] = [
     buildTwin: '/trading/amm/build-remove',
     gaps: { ethereum: EVM_BUILD },
   },
+  // Meteora DAMM v2 only.
+  { url: '/trading/amm/collect-fees', chains: ['solana'], buildTwin: '/trading/amm/build-collect-fees' },
   {
     url: '/trading/amm/create-pool',
     chains: ['solana', 'ethereum'],
@@ -112,8 +114,12 @@ export const TRANSACTION_ROUTES: TransactionRoute[] = [
   { url: '/trading/launch/execute-swap', chains: ['solana'], buildTwin: '/trading/launch/build-swap' },
   { url: '/trading/launch/execute-quote', chains: ['solana'], gaps: { solana: SOLANA_BUILD } },
   { url: '/trading/launch/create-token', chains: ['solana'], buildTwin: '/trading/launch/build-create-token' },
-  { url: '/trading/launch/claim-creator-fees', chains: ['solana'], gaps: { solana: SOLANA_BUILD } },
-  { url: '/trading/launch/migrate', chains: ['solana'], gaps: { solana: SOLANA_BUILD } },
+  {
+    url: '/trading/launch/claim-creator-fees',
+    chains: ['solana'],
+    buildTwin: '/trading/launch/build-claim-creator-fees',
+  },
+  { url: '/trading/launch/migrate', chains: ['solana'], buildTwin: '/trading/launch/build-migrate' },
   // Chain operations
   {
     url: '/chains/:chain/wrap',

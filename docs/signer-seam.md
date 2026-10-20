@@ -64,6 +64,10 @@ error that names it.
   Every Solana connector already hands its unsigned transaction here. In build mode
   (#721's `captureUnsignedTransaction`), it returns the prepared transaction and signs
   nothing; the address does not have to be a registered wallet.
+  An operation of several transactions (Meteora DLMM wide positions, DBC migrate, a pump
+  create with a new lookup table) builds with `captureSequenceForExternalSigner`, which
+  also signs nothing for the wallet; executed, it sends each transaction through this
+  chokepoint, so an external wallet is refused before the first one is sent.
 - Ethereum: `Ethereum.sendTransactionForWallet(address, tx)`. A route gives it the
   populated transaction request (`to`, `data`, `value`, gas options); the chokepoint sets
   chainId and nonce, signs through the seam and broadcasts.
