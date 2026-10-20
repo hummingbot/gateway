@@ -2084,16 +2084,17 @@ export class Solana {
    * Send the same signed bytes again every REBROADCAST_INTERVAL_MS until the returned stop
    * function is called or the block height passes lastValidBlockHeight. The bytes are not
    * re-signed and keep their blockhash, so every send is the same transaction and it can
-   * land only once.
+   * land only once. Stopping does not wait for a resend already in flight; the loop
+   * catches its own errors, and it schedules nothing after it is stopped.
    */
   private _startRebroadcast(
     serializedTx: Buffer | Uint8Array,
     signature: string,
     lastValidBlockHeight: number,
-  ): () => Promise<void> {
+  ): () => void {
     let stopped = false;
     let wake = () => {};
-    const loop = (async () => {
+    void (async () => {
       let resends = 0;
       for (;;) {
         await new Promise<void>((resolve) => {
@@ -2119,10 +2120,9 @@ export class Solana {
         }
       }
     })();
-    return async () => {
+    return () => {
       stopped = true;
       wake();
-      await loop;
     };
   }
 
@@ -2152,7 +2152,7 @@ export class Solana {
         const pollingResult = await this._confirmViaPolling(signature, lastValidBlockHeight);
         return { ...pollingResult, signature };
       } finally {
-        await stopRebroadcast();
+        stopRebroadcast();
       }
     } catch (sendError: any) {
       if (sendError.statusCode === 429) {

@@ -81,6 +81,27 @@ describe('rebroadcasting a sent transaction', () => {
     expect(sent).toHaveLength(3);
   });
 
+  it('returns a confirmation without waiting for a resend in flight', async () => {
+    const { sent } = stubRpc(solana, 1);
+    const conn = solana.connection as any;
+    const start = Date.now();
+    // Resends never answer; the transaction confirms from the third second.
+    conn.sendRawTransaction = jest.fn(async (bytes: any) => {
+      sent.push(bytes);
+      return sent.length === 1 ? 'sig' : new Promise(() => {});
+    });
+    conn.getSignatureStatuses = jest.fn(async () => ({
+      context: { slot: 1 },
+      value: [Date.now() - start >= 3000 ? { confirmationStatus: 'confirmed', err: null } : null],
+    }));
+
+    const result = (solana as any)._sendAndConfirmRawTransaction(wire);
+    await jest.advanceTimersByTimeAsync(10_000);
+
+    expect(await result).toEqual({ confirmed: true, signature: 'sig', txData: { meta: { err: null } } });
+    expect(sent).toHaveLength(2);
+  });
+
   it('stops rebroadcasting when the blockhash expires', async () => {
     const { sent } = stubRpc(solana, Infinity);
 
