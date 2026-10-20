@@ -9064,6 +9064,158 @@
           "quote"
         ]
       },
+      "LaunchBuildQuoteRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "connector": {
+            "description": "Launchpad connector that issued the quote",
+            "enum": [
+              "meteora",
+              "raydium"
+            ],
+            "type": "string",
+            "example": "meteora"
+          },
+          "walletAddress": {
+            "description": "Wallet address that will execute the quote. Defaults to the chain's configured default wallet.",
+            "type": "string"
+          },
+          "quoteId": {
+            "description": "ID of a quote returned by /trading/launch/quote-swap",
+            "type": "string"
+          },
+          "extraInstructions": {
+            "description": "Instructions appended to the transaction after the operation’s own, before the ephemeral keypairs partial-sign — so they are covered by every signature. Only the wallet may be named as a signer. Account addresses are literal: an instruction cannot reference an account the build itself creates (e.g. a position keypair generated during build-open), because the caller cannot know that address before the response. Compose atomically only when every account is known pre-build; otherwise follow up with /chains/{chain}/build-transaction after the first transaction confirms, reading the new address from extraSigners.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "programId": {
+                  "description": "Program to invoke (base58 address)",
+                  "type": "string"
+                },
+                "accounts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Account address (base58)",
+                        "type": "string"
+                      },
+                      "isSigner": {
+                        "type": "boolean"
+                      },
+                      "isWritable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "isSigner",
+                      "isWritable"
+                    ]
+                  }
+                },
+                "data": {
+                  "description": "Instruction data, base64-encoded",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "programId",
+                "accounts",
+                "data"
+              ]
+            }
+          },
+          "feePayer": {
+            "description": "Who pays the transaction fee and signs its first slot (base58), when it is not walletAddress. The wallet still signs as the owner of what the operation moves. Default: walletAddress.",
+            "type": "string"
+          },
+          "format": {
+            "description": "transaction (default): a compiled transaction, ephemeral keypairs partial-signed. instructions: the operation's raw instructions, lookup-table addresses, compute budget and the ephemeral keypairs, for a caller that wraps them (a smart wallet's execute instruction) and compiles its own transaction.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "transaction"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "instructions"
+                ]
+              }
+            ]
+          },
+          "references": {
+            "maxItems": 3,
+            "description": "Up to 3 Solana Pay references (base58): read-only, non-signer accounts attached to the transaction (on a 0-lamport self-transfer by the fee payer), so it can be found with getSignaturesForAddress(reference) once it lands.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "memo": {
+            "maxLength": 128,
+            "description": "A signer-less SPL Memo appended to the transaction (at most 128 bytes), e.g. \"app:ref=<id>\" to attribute a transaction on chain.",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Compute-unit price baked into the built transaction: normal (the configured level), high, or urgent. Raises what the transaction pays to land, up to the network's configured maximum — where that ceiling is low, high and urgent can cost the same. It cannot make an invalid transaction valid. Default: normal.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "normal"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "high"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "urgent"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "chainNetwork",
+          "connector",
+          "quoteId"
+        ]
+      },
       "LaunchCreatorFeesRequest": {
         "additionalProperties": false,
         "type": "object",
@@ -16739,6 +16891,56 @@
         }
       }
     },
+    "/trading/launch/build-quote": {
+      "post": {
+        "operationId": "buildLaunchQuote",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "Build the unsigned transaction /trading/launch/execute-quote would sign for a cached launch-curve quote, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchBuildQuoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildTransactionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/trading/launch/creator-fees": {
       "get": {
         "operationId": "getCreatorFees",
@@ -17712,7 +17914,7 @@
         "tags": [
           "/chains"
         ],
-        "description": "Build the unsigned transaction /chains/{chain}/wrap would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. Ethereum only for now.",
+        "description": "Build the unsigned transaction /chains/{chain}/wrap would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -17778,7 +17980,7 @@
         "tags": [
           "/chains"
         ],
-        "description": "Build the unsigned transaction /chains/{chain}/unwrap would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. Ethereum only for now.",
+        "description": "Build the unsigned transaction /chains/{chain}/unwrap would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit.",
         "requestBody": {
           "content": {
             "application/json": {

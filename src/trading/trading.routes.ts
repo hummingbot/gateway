@@ -34,6 +34,7 @@ import {
   executeSwapRoute as launchExecuteSwapRoute,
   executeQuoteRoute as launchExecuteQuoteRoute,
   buildSwapRoute as launchBuildSwapRoute,
+  buildQuoteRoute as launchBuildQuoteRoute,
   creatorFeesRoute as launchCreatorFeesRoute,
   launchHistoryRoute,
 } from './trading-launch-routes';
@@ -109,6 +110,7 @@ export const tradingLaunchRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(launchExecuteSwapRoute);
   fastify.register(launchExecuteQuoteRoute);
   fastify.register(launchBuildSwapRoute);
+  fastify.register(launchBuildQuoteRoute);
 
   // A creator's fees, read and claimed (pump: per creator, across its coins).
   fastify.register(launchCreatorFeesRoute);

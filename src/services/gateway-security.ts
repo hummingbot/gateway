@@ -82,7 +82,7 @@ const SENSITIVE_PREFIXES = [/^\/wallet(\/|$)/, /^\/config\/update(\/|$)/, /^\/re
 // hot wallet, but they run the same connector write paths, partial-sign with ephemeral
 // keypairs, and return signatures — a write-shaped surface, not a read.
 const SENSITIVE_TRADING =
-  /^\/trading\/(router\/(execute-swap|execute-quote|build-swap|build-quote)|(clmm|amm)\/(execute-swap|build-swap|open|close|add|remove|collect-fees|create-pool|build-open|build-close|build-add|build-remove|build-collect-fees|build-create-pool)|launch\/(create-token|build-create-token|execute-swap|execute-quote|build-swap|claim-creator-fees|build-claim-creator-fees|migrate|build-migrate))(\/|$)/i;
+  /^\/trading\/(router\/(execute-swap|execute-quote|build-swap|build-quote)|(clmm|amm)\/(execute-swap|build-swap|open|close|add|remove|collect-fees|create-pool|build-open|build-close|build-add|build-remove|build-collect-fees|build-create-pool)|launch\/(create-token|build-create-token|execute-swap|execute-quote|build-swap|build-quote|claim-creator-fees|build-claim-creator-fees|migrate|build-migrate))(\/|$)/i;
 
 // Chain-level routes that sign with the hot wallet. `approve` is the sharpest of them —
 // an unauthenticated caller reaching it can have the wallet approve an unlimited

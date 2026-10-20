@@ -3,8 +3,7 @@
  *
  * A route here signs through its chain's chokepoint (the signer seam). Its `buildTwin`
  * runs the same connector code and returns the unsigned transaction instead, for the
- * caller to sign and send with POST /chains/{chain}/submit. `gaps` names the chains on
- * which the twin cannot serve the route yet, and the task that closes each gap.
+ * caller to sign and send with POST /chains/{chain}/submit. Every route has one.
  *
  * test/wallet/transaction-routes.test.ts checks this table against the registered
  * routes: a new POST or DELETE route fails the test until it is listed here or in
@@ -17,13 +16,9 @@ export interface TransactionRoute {
   /** Fastify route URL, with its parameters (`/chains/:chain/wrap`). */
   url: string;
   chains: WalletChain[];
-  /** The build route that serves the same operation, if one exists. */
-  buildTwin?: string;
-  /** Chains on which the operation has no working build twin yet, with the task that adds it. */
-  gaps?: Partial<Record<WalletChain, string>>;
+  /** The build route that serves the same operation on every chain the route serves. */
+  buildTwin: string;
 }
-
-const SOLANA_BUILD = 'INV-435';
 
 export const TRANSACTION_ROUTES: TransactionRoute[] = [
   // Router
@@ -98,7 +93,7 @@ export const TRANSACTION_ROUTES: TransactionRoute[] = [
   },
   // Launch (Solana only)
   { url: '/trading/launch/execute-swap', chains: ['solana'], buildTwin: '/trading/launch/build-swap' },
-  { url: '/trading/launch/execute-quote', chains: ['solana'], gaps: { solana: SOLANA_BUILD } },
+  { url: '/trading/launch/execute-quote', chains: ['solana'], buildTwin: '/trading/launch/build-quote' },
   { url: '/trading/launch/create-token', chains: ['solana'], buildTwin: '/trading/launch/build-create-token' },
   {
     url: '/trading/launch/claim-creator-fees',
@@ -111,13 +106,11 @@ export const TRANSACTION_ROUTES: TransactionRoute[] = [
     url: '/chains/:chain/wrap',
     chains: ['solana', 'ethereum'],
     buildTwin: '/chains/:chain/build-wrap',
-    gaps: { solana: SOLANA_BUILD },
   },
   {
     url: '/chains/:chain/unwrap',
     chains: ['solana', 'ethereum'],
     buildTwin: '/chains/:chain/build-unwrap',
-    gaps: { solana: SOLANA_BUILD },
   },
   { url: '/chains/ethereum/approve', chains: ['ethereum'], buildTwin: '/chains/ethereum/build-approve' },
 ];
@@ -152,11 +145,11 @@ export const NON_SENDING_ROUTES: string[] = [
 
 /**
  * The build twin that serves a transaction route on a chain, with `:chain` filled in;
- * undefined when the route has none there yet.
+ * undefined for a route this table does not list.
  */
 export function buildTwinOf(method: string, url: string, chain: WalletChain): string | undefined {
   if (method !== 'POST') return undefined;
   const route = TRANSACTION_ROUTES.find((r) => r.url === url);
-  if (!route?.buildTwin || route.gaps?.[chain]) return undefined;
+  if (!route || !route.chains.includes(chain)) return undefined;
   return route.buildTwin.replace(':chain', chain);
 }

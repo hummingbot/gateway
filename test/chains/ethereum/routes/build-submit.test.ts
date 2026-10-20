@@ -136,17 +136,6 @@ describe('EVM chain build/submit routes', () => {
     expect(JSON.parse(response.body).message).toMatch(/Insufficient WETH balance/);
   });
 
-  it('build-wrap on Solana is refused with the route to use', async () => {
-    const response = await server.inject({
-      method: 'POST',
-      url: '/solana/build-wrap',
-      payload: { network: 'mainnet-beta', address: '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5', amount: '0.01' },
-    });
-
-    expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toMatch(/build-wrap is not supported for solana yet/);
-  });
-
   it('build-approve returns the approval for the named spender and amount', async () => {
     stubEthereum();
 

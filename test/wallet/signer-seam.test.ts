@@ -174,10 +174,10 @@ describe('the refusal of an execute request for an external wallet', () => {
     await app.close();
   });
 
-  it('says so when no build route serves the operation on the chain yet', async () => {
-    const app = await appWithRoute('/trading/launch/execute-quote');
+  it('says so for a route with no build twin', async () => {
+    const app = await appWithRoute('/trading/unlisted/execute');
 
-    const response = await app.inject({ method: 'POST', url: '/trading/launch/execute-quote', body: {} });
+    const response = await app.inject({ method: 'POST', url: '/trading/unlisted/execute', body: {} });
 
     expect(response.statusCode).toBe(400);
     expect(response.json().message).toMatch(/No build route serves this operation on solana yet/);

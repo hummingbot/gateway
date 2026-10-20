@@ -101,6 +101,7 @@ export const OPERATION_IDS: Record<string, string> = {
   'POST /trading/launch/execute-quote': 'executeLaunchQuote',
   'POST /trading/launch/execute-swap': 'executeLaunchSwap',
   'POST /trading/launch/build-swap': 'buildLaunchSwap',
+  'POST /trading/launch/build-quote': 'buildLaunchQuote',
   'GET /trading/launch/creator-fees': 'getCreatorFees',
   'POST /trading/launch/claim-creator-fees': 'claimCreatorFees',
   'POST /trading/launch/migrate': 'migrateLaunchCurve',

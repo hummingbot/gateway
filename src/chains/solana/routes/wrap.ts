@@ -4,6 +4,7 @@ import { FastifyInstance } from 'fastify';
 import { logger } from '../../../services/logger';
 import { WrapResponseType } from '../schemas';
 import { Solana } from '../solana';
+import { UnsignedTransactionCaptured } from '../solana-build-mode';
 import { handleSolanaTransactionError } from '../solana-errors';
 
 /**
@@ -75,7 +76,8 @@ export async function wrapSolana(
       };
     }
   } catch (error: any) {
-    logger.error(`Error wrapping SOL to WSOL: ${error.message}`);
+    // The build-mode sentinel is the build's result, not an error.
+    if (!(error instanceof UnsignedTransactionCaptured)) logger.error(`Error wrapping SOL to WSOL: ${error.message}`);
     handleSolanaTransactionError(fastify, error, 'wrap SOL to WSOL');
   }
 }

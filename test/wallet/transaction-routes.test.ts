@@ -1,6 +1,6 @@
 /**
  * Route coverage for the signer seam (#673, #682): every route that sends a
- * transaction is listed with its build twin (or the task that adds one), and only
+ * transaction is listed with its build twin, and only
  * the seam signs.
  */
 import { readdirSync, readFileSync, statSync } from 'fs';
@@ -34,7 +34,7 @@ describe('transaction routes and their build twins', () => {
 
   const listed = () => [
     ...TRANSACTION_ROUTES.map((r) => `POST ${r.url}`),
-    ...TRANSACTION_ROUTES.flatMap((r) => (r.buildTwin ? [`POST ${r.buildTwin}`] : [])),
+    ...TRANSACTION_ROUTES.map((r) => `POST ${r.buildTwin}`),
     ...NON_SENDING_ROUTES,
   ];
 
@@ -48,27 +48,17 @@ describe('transaction routes and their build twins', () => {
     expect(listed().filter((r) => !writeRoutes.includes(r))).toEqual([]);
   });
 
-  it('names a registered build twin, or the task that adds one, for every chain a route serves', () => {
+  it('names a registered build twin for every transaction route', () => {
     for (const route of TRANSACTION_ROUTES) {
-      if (route.buildTwin) {
-        expect(writeRoutes).toContain(`POST ${route.buildTwin}`);
-      }
-      for (const chain of route.chains) {
-        const servedByTwin = route.buildTwin !== undefined && route.gaps?.[chain] === undefined;
-        const gapTask = route.gaps?.[chain];
-        expect({ url: route.url, chain, covered: servedByTwin || /^INV-\d+$/.test(gapTask ?? '') }).toEqual({
-          url: route.url,
-          chain,
-          covered: true,
-        });
-      }
+      expect({ url: route.url, registered: writeRoutes.includes(`POST ${route.buildTwin}`) }).toEqual({
+        url: route.url,
+        registered: true,
+      });
     }
   });
 
   it('gates every transaction route and its twin behind API auth when Gateway is exposed', () => {
-    const paths = TRANSACTION_ROUTES.flatMap((r) => [r.url, r.buildTwin].filter((p): p is string => !!p)).map((p) =>
-      p.replace(':chain', 'solana'),
-    );
+    const paths = TRANSACTION_ROUTES.flatMap((r) => [r.url, r.buildTwin]).map((p) => p.replace(':chain', 'solana'));
     expect(paths.filter((p) => !isSensitivePath(p))).toEqual([]);
   });
 });

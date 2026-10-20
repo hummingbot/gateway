@@ -4,6 +4,7 @@ export { quoteSwapRoute } from './quote-swap';
 export { executeSwapRoute } from './execute-swap';
 export { executeQuoteRoute } from './execute-quote';
 export { buildSwapRoute } from './build-swap';
+export { buildQuoteRoute } from './build-quote';
 export { creatorFeesRoute } from './creator-fees';
 export { LaunchLaunchHistoryRequestSchema, LaunchHistoryResponse } from './launch-history';
 export { launchHistoryRoute } from './launch-history';
@@ -20,6 +21,7 @@ export { LaunchExecuteQuoteRequestSchema } from './execute-quote';
 // here for the same reason the bodies are.
 export { LaunchQuoteSwapRequestSchema } from './quote-swap';
 export { LaunchBuildSwapRequestSchema, LaunchBuildSwapResponseSchema } from './build-swap';
+export { LaunchBuildQuoteRequestSchema } from './build-quote';
 export {
   LaunchCreatorFeesRequestSchema,
   LaunchClaimCreatorFeesRequestSchema,

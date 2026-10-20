@@ -67,6 +67,7 @@ import { getSolanaStatus } from './solana/routes/status';
 import { submitSolanaTransaction } from './solana/routes/submit';
 import { unwrapSolana } from './solana/routes/unwrap';
 import { wrapSolana } from './solana/routes/wrap';
+import { captureUnsignedTransaction } from './solana/solana-build-mode';
 import { getSolanaChainConfig, getSolanaNetworkConfig, networks as solanaNetworks } from './solana/solana.config';
 
 interface ChainOps {
@@ -125,6 +126,7 @@ const CHAINS: Record<string, ChainOps> = {
       submitSolanaTransaction(fastify, network, signedTransaction, extraSigners),
     wrap: (fastify, network, address, amount) => wrapSolana(fastify, network, address, amount),
     unwrap: (fastify, network, address, amount) => unwrapSolana(fastify, network, address, amount),
+    captureBuild: (run) => captureUnsignedTransaction({}, run),
     unwrapRequiresAmount: false,
   },
   ethereum: {
@@ -373,7 +375,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
         schema: {
           description:
             `Build the unsigned transaction /chains/{chain}/${verb} would sign and send, for the caller to ` +
-            'sign with its own wallet and broadcast via /chains/{chain}/submit. Ethereum only for now.',
+            'sign with its own wallet and broadcast via /chains/{chain}/submit.',
           tags: ['/chains'],
           params: ChainParamsSchema,
           body: verb === 'wrap' ? WrapRequestSchema : UnwrapRequestSchema,

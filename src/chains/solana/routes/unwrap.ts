@@ -5,6 +5,7 @@ import { FastifyInstance } from 'fastify';
 import { logger } from '../../../services/logger';
 import { UnwrapResponseType } from '../schemas';
 import { Solana } from '../solana';
+import { UnsignedTransactionCaptured } from '../solana-build-mode';
 import { handleSolanaTransactionError } from '../solana-errors';
 
 /**
@@ -111,7 +112,8 @@ export async function unwrapSolana(
       };
     }
   } catch (error: any) {
-    logger.error(`Error unwrapping WSOL to SOL: ${error.message}`);
+    // The build-mode sentinel is the build's result, not an error.
+    if (!(error instanceof UnsignedTransactionCaptured)) logger.error(`Error unwrapping WSOL to SOL: ${error.message}`);
     handleSolanaTransactionError(fastify, error, 'unwrap WSOL to SOL');
   }
 }
