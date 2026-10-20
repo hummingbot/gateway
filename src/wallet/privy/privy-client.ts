@@ -304,16 +304,6 @@ export async function privySignSolanaTransaction(walletId: string, transactionBa
   return data.signed_transaction;
 }
 
-/** Signs raw bytes (base64) with the Solana wallet; returns the ed25519 signature (base64). */
-export async function privySignSolanaMessage(walletId: string, messageBase64: string): Promise<string> {
-  const data = await walletRpc<{ signature: string }>('sign Solana message', walletId, {
-    method: 'signMessage',
-    chain_type: 'solana',
-    params: { message: messageBase64, encoding: 'base64' },
-  });
-  return data.signature;
-}
-
 /** Signs a populated EVM transaction; returns the signed RLP-serialized transaction (0x hex). */
 export async function privySignEthereumTransaction(
   walletId: string,
@@ -325,14 +315,4 @@ export async function privySignEthereumTransaction(
     params: { transaction },
   });
   return data.signed_transaction;
-}
-
-/** EIP-191 personal_sign over a UTF-8 message; returns the 0x signature. */
-export async function privySignEthereumMessage(walletId: string, message: string): Promise<string> {
-  const data = await walletRpc<{ signature: string }>('sign Ethereum message', walletId, {
-    method: 'personal_sign',
-    chain_type: 'ethereum',
-    params: { message, encoding: 'utf-8' },
-  });
-  return data.signature;
 }

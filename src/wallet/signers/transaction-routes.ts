@@ -149,6 +149,8 @@ export const NON_SENDING_ROUTES: string[] = [
   'POST /wallet/add',
   'POST /wallet/add-hardware',
   'POST /wallet/add-external',
+  'POST /wallet/add-privy',
+  'POST /wallet/create-privy',
   'POST /wallet/setDefault',
   'DELETE /wallet/remove',
   'POST /tokens',

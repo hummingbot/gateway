@@ -109,6 +109,46 @@ export const AddExternalWalletResponseSchema = Type.Object({
   signer: Type.Literal('external'),
 });
 
+// Privy wallet schemas: Privy holds the key and signs; Gateway stores the wallet id and address.
+const PrivyChainSchema = Type.String({
+  description: 'Blockchain of the Privy wallet',
+  enum: ['ethereum', 'solana'],
+  examples: ['solana', 'ethereum'],
+});
+
+const PrivySetDefaultSchema = Type.Optional(
+  Type.Boolean({
+    description: 'Set this wallet as the default for the chain',
+    default: false,
+  }),
+);
+
+export const AddPrivyWalletRequestSchema = Type.Object(
+  {
+    chain: PrivyChainSchema,
+    privyWalletId: Type.String({
+      description: 'Privy wallet id (from the Privy dashboard or API)',
+      pattern: '^[a-z0-9]{16,64}$',
+    }),
+    setDefault: PrivySetDefaultSchema,
+  },
+  { $id: 'AddPrivyWalletRequest', additionalProperties: false },
+);
+
+export const CreatePrivyWalletRequestSchema = Type.Object(
+  {
+    chain: PrivyChainSchema,
+    setDefault: PrivySetDefaultSchema,
+  },
+  { $id: 'CreatePrivyWalletRequest', additionalProperties: false },
+);
+
+export const PrivyWalletResponseSchema = Type.Object({
+  address: Type.String({ description: 'The wallet address' }),
+  privyWalletId: Type.String({ description: 'The Privy wallet id' }),
+  signer: Type.Literal('privy'),
+});
+
 // Hardware wallet schemas
 export const AddHardwareWalletRequestSchema = Type.Object(
   {
@@ -202,6 +242,9 @@ export type RemoveWalletRequest = Static<typeof RemoveWalletRequestSchema>;
 export type RemoveWalletResponse = Static<typeof RemoveWalletResponseSchema>;
 export type AddExternalWalletRequest = Static<typeof AddExternalWalletRequestSchema>;
 export type AddExternalWalletResponse = Static<typeof AddExternalWalletResponseSchema>;
+export type AddPrivyWalletRequest = Static<typeof AddPrivyWalletRequestSchema>;
+export type CreatePrivyWalletRequest = Static<typeof CreatePrivyWalletRequestSchema>;
+export type PrivyWalletResponse = Static<typeof PrivyWalletResponseSchema>;
 export type GetWalletResponse = Static<typeof GetWalletResponseSchema>;
 export type AddHardwareWalletRequest = Static<typeof AddHardwareWalletRequestSchema>;
 export type AddHardwareWalletResponse = Static<typeof AddHardwareWalletResponseSchema>;

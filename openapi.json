@@ -10329,6 +10329,58 @@
           "address"
         ]
       },
+      "AddPrivyWalletRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "chain": {
+            "description": "Blockchain of the Privy wallet",
+            "enum": [
+              "ethereum",
+              "solana"
+            ],
+            "type": "string",
+            "example": "solana"
+          },
+          "privyWalletId": {
+            "description": "Privy wallet id (from the Privy dashboard or API)",
+            "pattern": "^[a-z0-9]{16,64}$",
+            "type": "string"
+          },
+          "setDefault": {
+            "description": "Set this wallet as the default for the chain",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "chain",
+          "privyWalletId"
+        ]
+      },
+      "CreatePrivyWalletRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "chain": {
+            "description": "Blockchain of the Privy wallet",
+            "enum": [
+              "ethereum",
+              "solana"
+            ],
+            "type": "string",
+            "example": "solana"
+          },
+          "setDefault": {
+            "description": "Set this wallet as the default for the chain",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "chain"
+        ]
+      },
       "AddHardwareWalletRequest": {
         "additionalProperties": false,
         "type": "object",
@@ -11168,6 +11220,148 @@
                   },
                   "required": [
                     "address",
+                    "signer"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallet/add-privy": {
+      "post": {
+        "operationId": "addPrivyWallet",
+        "tags": [
+          "/wallet"
+        ],
+        "description": "Add an existing Privy server wallet by its Privy wallet id. Gateway reads the wallet from Privy and stores its id and address; Privy signs every transaction for it. Gateway reads PRIVY_APP_ID, PRIVY_APP_SECRET and PRIVY_AUTHORIZATION_KEY from its environment only.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddPrivyWalletRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "description": "The wallet address",
+                      "type": "string"
+                    },
+                    "privyWalletId": {
+                      "description": "The Privy wallet id",
+                      "type": "string"
+                    },
+                    "signer": {
+                      "type": "string",
+                      "enum": [
+                        "privy"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "privyWalletId",
+                    "signer"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallet/create-privy": {
+      "post": {
+        "operationId": "createPrivyWallet",
+        "tags": [
+          "/wallet"
+        ],
+        "description": "Create a Privy server wallet owned by the PRIVY_AUTHORIZATION_KEY key and add it. Gateway reads PRIVY_APP_ID, PRIVY_APP_SECRET and PRIVY_AUTHORIZATION_KEY from its environment only.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePrivyWalletRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "description": "The wallet address",
+                      "type": "string"
+                    },
+                    "privyWalletId": {
+                      "description": "The Privy wallet id",
+                      "type": "string"
+                    },
+                    "signer": {
+                      "type": "string",
+                      "enum": [
+                        "privy"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "privyWalletId",
                     "signer"
                   ]
                 }

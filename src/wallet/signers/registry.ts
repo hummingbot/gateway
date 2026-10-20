@@ -11,6 +11,7 @@ import { httpErrors } from '../../services/error-handler';
 import { externalBackend } from './external';
 import { hardwareBackend } from './hardware';
 import { localBackend } from './local';
+import { privyBackend } from './privy';
 import { buildTwinOf } from './transaction-routes';
 import { EthereumSigner, SignerFactories, SignerKind, SolanaSigner, WalletChain } from './types';
 import { getWalletRecord } from './wallet-store';
@@ -19,6 +20,7 @@ export const signerBackends: Partial<Record<SignerKind, SignerFactories>> = {
   local: localBackend,
   hardware: hardwareBackend,
   external: externalBackend,
+  privy: privyBackend,
 };
 
 function backendFor(kind: SignerKind, address: string): SignerFactories {

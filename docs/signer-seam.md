@@ -94,4 +94,31 @@ twin is not registered, and when source outside the seam loads a key or signs.
   `walletAddresses` (local) and `hardwareWalletAddresses` stay, because the Hummingbot
   client and Hummingbot API read them.
 - `POST /wallet/add-hardware`: unchanged.
-- Privy routes come with the Privy backend.
+- `POST /wallet/add-privy` `{chain, privyWalletId, setDefault?}`: add an existing Privy server
+  wallet. Gateway reads it from Privy (`GET /v1/wallets/{id}`), checks its chain, and stores
+  its id and address.
+- `POST /wallet/create-privy` `{chain, setDefault?}`: create a Privy wallet owned by
+  Gateway's authorization key, and add it.
+
+## The `privy` backend
+
+Privy holds the key and signs; Gateway builds and sends. Credentials come from the
+environment only, never from conf files, templates or request bodies:
+
+| Variable | Use |
+|---|---|
+| `PRIVY_APP_ID` | Privy app id (`privy-app-id` header, Basic auth user) |
+| `PRIVY_APP_SECRET` | Privy app secret (Basic auth password) |
+| `PRIVY_AUTHORIZATION_KEY` | `wallet-auth:<base64 PKCS8>` P-256 key. Signs every wallet RPC request (`privy-authorization-signature`) and is the owner of wallets Gateway creates. |
+
+- Solana: the backend wraps the seam's message in a transaction, calls `signTransaction`,
+  checks that Privy returned the same message, and returns only the wallet's signature.
+- Ethereum: the populated transaction goes to `eth_signTransaction`; the chokepoint checks
+  the signed transaction before it sends it.
+- The Privy wallet id must match `^[a-z0-9]{16,64}$` before it is put in a URL.
+- Privy errors map to Gateway errors: a policy denial is 403, a missing or wrong
+  authorization signature is 403, an unknown wallet is 404, a rate limit is 429, other
+  Privy 4xx are 400, Privy 5xx or no answer is 502, missing credentials are 503. Privy's
+  error text is not returned or logged above debug level.
+- Scope: one authorization key per Gateway. Wallets that another app signs with its own
+  session signers are not a Gateway use case.

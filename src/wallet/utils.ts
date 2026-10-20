@@ -15,7 +15,8 @@ import {
 import { httpErrors } from '../services/error-handler';
 import { logger } from '../services/logger';
 
-import { AddWalletRequest, AddWalletResponse, GetWalletResponse } from './schemas';
+import { PrivyWallet } from './privy/privy-client';
+import { AddWalletRequest, AddWalletResponse, GetWalletResponse, PrivyWalletResponse } from './schemas';
 import { SignerKind, WalletChain } from './signers/types';
 import {
   asWalletChain,
@@ -134,6 +135,42 @@ export async function addExternalWallet(
     updateDefaultWallet(fastify, chain, address);
   }
   return { address, signer: 'external' };
+}
+
+/**
+ * Add a Privy server wallet that Privy has returned (by id, or just created). Gateway
+ * stores its id and address only; Privy holds the key and signs.
+ */
+export async function addPrivyWallet(
+  fastify: FastifyInstance,
+  chainName: string,
+  wallet: PrivyWallet,
+  setDefault?: boolean,
+): Promise<PrivyWalletResponse> {
+  const chain = asWalletChain(chainName);
+  if (wallet.chain_type !== chain) {
+    throw httpErrors.badRequest(`Privy wallet ${wallet.id} is a ${wallet.chain_type} wallet, not ${chain}`);
+  }
+  const address = canonicalAddress(chain, wallet.address);
+  await assertNotRegisteredAs(chain, address, 'privy');
+
+  const entries = await readListStore(chain, 'privy');
+  const existing = entries.find((e) => e.address === address);
+  if (existing && existing.privyWalletId !== wallet.id) {
+    throw httpErrors.badRequest(
+      `Wallet ${address} is already registered with Privy wallet id ${existing.privyWalletId}. ` +
+        'Remove it with DELETE /wallet/remove first.',
+    );
+  }
+  if (!existing) {
+    entries.push({ address, privyWalletId: wallet.id, addedAt: new Date().toISOString() });
+    await writeListStore(chain, 'privy', entries);
+    logger.info(`Added Privy wallet ${address} (${wallet.id}) on ${chain}`);
+  }
+  if (setDefault) {
+    updateDefaultWallet(fastify, chain, address);
+  }
+  return { address, privyWalletId: wallet.id, signer: 'privy' };
 }
 
 /**
