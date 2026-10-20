@@ -1,4 +1,5 @@
 import { DecimalUtil } from '@orca-so/common-sdk';
+import { NATIVE_MINT } from '@solana/spl-token';
 import { Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -286,10 +287,10 @@ export async function openPosition(
     // rent out to leave the liquidity added. The transaction fee needs no correction:
     // extractBalanceChangesAndFee nets it out for the fee payer and reports it separately,
     // so subtracting it again would understate the amount by one fee.
-    if (tokenXSymbol === 'SOL') {
+    if (dlmmPool.tokenX.publicKey.equals(NATIVE_MINT)) {
       baseAmountAdded = baseAmountAdded - positionRent;
       if (baseAmountAdded < 0) baseAmountAdded = 0;
-    } else if (tokenYSymbol === 'SOL') {
+    } else if (dlmmPool.tokenY.publicKey.equals(NATIVE_MINT)) {
       quoteAmountAdded = quoteAmountAdded - positionRent;
       if (quoteAmountAdded < 0) quoteAmountAdded = 0;
     }

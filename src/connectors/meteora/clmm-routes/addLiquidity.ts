@@ -1,5 +1,6 @@
 import { StrategyType } from '@meteora-ag/dlmm';
 import { DecimalUtil } from '@orca-so/common-sdk';
+import { NATIVE_MINT } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -167,9 +168,9 @@ export async function addLiquidity(
 
     // When SOL is base/quote, wallet pays: liquidity + tx fee
     // Subtract fee to get actual liquidity added
-    if (tokenXSymbol === 'SOL') {
+    if (dlmmPool.tokenX.publicKey.equals(NATIVE_MINT)) {
       tokenXAddedAmount -= fee;
-    } else if (tokenYSymbol === 'SOL') {
+    } else if (dlmmPool.tokenY.publicKey.equals(NATIVE_MINT)) {
       tokenYAddedAmount -= fee;
     }
 

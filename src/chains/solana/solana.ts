@@ -2216,8 +2216,8 @@ export class Solana {
     accountSol: number;
   }> {
     const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
-    const isBaseSol = baseTokenInfo.symbol === 'SOL' || baseTokenInfo.address === SOL_NATIVE_MINT;
-    const isQuoteSol = quoteTokenInfo.symbol === 'SOL' || quoteTokenInfo.address === SOL_NATIVE_MINT;
+    const isBaseSol = baseTokenInfo.address === SOL_NATIVE_MINT;
+    const isQuoteSol = quoteTokenInfo.address === SOL_NATIVE_MINT;
 
     // Build unique token list for extraction
     const tokensToExtract: string[] = [];
