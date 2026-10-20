@@ -75,11 +75,12 @@ const primeMocks = (logs: any[]) => {
   (Ethereum.getInstance as jest.Mock).mockResolvedValue({
     init: jest.fn().mockResolvedValue(undefined),
     provider: {},
+    // The route checks its allowances and sends through the chokepoint.
+    requireAllowance: jest.fn().mockResolvedValue(undefined),
     sendTransactionForWallet: jest.fn().mockResolvedValue({ hash: TX_HASH }),
     getContract: jest.fn(() => ({
       allowance: jest.fn().mockResolvedValue(utils.parseUnits('1000000000', USDC.decimals)),
     })),
-    prepareGasOptions: jest.fn().mockResolvedValue({}),
     handleTransactionConfirmation: jest.fn().mockResolvedValue({
       confirmed: true,
       signature: TX_HASH,

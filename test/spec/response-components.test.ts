@@ -35,8 +35,9 @@ describe('every trading response is a named component', () => {
 
   // Shared shapes are deliberately unprefixed: both surfaces really do answer a swap with
   // the same body, and giving that two names would claim a difference that is not there.
-  // Same for a build: every build-* route answers with the one unsigned-transaction shape.
-  const SHARED = ['ChainExecuteSwapResponse', 'ChainQuoteSwapResponse', 'BuildTransactionResponse'];
+  // Same for a build: every build-* route answers with the one unsigned-transaction shape
+  // (Solana's or the EVM one, by chain).
+  const SHARED = ['ChainExecuteSwapResponse', 'ChainQuoteSwapResponse', 'ChainBuildTransactionResponse'];
 
   it('names an AMM response Amm… and its CLMM twin Clmm…', () => {
     const byOperation = new Map<string, { amm?: string; clmm?: string }>();

@@ -96,10 +96,7 @@ describe('only the signer seam signs', () => {
   });
 
   it('loads a decrypted key only in the local backend', () => {
-    expect(filesMatching(/\bloadSolanaKeypair\(|\bloadEthereumWallet\(/)).toEqual([
-      'chains/ethereum/ethereum.ts', // Ethereum.getWallet, for the INV-438 routes below
-      'wallet/signers/local.ts',
-    ]);
+    expect(filesMatching(/\bloadSolanaKeypair\(|\bloadEthereumWallet\(/)).toEqual(['wallet/signers/local.ts']);
   });
 
   it('asks the Ledger to sign only in the hardware backend', () => {
@@ -112,22 +109,7 @@ describe('only the signer seam signs', () => {
     expect(filesMatching(/\.sendAndConfirmRawTransaction\(/)).toEqual(['chains/solana/routes/submit.ts']);
   });
 
-  it('passes a stored Ethereum wallet to a contract only in the routes INV-438 moves onto the seam', () => {
-    expect(filesMatching(/ethereum\.getWallet\(/)).toEqual(
-      [
-        'connectors/0x/router-routes/executeQuote.ts',
-        ...['pancakeswap', 'uniswap'].flatMap((dex) => [
-          `connectors/${dex}/amm-routes/addLiquidity.ts`,
-          `connectors/${dex}/amm-routes/createPool.ts`,
-          `connectors/${dex}/amm-routes/removeLiquidity.ts`,
-          `connectors/${dex}/clmm-routes/addLiquidity.ts`,
-          `connectors/${dex}/clmm-routes/closePosition.ts`,
-          `connectors/${dex}/clmm-routes/collectFees.ts`,
-          `connectors/${dex}/clmm-routes/createPool.ts`,
-          `connectors/${dex}/clmm-routes/openPosition.ts`,
-          `connectors/${dex}/clmm-routes/removeLiquidity.ts`,
-        ]),
-      ].sort(),
-    );
+  it('never hands a stored Ethereum wallet to a contract: every EVM send goes through the chokepoint', () => {
+    expect(filesMatching(/ethereum\.getWallet\(/)).toEqual([]);
   });
 });

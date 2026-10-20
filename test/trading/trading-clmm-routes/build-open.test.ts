@@ -1,9 +1,10 @@
 /**
- * Route-level tests for /trading/clmm/build-open: the build gating (Solana-only) and
- * the capture plumbing between route and connector.
+ * Route-level tests for /trading/clmm/build-open: the build gating and the capture
+ * plumbing between route and connector, on Solana and on EVM.
  * The connector itself is mocked; the capture mechanics are covered in
  * test/chains/solana/build-mode.test.ts.
  */
+import { EvmTransactionCaptured } from '../../../src/chains/ethereum/evm-build-mode';
 import { UnsignedTransactionCaptured } from '../../../src/chains/solana/solana-build-mode';
 import { fastifyWithTypeProvider } from '../../utils/testUtils';
 
@@ -11,6 +12,9 @@ jest.mock('../../../src/connectors/meteora/clmm-routes/openPosition', () => ({
   openPosition: jest.fn(),
 }));
 jest.mock('../../../src/connectors/pancakeswap-sol/clmm-routes/openPosition', () => ({
+  openPosition: jest.fn(),
+}));
+jest.mock('../../../src/connectors/uniswap/clmm-routes/openPosition', () => ({
   openPosition: jest.fn(),
 }));
 
@@ -23,6 +27,34 @@ const FAKE_BUILT = {
   lastValidBlockHeight: 424242,
   currentBlockHeight: 424100,
   extraSigners: [{ pubkey: 'CiDwVBFgWV9E5MvXWoLgnEgn2hK7rJikbvfWavzAQz3', signature: 'c2ln' }],
+};
+
+const EVM_WALLET = '0xDA50C69342216b538Daf06FfECDa7363E0B96684';
+const evmTx = (nonce: number, to: string) => ({
+  chainId: 1,
+  from: EVM_WALLET,
+  to,
+  data: '0xac9650d8',
+  value: '0',
+  nonce,
+  gasLimit: '600000',
+  type: 2,
+  maxFeePerGas: '30000000000',
+  maxPriorityFeePerGas: '1000000000',
+});
+const EVM_BUILT = {
+  unsignedTransaction: evmTx(8, '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'),
+  approvals: [
+    {
+      token: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      symbol: 'USDC',
+      spender: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
+      amount: '2.0',
+      currentAllowance: '0.0',
+      transaction: evmTx(7, '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'),
+    },
+  ],
+  simulated: false,
 };
 
 const buildApp = async () => {
@@ -83,16 +115,53 @@ describe('POST /trading/clmm/build-open', () => {
     );
   });
 
-  it('rejects an EVM connector: build is Solana-only for now', async () => {
+  it('returns an EVM build, with its approvals, in the EVM shape', async () => {
+    const uniswapOpen: jest.Mock = require('../../../src/connectors/uniswap/clmm-routes/openPosition').openPosition;
+    uniswapOpen.mockImplementation(async () => {
+      throw new EvmTransactionCaptured(EVM_BUILT);
+    });
+
     const response = await server.inject({
       method: 'POST',
       url: '/build-open',
-      payload: { ...basePayload, connector: 'uniswap', chainNetwork: 'ethereum-mainnet' },
+      payload: { ...basePayload, connector: 'uniswap', chainNetwork: 'ethereum-mainnet', walletAddress: EVM_WALLET },
+    });
+
+    expect(response.statusCode).toBe(200);
+    // Every field survives the response serializer, which picks the EVM half of the union.
+    expect(JSON.parse(response.body)).toEqual(EVM_BUILT);
+    expect(uniswapOpen).toHaveBeenCalledWith(
+      'mainnet',
+      EVM_WALLET,
+      100,
+      200,
+      basePayload.poolAddress,
+      0.1,
+      undefined,
+      undefined,
+    );
+    expect(openPosition).not.toHaveBeenCalled();
+  });
+
+  it('refuses a Solana-only build field on an EVM connector, by name', async () => {
+    const uniswapOpen: jest.Mock = require('../../../src/connectors/uniswap/clmm-routes/openPosition').openPosition;
+    uniswapOpen.mockReset();
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/build-open',
+      payload: {
+        ...basePayload,
+        connector: 'uniswap',
+        chainNetwork: 'ethereum-mainnet',
+        walletAddress: EVM_WALLET,
+        memo: 'app:ref=1',
+      },
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toMatch(/Solana connectors only/);
-    expect(openPosition).not.toHaveBeenCalled();
+    expect(JSON.parse(response.body).message).toMatch(/memo applies to Solana builds only/);
+    expect(uniswapOpen).not.toHaveBeenCalled();
   });
 
   it('reports a connector that completed without building a transaction', async () => {

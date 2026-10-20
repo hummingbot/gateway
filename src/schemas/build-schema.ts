@@ -180,7 +180,10 @@ export const EvmUnsignedTransaction = Type.Object(
     maxPriorityFeePerGas: Type.Optional(Type.String({ description: 'Type 2: wei per gas' })),
     gasPrice: Type.Optional(Type.String({ description: 'Type 0: wei per gas' })),
   },
-  { $id: 'EvmUnsignedTransaction' },
+  // No $id: it appears twice inside each EVM build response (the operation and every
+  // approval), and the build-* routes compose that response into their own, which would
+  // copy one $id into several places of the same schema.
+  {},
 );
 
 export const EvmApproval = Type.Object(
@@ -192,7 +195,7 @@ export const EvmApproval = Type.Object(
     currentAllowance: Type.String({ description: 'The allowance the wallet has now, in token units' }),
     transaction: EvmUnsignedTransaction,
   },
-  { $id: 'EvmApproval' },
+  {},
 );
 
 /**

@@ -13,4 +13,4 @@ export { RouterBuildSwapRequestSchema, RouterBuildSwapResponseSchema } from './b
 export { RouterBuildQuoteRequestSchema } from './buildQuote';
 
 // The shared build response, published once for every build-* route to reference.
-export { BuildTransactionResponse } from '../build-common';
+export { BuildTransactionResponse, ChainBuildTransactionResponse, EvmBuildTransactionResponse } from '../build-common';

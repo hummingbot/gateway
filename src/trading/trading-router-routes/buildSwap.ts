@@ -41,10 +41,10 @@ type RouterBuildSwapRequest = Static<typeof RouterBuildSwapRequestSchema>;
  * exact quote the transaction was built from, so the signer can enforce its own price
  * and slippage checks before signing.
  */
-export const RouterBuildSwapResponseSchema = Type.Union(
+export const RouterBuildSwapResponseSchema = Type.Intersect(
   [
-    Type.Composite([BuildTransactionResponse, Type.Object({ quote: RouterQuoteSwapResponseSchema })]),
-    Type.Composite([EvmBuildTransactionResponse, Type.Object({ quote: RouterQuoteSwapResponseSchema })]),
+    Type.Union([BuildTransactionResponse, EvmBuildTransactionResponse]),
+    Type.Object({ quote: RouterQuoteSwapResponseSchema }),
   ],
   {
     $id: 'RouterBuildSwapResponse',

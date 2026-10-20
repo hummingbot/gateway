@@ -126,6 +126,11 @@ describe('gateway-security', () => {
       '/trading/amm/build-swap',
       '/trading/amm/build-add',
       '/chains/solana/build-transaction',
+      '/chains/ethereum/build-approve',
+      '/chains/ethereum/build-wrap',
+      '/chains/ethereum/build-unwrap',
+      '/trading/clmm/build-create-pool',
+      '/trading/amm/build-create-pool',
     ])('sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(true);
     });
@@ -154,6 +159,7 @@ describe('gateway-security', () => {
       '/trading/launch/creator-fees',
       '/trading/launch/launch-history',
       '/chains/solana/submit',
+      '/chains/ethereum/submit',
     ])('not sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(false);
     });
