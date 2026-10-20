@@ -1,4 +1,4 @@
-import { TxVersion, TickUtils } from '@raydium-io/raydium-sdk-v2';
+import { TxVersion } from '@raydium-io/raydium-sdk-v2';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -10,6 +10,7 @@ import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
+import { priceToTick } from '../raydium.utils';
 
 import { quotePosition } from './quotePosition';
 
@@ -42,16 +43,9 @@ export async function openPosition(
   const baseTokenInfo = await solana.getToken(poolInfo.mintA.address);
   const quoteTokenInfo = await solana.getToken(poolInfo.mintB.address);
 
-  const { tick: lowerTick } = TickUtils.getPriceAndTick({
-    poolInfo,
-    price: new Decimal(lowerPrice),
-    baseIn: true,
-  });
-  const { tick: upperTick } = TickUtils.getPriceAndTick({
-    poolInfo,
-    price: new Decimal(upperPrice),
-    baseIn: true,
-  });
+  const { tickSpacing } = poolInfo.config;
+  const lowerTick = priceToTick(new Decimal(lowerPrice), tickSpacing, poolInfo.mintA.decimals, poolInfo.mintB.decimals);
+  const upperTick = priceToTick(new Decimal(upperPrice), tickSpacing, poolInfo.mintA.decimals, poolInfo.mintB.decimals);
 
   // Validate price range
   if (lowerPrice >= upperPrice) {

@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { addLiquidity as meteoraAddLiquidity } from '../../connectors/meteora/amm-routes/addLiquidity';
 import { addLiquidity as pancakeswapAddLiquidity } from '../../connectors/pancakeswap/amm-routes/addLiquidity';
+import { addLiquidity as pumpAddLiquidity } from '../../connectors/pump/amm-routes/addLiquidity';
 import { addLiquidity as raydiumAddLiquidity } from '../../connectors/raydium/amm-routes/addLiquidity';
 import { addLiquidity as uniswapAddLiquidity } from '../../connectors/uniswap/amm-routes/addLiquidity';
 import { AddLiquidityResponse, AddLiquidityResponseType } from '../../schemas/amm-schema';
@@ -86,6 +87,15 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
                 quoteTokenAmount,
                 slippagePct,
                 positionAddress,
+              );
+            case 'pump':
+              return await pumpAddLiquidity(
+                network,
+                walletAddress,
+                poolAddress,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
               );
             case 'raydium':
               return await raydiumAddLiquidity(

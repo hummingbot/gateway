@@ -9,7 +9,7 @@ import { quoteCache } from '../../../services/quote-cache';
 
 async function executeQuote(walletAddress: string, network: string, quoteId: string): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote
-  const cached = quoteCache.get(quoteId);
+  const cached = quoteCache.get(quoteId, 'pancakeswap');
   if (!cached) {
     throw httpErrors.badRequest('Quote not found or expired');
   }

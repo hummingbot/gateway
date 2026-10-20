@@ -116,6 +116,10 @@ configurations:
     configurationPath: connectors/titan.yml
     schemaPath: titan-schema.json
 
+  $namespace pump:
+    configurationPath: connectors/pump.yml
+    schemaPath: pump-schema.json
+
   # API Keys (centralized)
   $namespace apiKeys:
     configurationPath: apiKeys.yml

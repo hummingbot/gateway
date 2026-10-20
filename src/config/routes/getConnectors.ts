@@ -9,6 +9,7 @@ import { OkxConfig } from '../../connectors/okx/okx.config';
 import { OrcaConfig } from '../../connectors/orca/orca.config';
 import { PancakeswapConfig } from '../../connectors/pancakeswap/pancakeswap.config';
 import { PancakeswapSolConfig } from '../../connectors/pancakeswap-sol/pancakeswap-sol.config';
+import { PumpConfig } from '../../connectors/pump/pump.config';
 import { RaydiumConfig } from '../../connectors/raydium/raydium.config';
 import { TitanConfig } from '../../connectors/titan/titan.config';
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
@@ -96,6 +97,12 @@ export const connectorsConfig = [
     trading_types: [...TitanConfig.tradingTypes],
     chain: TitanConfig.chain,
     networks: [...TitanConfig.networks],
+  },
+  {
+    name: 'pump',
+    trading_types: [...PumpConfig.tradingTypes],
+    chain: PumpConfig.chain,
+    networks: [...PumpConfig.networks],
   },
 ];
 
