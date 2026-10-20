@@ -237,6 +237,7 @@ async function privyRequest<T>(
   }
 
   let response: Response;
+  let text: string;
   try {
     response = await fetch(url, {
       method,
@@ -244,12 +245,13 @@ async function privyRequest<T>(
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
+    // Reading the body can fail too (a dropped connection or the timeout): same 502.
+    text = await response.text();
   } catch (error) {
     logger.warn(`Privy ${operation}: request failed: ${error.message}`);
     throw new PrivyError(502, `Privy API unreachable (${operation}): ${error.message}`);
   }
 
-  const text = await response.text();
   let json: any;
   try {
     json = text ? JSON.parse(text) : {};

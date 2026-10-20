@@ -1,4 +1,4 @@
-import { KeyObject } from 'crypto';
+import { KeyObject, verify } from 'crypto';
 
 import {
   createPrivyWallet,
@@ -137,5 +137,38 @@ describe('Privy client', () => {
       message: expect.stringMatching(/PRIVY_APP_ID and PRIVY_APP_SECRET/),
     });
     expect(requests).toHaveLength(0);
+  });
+
+  it('signs the exact payload bytes @privy-io/node produces (fixture taken from the SDK)', async () => {
+    // formatRequestForAuthorizationSignature() output of @privy-io/node 0.36.0 for this request.
+    const SDK_PAYLOAD =
+      '{"body":{"chain_type":"solana","method":"signTransaction","params":{"encoding":"base64","transaction":"AQ=="}},' +
+      '"headers":{"privy-app-id":"test-app-id","privy-request-expiry":"1760000000000"},"method":"POST",' +
+      `"url":"https://api.privy.io/v1/wallets/${WALLET_ID}/rpc","version":1}`;
+    jest.spyOn(Date, 'now').mockReturnValue(1760000000000 - 15 * 60 * 1000);
+    const requests = stubPrivyHttp({
+      [`POST /v1/wallets/${WALLET_ID}/rpc`]: () => ({
+        status: 200,
+        body: { method: 'signTransaction', data: { signed_transaction: 'AA==', encoding: 'base64' } },
+      }),
+    });
+
+    await privySignSolanaTransaction(WALLET_ID, 'AQ==');
+
+    const signature = new Uint8Array(Buffer.from(requests[0].headers['privy-authorization-signature'], 'base64'));
+    expect(requests[0].headers['privy-request-expiry']).toBe('1760000000000');
+    expect(verify('sha256', new TextEncoder().encode(SDK_PAYLOAD), publicKey, signature)).toBe(true);
+  });
+
+  it('maps a failure while reading the response body to a 502', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => {
+        throw new Error('socket hang up');
+      },
+    } as unknown as Response);
+
+    await expect(getPrivyWallet(WALLET_ID)).rejects.toMatchObject({ statusCode: 502 });
   });
 });

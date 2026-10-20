@@ -106,6 +106,35 @@ export async function writeListStore(
   await fse.writeFile(listStorePath(chain, kind), JSON.stringify({ wallets: entries }, null, 2));
 }
 
+const listStoreLocks = new Map<string, Promise<unknown>>();
+
+/**
+ * Read, change and write one list store with no other update to the same file in between,
+ * so two concurrent adds (or an add and a remove) cannot drop each other's entries.
+ * `update` may throw to abort; the file is then left as it was.
+ */
+export async function updateListStore<T>(
+  chain: WalletChain,
+  kind: Exclude<SignerKind, 'local'>,
+  update: (entries: ListStoreEntry[]) => Promise<{ entries: ListStoreEntry[]; result: T }>,
+): Promise<T> {
+  const path = listStorePath(chain, kind);
+  const previous = listStoreLocks.get(path) ?? Promise.resolve();
+  const run = previous
+    .catch(() => undefined)
+    .then(async () => {
+      const { entries, result } = await update(await readListStore(chain, kind));
+      await writeListStore(chain, kind, entries);
+      return result;
+    });
+  listStoreLocks.set(path, run);
+  try {
+    return await run;
+  } finally {
+    if (listStoreLocks.get(path) === run) listStoreLocks.delete(path);
+  }
+}
+
 /** Addresses that have a local key file. Other .json files in the directory are list stores. */
 async function localAddresses(chain: WalletChain): Promise<string[]> {
   const dir = chainDir(chain);

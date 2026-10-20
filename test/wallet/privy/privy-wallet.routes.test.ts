@@ -10,6 +10,7 @@ import { getWalletsRoute } from '../../../src/wallet/routes/getWallets';
 import { privyWalletsRoute } from '../../../src/wallet/routes/privyWallets';
 import { removeWalletRoute } from '../../../src/wallet/routes/removeWallet';
 import { getSolanaSigner } from '../../../src/wallet/signers/registry';
+import { updateListStore } from '../../../src/wallet/signers/wallet-store';
 import { MemoryFs } from '../../helpers/memory-fs';
 import { fastifyWithTypeProvider } from '../../utils/testUtils';
 
@@ -122,5 +123,19 @@ describe('Privy wallet routes', () => {
     expect(response.statusCode).toBe(200);
     expect(requests[0].body.chain_type).toBe('solana');
     expect(JSON.parse(memoryFs.files.get(`${SOL_DIR}/privy-wallets.json`)).wallets[0].privyWalletId).toBe(WALLET_ID);
+  });
+
+  it('serializes list-store updates so concurrent adds keep both entries', async () => {
+    const other = Keypair.generate().publicKey.toBase58();
+    const add = (address: string) =>
+      updateListStore('solana', 'privy', async (entries) => {
+        // Yield between the read and the write, as a real request does.
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return { entries: [...entries, { address, privyWalletId: WALLET_ID }], result: undefined };
+      });
+
+    await Promise.all([add(ADDRESS), add(other)]);
+
+    expect(memoryFs.listStore('solana', 'privy-wallets.json').sort()).toEqual([ADDRESS, other].sort());
   });
 });

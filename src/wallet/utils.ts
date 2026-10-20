@@ -29,6 +29,7 @@ import {
   readListStore,
   walletPath,
   WALLET_CHAINS,
+  updateListStore,
   writeListStore,
 } from './signers/wallet-store';
 
@@ -154,19 +155,20 @@ export async function addPrivyWallet(
   const address = canonicalAddress(chain, wallet.address);
   await assertNotRegisteredAs(chain, address, 'privy');
 
-  const entries = await readListStore(chain, 'privy');
-  const existing = entries.find((e) => e.address === address);
-  if (existing && existing.privyWalletId !== wallet.id) {
-    throw httpErrors.badRequest(
-      `Wallet ${address} is already registered with Privy wallet id ${existing.privyWalletId}. ` +
-        'Remove it with DELETE /wallet/remove first.',
-    );
-  }
-  if (!existing) {
-    entries.push({ address, privyWalletId: wallet.id, addedAt: new Date().toISOString() });
-    await writeListStore(chain, 'privy', entries);
-    logger.info(`Added Privy wallet ${address} (${wallet.id}) on ${chain}`);
-  }
+  await updateListStore(chain, 'privy', async (entries) => {
+    const existing = entries.find((e) => e.address === address);
+    if (existing && existing.privyWalletId !== wallet.id) {
+      throw httpErrors.badRequest(
+        `Wallet ${address} is already registered with Privy wallet id ${existing.privyWalletId}. ` +
+          'Remove it with DELETE /wallet/remove first.',
+      );
+    }
+    if (!existing) {
+      entries.push({ address, privyWalletId: wallet.id, addedAt: new Date().toISOString() });
+      logger.info(`Added Privy wallet ${address} (${wallet.id}) on ${chain}`);
+    }
+    return { entries, result: undefined };
+  });
   if (setDefault) {
     updateDefaultWallet(fastify, chain, address);
   }
@@ -185,12 +187,10 @@ export async function removeWallet(chainName: string, addressInput: string): Pro
   if (record.signer === 'local') {
     await fse.remove(localKeyFilePath(chain, record.address));
   } else {
-    const entries = await readListStore(chain, record.signer);
-    await writeListStore(
-      chain,
-      record.signer,
-      entries.filter((e: ListStoreEntry) => e.address !== record.address),
-    );
+    await updateListStore(chain, record.signer, async (entries) => ({
+      entries: entries.filter((e: ListStoreEntry) => e.address !== record.address),
+      result: undefined,
+    }));
   }
 
   const currentDefault: string | undefined = ConfigManagerV2.getInstance().get(`${chain}.defaultWallet`);
