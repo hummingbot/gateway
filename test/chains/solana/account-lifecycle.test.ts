@@ -1,7 +1,11 @@
 import { NATIVE_MINT } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 
-import { accountLifecycleSol, liquidityWithoutRent } from '../../../src/chains/solana/solana.utils';
+import {
+  accountLifecycleSol,
+  liquidityWithoutRent,
+  receivedWithoutAccounts,
+} from '../../../src/chains/solana/solana.utils';
 
 // Every case here is a real mainnet transaction, reduced to the balance arrays the helper
 // reads. The numbers are lamports as the chain reported them, so the assertions are
@@ -203,5 +207,37 @@ describe('liquidityWithoutRent', () => {
     // Why accountLifecycleSol returns SOL and says so. The units have to agree; if they
     // do not, this is the shape of the failure — silent, and total.
     expect(liquidityWithoutRent(-0.0152083, NATIVE_MINT, RENT * 1e9)).toBe(0);
+  });
+});
+
+// A PancakeSwap CLMM fee collection or withdrawal can open a missing reward token account
+// (0.00203928 SOL) in the same transaction, which comes out of the native change.
+describe('receivedWithoutAccounts', () => {
+  const REWARD_ACCOUNT = 0.00203928;
+
+  it('adds back the rent of an account the transaction opened', () => {
+    // 0.01 SOL withdrawn, a reward account opened: the wallet's change is 0.00796072.
+    expect(
+      receivedWithoutAccounts(0.01 - REWARD_ACCOUNT, NATIVE_MINT, { opened: REWARD_ACCOUNT, closed: 0 }),
+    ).toBeCloseTo(0.01, 9);
+  });
+
+  it('does not report the rent of a new account as fees when it exceeds them', () => {
+    // 0.0001 SOL of fees and a new reward account: the change is negative.
+    expect(
+      receivedWithoutAccounts(0.0001 - REWARD_ACCOUNT, NATIVE_MINT, { opened: REWARD_ACCOUNT, closed: 0 }),
+    ).toBeCloseTo(0.0001, 9);
+  });
+
+  it('takes out the rent of an account the transaction closed', () => {
+    expect(
+      receivedWithoutAccounts(0.01 + REWARD_ACCOUNT, NATIVE_MINT, { opened: 0, closed: REWARD_ACCOUNT }),
+    ).toBeCloseTo(0.01, 9);
+  });
+
+  it('leaves a non-native side untouched', () => {
+    expect(
+      receivedWithoutAccounts(3000, new PublicKey(OTHER_MINT), { opened: REWARD_ACCOUNT, closed: REWARD_ACCOUNT }),
+    ).toBe(3000);
   });
 });

@@ -3,7 +3,7 @@ import BN from 'bn.js';
 import Decimal from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
-import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
+import { accountLifecycleSol, receivedWithoutAccounts } from '../../../chains/solana/solana.utils';
 import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -90,10 +90,11 @@ export async function removeLiquidity(
 
     // Unwrapping closes the wrapped-SOL account, so its rent — and any WSOL the wallet
     // was already holding in it — lands in the native balance change alongside the
-    // withdrawal. None of that is liquidity this position gave back.
-    const { closed } = accountLifecycleSol(txData);
-    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
-    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
+    // withdrawal. The reward accounts the decrease may first create cost rent out of the
+    // same change. None of that is liquidity this position gave back.
+    const lifecycle = accountLifecycleSol(txData);
+    const baseTokenChange = receivedWithoutAccounts(balanceChanges[0], new PublicKey(baseToken.address), lifecycle);
+    const quoteTokenChange = receivedWithoutAccounts(balanceChanges[1], new PublicKey(quoteToken.address), lifecycle);
 
     logger.info(`Liquidity removed successfully. Signature: ${signature}`);
     logger.info(

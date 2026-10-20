@@ -4,7 +4,7 @@ import BN from 'bn.js';
 import { Solana } from '../../../chains/solana/solana';
 import {
   accountLifecycleSol,
-  liquidityWithoutRent,
+  receivedWithoutAccounts,
   transfersByProgramInstruction,
 } from '../../../chains/solana/solana.utils';
 import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
@@ -134,10 +134,12 @@ export async function closePosition(
     // Closing gives back the rent of every account that closed — the position, its NFT
     // account, the tick array if this was the last position in it, and the wrapped-SOL
     // account the unwrap above closes. All of it arrives in the same native balance
-    // change as the withdrawal, and none of it is liquidity.
-    const { closed, rentRefunded } = accountLifecycleSol(txData);
-    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
-    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
+    // change as the withdrawal, and none of it is liquidity. Nor is the rent of a reward
+    // account the close first creates, which comes out of the same change.
+    const lifecycle = accountLifecycleSol(txData);
+    const { rentRefunded } = lifecycle;
+    const baseTokenChange = receivedWithoutAccounts(balanceChanges[0], new PublicKey(baseToken.address), lifecycle);
+    const quoteTokenChange = receivedWithoutAccounts(balanceChanges[1], new PublicKey(quoteToken.address), lifecycle);
 
     // The fee-collecting instruction is the first of this program's instructions in the
     // transaction, so its transfers are the fees and nothing else. Taken from the
