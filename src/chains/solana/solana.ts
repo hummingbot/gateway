@@ -1837,10 +1837,14 @@ export class Solana {
       computeUnitsToUse = buildContext.minComputeUnits!;
     } else {
       try {
-        const sim =
-          tx instanceof VersionedTransaction
-            ? await this.connection.simulateTransaction(tx, { replaceRecentBlockhash: true, sigVerify: false })
-            : await this.connection.simulateTransaction(tx);
+        // Sized against the RPC's own latest blockhash, legacy transactions too: a
+        // load-balanced RPC can answer this second simulation from a node that has not
+        // seen the blockhash just fetched (BlockhashNotFound), failing a valid build.
+        const versioned = tx instanceof VersionedTransaction ? tx : new VersionedTransaction(tx.compileMessage());
+        const sim = await this.connection.simulateTransaction(versioned, {
+          replaceRecentBlockhash: true,
+          sigVerify: false,
+        });
         simulationResult = sim.value;
       } catch (error) {
         logger.warn(`Failed to simulate for compute units: ${(error as Error).message}, using default`);
