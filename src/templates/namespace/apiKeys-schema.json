@@ -8,7 +8,7 @@
     },
     "infura": {
       "type": "string",
-      "description": "Infura API key for Ethereum RPC (https://infura.io)"
+      "description": "Infura API key for Ethereum and Solana RPC (https://infura.io)"
     },
     "chainstack": {
       "type": "string",
