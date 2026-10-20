@@ -4,6 +4,8 @@
  */
 import { AsyncLocalStorage } from 'async_hooks';
 
+import { FastifyInstance } from 'fastify';
+
 import { httpErrors } from '../../services/error-handler';
 
 import { externalBackend } from './external';
@@ -39,8 +41,18 @@ export async function getEthereumSigner(address: string): Promise<EthereumSigner
   return backendFor(record.signer, address).ethereum(record);
 }
 
-/** The route a request was sent to, so the seam can name its build twin. Set in app.ts. */
-export const requestRoute = new AsyncLocalStorage<{ method: string; url: string }>();
+/** The route a request was sent to, so the seam can name its build twin. */
+const requestRoute = new AsyncLocalStorage<{ method: string; url: string }>();
+
+/**
+ * Record each request's route for the seam. preHandler, so the store is entered after
+ * the body is parsed and holds for the handler and everything it awaits.
+ */
+export function trackRequestRoute(server: FastifyInstance): void {
+  server.addHook('preHandler', (request, _reply, done) => {
+    requestRoute.run({ method: request.method, url: request.routeOptions.url ?? request.url }, done);
+  });
+}
 
 /**
  * The refusal of an execute request for a wallet whose signer returned `unsigned`:

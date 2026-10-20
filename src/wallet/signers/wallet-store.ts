@@ -115,12 +115,12 @@ async function localAddresses(chain: WalletChain): Promise<string[]> {
   return files
     .filter((f) => f.isFile() && f.name.endsWith('.json') && !listFiles.has(f.name))
     .map((f) => f.name.slice(0, -'.json'.length))
-    .filter((name) => {
+    .flatMap((name) => {
       try {
-        canonicalAddress(chain, name);
-        return true;
+        // Ethereum key files are named by the checksummed address; read any casing.
+        return [canonicalAddress(chain, chain === 'ethereum' ? name.toLowerCase() : name)];
       } catch {
-        return false;
+        return [];
       }
     });
 }

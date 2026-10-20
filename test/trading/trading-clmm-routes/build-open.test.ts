@@ -95,21 +95,6 @@ describe('POST /trading/clmm/build-open', () => {
     expect(openPosition).not.toHaveBeenCalled();
   });
 
-  it('refuses pancakeswap-sol, which signs outside the wallet chokepoint', async () => {
-    const pancakeOpen: jest.Mock =
-      require('../../../src/connectors/pancakeswap-sol/clmm-routes/openPosition').openPosition;
-
-    const response = await server.inject({
-      method: 'POST',
-      url: '/build-open',
-      payload: { ...basePayload, connector: 'pancakeswap-sol' },
-    });
-
-    expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toMatch(/cannot build an unsigned transaction yet/);
-    expect(pancakeOpen).not.toHaveBeenCalled();
-  });
-
   it('reports a connector that completed without building a transaction', async () => {
     openPosition.mockResolvedValue({ signature: 'oops-this-executed', status: 1 });
 

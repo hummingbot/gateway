@@ -73,17 +73,12 @@ describe('POST /execute-quote — Permit2 expiration handling', () => {
       getTransactionCount: jest.fn().mockResolvedValue(0),
     };
 
-    const mockWallet = {
-      sendTransaction: jest.fn().mockResolvedValue({ hash: '0xabc' }),
-    };
-
     (Ethereum.getInstance as jest.Mock).mockResolvedValue({
       nativeTokenSymbol: 'ETH',
       chainId: 5151,
       provider: mockProvider,
-      isHardwareWallet: jest.fn().mockResolvedValue(false),
       getContract: jest.fn().mockReturnValue(mockTokenContract),
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
+      sendTransactionForWallet: jest.fn().mockResolvedValue({ hash: '0xabc' }),
       prepareGasOptions: jest.fn().mockResolvedValue({ gasLimit: BigNumber.from(500000) }),
       handleTransactionExecution: jest.fn().mockResolvedValue({
         transactionHash: '0xabc',

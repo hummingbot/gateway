@@ -170,7 +170,6 @@ export async function getWallets(showHardware: boolean = true): Promise<GetWalle
   logger.info('Getting all wallets');
   const responses: GetWalletResponse[] = [];
   for (const chain of WALLET_CHAINS) {
-    if (!(await fse.pathExists(`${walletPath}/${chain}`))) continue;
     const records = (await listWalletRecords(chain)).filter((r) => showHardware || r.signer !== 'hardware');
     const hardware = records.filter((r) => r.signer === 'hardware').map((r) => r.address);
     responses.push({

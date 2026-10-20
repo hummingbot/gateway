@@ -10301,6 +10301,34 @@
           "address"
         ]
       },
+      "AddExternalWalletRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "chain": {
+            "description": "Blockchain of the wallet",
+            "enum": [
+              "ethereum",
+              "solana"
+            ],
+            "type": "string",
+            "example": "solana"
+          },
+          "address": {
+            "description": "Wallet address. Gateway stores the address only and never signs for it.",
+            "type": "string"
+          },
+          "setDefault": {
+            "description": "Set this wallet as the default for the chain",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "chain",
+          "address"
+        ]
+      },
       "AddHardwareWalletRequest": {
         "additionalProperties": false,
         "type": "object",
@@ -10858,11 +10886,58 @@
                           "description": "Wallet address (Ethereum format: 0x... or Solana format: base58)",
                           "type": "string"
                         }
+                      },
+                      "wallets": {
+                        "description": "Every wallet of the chain with the signer that signs for it",
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "address": {
+                              "description": "Wallet address (Ethereum format: 0x... or Solana format: base58)",
+                              "type": "string"
+                            },
+                            "signer": {
+                              "description": "Who signs for the wallet. local: an encrypted key in Gateway. hardware: a Ledger. external: no key in Gateway; use the build-* routes and POST /chains/{chain}/submit. privy: a Privy server wallet.",
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "local"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "hardware"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "external"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "privy"
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "address",
+                            "signer"
+                          ]
+                        }
                       }
                     },
                     "required": [
                       "chain",
-                      "walletAddresses"
+                      "walletAddresses",
+                      "wallets"
                     ]
                   }
                 }
@@ -11056,13 +11131,79 @@
         }
       }
     },
+    "/wallet/add-external": {
+      "post": {
+        "operationId": "addExternalWallet",
+        "tags": [
+          "/wallet"
+        ],
+        "description": "Add an external wallet: an address with no key in Gateway. Its execute requests are refused; build with the build-* routes, sign outside Gateway, and send with POST /chains/{chain}/submit.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddExternalWalletRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "description": "The wallet address that was added",
+                      "type": "string"
+                    },
+                    "signer": {
+                      "type": "string",
+                      "enum": [
+                        "external"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "signer"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/wallet/remove": {
       "delete": {
         "operationId": "removeWallet",
         "tags": [
           "/wallet"
         ],
-        "description": "Remove a wallet by its address (automatically detects wallet type)",
+        "description": "Remove a wallet by its address, whatever its signer (local, hardware, external, privy)",
         "requestBody": {
           "content": {
             "application/json": {
