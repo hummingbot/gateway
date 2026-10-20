@@ -79,6 +79,15 @@ describe('createRateLimitAwareEthereumProvider', () => {
     await expect(wrapped.call({} as any)).rejects.toMatchObject({ statusCode: 429 });
   });
 
+  it('keeps an Infura path key out of the 429 message', async () => {
+    const key = '0123456789abcdef0123456789abcdef';
+    const stub = providerWhoseCallFails(badResponse, 99);
+    const wrapped = createRateLimitAwareEthereumProvider(stub, `https://solana-mainnet.infura.io/v3/${key}`);
+    const call = wrapped.call({} as any);
+    await expect(call).rejects.toThrow('https://solana-mainnet.infura.io/v3/***');
+    await expect(call).rejects.not.toThrow(key);
+  });
+
   it('does not retry an error that is not a rate limit', async () => {
     const stub = providerWhoseCallFails(
       () => Object.assign(new Error('execution reverted'), { code: 'CALL_EXCEPTION' }),

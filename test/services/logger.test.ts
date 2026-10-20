@@ -55,6 +55,10 @@ describe('redactUrl', () => {
     );
   });
 
+  it('redacts credentials in the user information', () => {
+    expect(redactUrl('https://user:secret@rpc.example.com/path')).toBe('https://***@rpc.example.com/path');
+  });
+
   it('preserves URLs that do not contain known credential formats', () => {
     expect(redactUrl('https://api.mainnet-beta.solana.com')).toBe('https://api.mainnet-beta.solana.com');
   });
