@@ -18,6 +18,7 @@ import { BuildInstructionType, BuildTransactionResponseType } from '../../../sch
 import { httpErrors } from '../../../services/error-handler';
 import { Solana } from '../solana';
 import { captureUnsignedTransaction } from '../solana-build-mode';
+import { TransactionPriority } from '../solana-priority-fees';
 
 export async function buildSolanaTransaction(
   _fastify: FastifyInstance,
@@ -26,6 +27,7 @@ export async function buildSolanaTransaction(
   instructions: BuildInstructionType[],
   minComputeUnits?: number,
   references?: string[],
+  shape: { feePayer?: string; memo?: string; priority?: TransactionPriority } = {},
 ): Promise<BuildTransactionResponseType> {
   const solana = await Solana.getInstance(network);
 
@@ -44,8 +46,9 @@ export async function buildSolanaTransaction(
   tx.feePayer = walletPk;
 
   return captureUnsignedTransaction(
-    { extraInstructions: instructions, references },
+    { extraInstructions: instructions, references, feePayer: shape.feePayer, memo: shape.memo },
     () => solana.sendAndConfirmTransactionForWallet(tx, walletAddress),
     minComputeUnits,
+    shape.priority,
   );
 }

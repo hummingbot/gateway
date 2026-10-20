@@ -171,6 +171,26 @@ export const BuildTransactionRequestSchema = Type.Object(
           'self-transfer by the wallet, so the transaction can be found by getSignaturesForAddress(reference).',
       }),
     ),
+    feePayer: Type.Optional(
+      Type.String({
+        description:
+          'Who pays the transaction fee and signs its first slot (base58), when it is not walletAddress. The ' +
+          'wallet still signs, as the signer its instructions name. Default: walletAddress.',
+      }),
+    ),
+    memo: Type.Optional(
+      Type.String({
+        maxLength: 128,
+        description: 'A signer-less SPL Memo appended to the transaction (at most 128 bytes), e.g. "app:ref=<id>".',
+      }),
+    ),
+    priority: Type.Optional(
+      Type.Union([Type.Literal('normal'), Type.Literal('high'), Type.Literal('urgent')], {
+        description:
+          'Compute-unit price baked into the built transaction: normal (the configured level), high, or urgent. ' +
+          'Default: normal.',
+      }),
+    ),
   },
   { $id: 'BuildTransactionRequest', additionalProperties: false },
 );

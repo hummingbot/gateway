@@ -71,6 +71,32 @@ describe('buildSolanaTransaction', () => {
     expect(tx.signatures[0].signature).toBeNull();
   });
 
+  it('takes a separate fee payer, a memo and a priority, like the build-* routes', async () => {
+    const fake = fakeSolana();
+    jest.spyOn(Solana, 'getInstance').mockResolvedValue(fake as any);
+    const payer = Keypair.generate().publicKey.toBase58();
+
+    const built = await buildSolanaTransaction(
+      {} as any,
+      'mainnet-beta',
+      walletAddress,
+      [walletOnlyInstruction],
+      undefined,
+      undefined,
+      { feePayer: payer, memo: 'app:ref=1', priority: 'urgent' },
+    );
+
+    expect(built.feePayer).toBe(payer);
+    const tx = Transaction.from(Buffer.from(built.transaction, 'base64'));
+    expect(tx.feePayer!.toBase58()).toBe(payer);
+    // The wallet still signs, as the signer its instruction names.
+    expect(tx.signatures.map((s) => s.publicKey.toBase58())).toEqual([payer, walletAddress]);
+    expect(tx.instructions.map((ix) => ix.programId.toBase58())).toContain(
+      'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',
+    );
+    expect(fake.estimateGasPrice).toHaveBeenCalledWith('urgent');
+  });
+
   it('enforces the wallet-only-signer rule on the instructions', async () => {
     jest.spyOn(Solana, 'getInstance').mockResolvedValue(fakeSolana() as any);
     const stranger = Keypair.generate().publicKey.toBase58();

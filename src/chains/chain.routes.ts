@@ -85,6 +85,7 @@ interface ChainOps {
     instructions: BuildTransactionRequestType['instructions'],
     minComputeUnits?: number,
     references?: string[],
+    shape?: Pick<BuildTransactionRequestType, 'feePayer' | 'memo' | 'priority'>,
   ) => Promise<any>;
   /**
    * Broadcast a caller-signed transaction (the submit half of build/sign/submit, #682).
@@ -111,8 +112,8 @@ const CHAINS: Record<string, ChainOps> = {
     estimateGas: (_fastify, network) => estimateGasSolana(network),
     balances: (fastify, network, address, tokens) => getSolanaBalances(fastify, network, address, tokens),
     poll: (fastify, network, signature) => pollSolanaTransaction(fastify, network, signature),
-    buildTransaction: (fastify, network, walletAddress, instructions, minComputeUnits, references) =>
-      buildSolanaTransaction(fastify, network, walletAddress, instructions, minComputeUnits, references),
+    buildTransaction: (fastify, network, walletAddress, instructions, minComputeUnits, references, shape) =>
+      buildSolanaTransaction(fastify, network, walletAddress, instructions, minComputeUnits, references, shape),
     submit: (fastify, network, signedTransaction, extraSigners) =>
       submitSolanaTransaction(fastify, network, signedTransaction, extraSigners),
     wrap: (fastify, network, address, amount) => wrapSolana(fastify, network, address, amount),
@@ -283,6 +284,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
         request.body.instructions,
         request.body.minComputeUnits,
         request.body.references,
+        { feePayer: request.body.feePayer, memo: request.body.memo, priority: request.body.priority },
       );
     },
   );
