@@ -213,7 +213,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         description:
           'Build the unsigned transaction that /open would sign and send, for the caller to sign with ' +
           'its own wallet and broadcast via /chains/{chain}/submit. The position NFT mint has already ' +
-          'partial-signed (its address is in extraSigners); sign the fee-payer slot as-is.',
+          'partial-signed (its address is in extraSigners); sign the fee-payer slot as-is. A Meteora range ' +
+          'wider than one transaction can fund comes back as the position creation, then each deposit chunk ' +
+          'in followingTransactions; sign them together and submit them in order.',
         tags: ['/trading/clmm'],
         body: BuildOpenPositionRequest,
         response: {

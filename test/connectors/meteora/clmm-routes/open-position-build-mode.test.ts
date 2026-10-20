@@ -1,4 +1,4 @@
-import { PublicKey } from '@solana/web3.js';
+import { Keypair, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
 import { captureUnsignedTransaction } from '../../../../src/chains/solana/solana-build-mode';
@@ -8,14 +8,10 @@ import { Meteora } from '../../../../src/connectors/meteora/meteora';
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/meteora/meteora');
 
-// Build mode returns ONE unsigned transaction for an external signer to sign. A chunked
-// open cannot be expressed that way: the capture fires on the first transaction — creating
-// the position — and the deposit chunks never run. Left unguarded, a build-mode caller gets
-// a perfectly valid transaction that opens an EMPTY position, signs it, and sees no error.
-//
-// It cannot be resumed the way build-close is either ("submit it and call build again"),
-// because each call mints a fresh position keypair, so calling again opens a second empty
-// position rather than funding the first. Hence: refuse, rather than silently under-deliver.
+// A range wider than one transaction can fund is opened over several: the position's
+// creation, then each deposit chunk. It cannot be resumed by calling build again (each call
+// mints a fresh position keypair, so a second call opens a second, empty position), so build
+// mode answers all of them at once through captureSequenceForExternalSigner.
 
 const POOL = '5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6';
 const WALLET = 'DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9';
@@ -33,33 +29,54 @@ const primePool = (width: number) => {
     initializePositionAndAddLiquidityByStrategy: jest.fn().mockResolvedValue({ instructions: [], feePayer: null }),
     initializeMultiplePositionAndAddLiquidityByStrategy: jest.fn(),
   };
-  (Meteora.getInstance as jest.Mock).mockResolvedValue({ getDlmmPool: jest.fn().mockResolvedValue(dlmmPool) });
-  (Solana.getInstance as jest.Mock).mockResolvedValue({
+  const solana = {
     connection: { getBalance: jest.fn().mockResolvedValue(0) },
     getToken: jest.fn(async (address: string) => ({ symbol: 'TK', address })),
     sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({ signature: 'sig', fee: 0 }),
     getConfirmedTransactionData: jest.fn().mockResolvedValue(null),
     extractBalanceChangesAndFee: jest.fn(),
-  });
-  return dlmmPool;
+    captureSequenceForExternalSigner: jest.fn().mockRejectedValue(new Error('captured')),
+  };
+  (Meteora.getInstance as jest.Mock).mockResolvedValue({ getDlmmPool: jest.fn().mockResolvedValue(dlmmPool) });
+  (Solana.getInstance as jest.Mock).mockResolvedValue(solana);
+  return { pool: dlmmPool, solana };
 };
 
 describe('meteora openPosition in build mode', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('refuses a range that cannot be funded in one transaction', async () => {
-    const pool = primePool(200);
+  it('answers a wide range as the position creation followed by every deposit chunk', async () => {
+    const { pool, solana } = primePool(200);
+    const position = Keypair.generate();
+    const ix = () =>
+      SystemProgram.transfer({ fromPubkey: new PublicKey(WALLET), toPubkey: new PublicKey(WALLET), lamports: 0 });
+    pool.initializeMultiplePositionAndAddLiquidityByStrategy.mockResolvedValue({
+      instructionsByPositions: [
+        {
+          positionKeypair: position,
+          initializeAtaIxs: [ix()],
+          initializePositionIx: ix(),
+          addLiquidityIxs: [[ix()], [ix()]],
+        },
+      ],
+    });
 
     await expect(
       captureUnsignedTransaction({}, () => openPosition('mainnet-beta', WALLET, 1, 2, POOL, 1, 2)),
-    ).rejects.toThrow(/several transactions, and a build returns a single unsigned transaction/);
+    ).rejects.toThrow('captured');
 
-    // Refused before anything was built, so no empty position can be handed back.
-    expect(pool.initializeMultiplePositionAndAddLiquidityByStrategy).not.toHaveBeenCalled();
+    const [steps, wallet] = solana.captureSequenceForExternalSigner.mock.calls[0];
+    expect(wallet).toBe(WALLET);
+    expect(steps).toHaveLength(3);
+    expect(steps[0].signers).toEqual([position]);
+    expect((steps[0].transaction as Transaction).instructions).toHaveLength(2);
+    expect(steps.slice(1).map((s: { signers?: Keypair[] }) => s.signers)).toEqual([undefined, undefined]);
+    // Nothing is sent.
+    expect(solana.sendAndConfirmTransactionForWallet).not.toHaveBeenCalled();
   });
 
   it('still builds a range that fits in one transaction', async () => {
-    const pool = primePool(Meteora.MAX_POSITION_BIN_WIDTH);
+    const { pool, solana } = primePool(Meteora.MAX_POSITION_BIN_WIDTH);
 
     await captureUnsignedTransaction({}, () => openPosition('mainnet-beta', WALLET, 1, 2, POOL, 1, 2)).catch(
       () => undefined,
@@ -67,5 +84,6 @@ describe('meteora openPosition in build mode', () => {
 
     // The narrow path is untouched by the guard: it reaches the single-transaction builder.
     expect(pool.initializePositionAndAddLiquidityByStrategy).toHaveBeenCalled();
+    expect(solana.captureSequenceForExternalSigner).not.toHaveBeenCalled();
   });
 });

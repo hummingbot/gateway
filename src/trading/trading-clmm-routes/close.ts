@@ -102,7 +102,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         description:
           'Build the unsigned transaction that /close would sign and send, for the caller to sign with ' +
           'its own wallet and broadcast via /chains/{chain}/submit. A close that spans several ' +
-          'transactions (e.g. a wide Meteora position) returns the first; submit it and call build again.',
+          'transactions (a wide Meteora position) returns the rest in followingTransactions; submit them in order.',
         tags: ['/trading/clmm'],
         body: BuildClosePositionRequest,
         response: {

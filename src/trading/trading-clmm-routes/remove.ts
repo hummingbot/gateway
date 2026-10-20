@@ -111,7 +111,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         description:
           'Build the unsigned transaction that /remove would sign and send, for the caller to sign with ' +
           'its own wallet and broadcast via /chains/{chain}/submit. A removal that spans several ' +
-          'transactions returns the first; submit it and call build again.',
+          'transactions (a wide Meteora position) returns the rest in followingTransactions; submit them in order.',
         tags: ['/trading/clmm'],
         body: BuildRemoveLiquidityRequest,
         response: {

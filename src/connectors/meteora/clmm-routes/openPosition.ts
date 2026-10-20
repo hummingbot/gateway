@@ -1,5 +1,5 @@
 import { DecimalUtil } from '@orca-so/common-sdk';
-import { Keypair, PublicKey, Transaction } from '@solana/web3.js';
+import { Keypair, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 
@@ -120,24 +120,6 @@ export async function openPosition(
   const positionWidth = maxBinId - minBinId + 1;
   const needsChunkedOpen = positionWidth > Meteora.MAX_POSITION_BIN_WIDTH;
 
-  // Build mode returns ONE unsigned transaction for an external signer, so a chunked open
-  // cannot be expressed: the capture fires on the first transaction — the position
-  // creation — and the deposit chunks below never run. The caller would sign a valid
-  // transaction that opens an EMPTY position and reports no error. Nor can it be resumed
-  // the way build-close is ("submit it and call build again"), because each call mints a
-  // fresh position keypair, so calling again opens a second empty position rather than
-  // funding the first. Refuse instead, and let the caller narrow the range or open it
-  // through the execute path.
-  if (needsChunkedOpen && getBuildModeContext()) {
-    const binStepPct = dlmmPool.lbPair.binStep / 100;
-    throw httpErrors.badRequest(
-      `Price range ${lowerPrice}-${upperPrice} spans ${positionWidth} bins, which has to be funded over ` +
-        `several transactions, and a build returns a single unsigned transaction. At this pool's ` +
-        `${binStepPct}% bin step, keep the range within ${Meteora.MAX_POSITION_BIN_WIDTH} bins, or open it ` +
-        `through the execute path. quote-liquidity reports transactionCount for a range before you open it.`,
-    );
-  }
-
   // Don't add SOL rent to the liquidity amounts - rent is separate
   const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.mint.decimals));
   const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.mint.decimals));
@@ -218,6 +200,24 @@ export async function openPosition(
 
     const [plan] = instructionsByPositions;
     positionKeypair = plan.positionKeypair;
+
+    // Build mode answers the whole open in one response: the position's creation, then
+    // each deposit chunk. It cannot be resumed by calling again, because each call makes
+    // a new position keypair and would open a second, empty position.
+    if (getBuildModeContext()) {
+      const step = (...ixs: TransactionInstruction[]) => {
+        const tx = new Transaction().add(...ixs);
+        tx.feePayer = walletPublicKey;
+        return tx;
+      };
+      await solana.captureSequenceForExternalSigner(
+        [
+          { transaction: step(...plan.initializeAtaIxs, plan.initializePositionIx), signers: [plan.positionKeypair] },
+          ...plan.addLiquidityIxs.map((ixs) => ({ transaction: step(...ixs) })),
+        ],
+        walletAddress,
+      );
+    }
 
     // Create the position first, on its own. The deposit chunks are already sized to fit a
     // transaction by themselves, so folding the init and the ATA creations in alongside one

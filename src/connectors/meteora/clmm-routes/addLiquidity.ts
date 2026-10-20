@@ -119,15 +119,14 @@ export async function addLiquidity(
 
   const transactions = Array.isArray(addLiquidityTxs) ? addLiquidityTxs : [addLiquidityTxs];
 
-  // Same limit as the chunked open: build mode captures the first transaction and returns
-  // it, so a deposit needing several would silently fund only the first slice of the
-  // range. Repeating the call does not resume it either — the SDK re-splits the full
-  // amount each time, so the first slice would be deposited twice.
-  if (transactions.length > 1 && getBuildModeContext()) {
-    throw httpErrors.badRequest(
-      `This position spans ${maxBinId - minBinId + 1} bins, so the deposit takes ${transactions.length} ` +
-        `transactions, and build mode returns a single unsigned transaction. Add to a narrower position, ` +
-        `or use the execute path.`,
+  // Build mode answers every chunk in one response: the deposit cannot be resumed by
+  // calling again (the SDK re-splits the full amount each time, so the first slice would
+  // be deposited twice).
+  if (getBuildModeContext()) {
+    transactions.forEach((tx) => (tx.feePayer = walletPublicKey));
+    await solana.captureSequenceForExternalSigner(
+      transactions.map((transaction) => ({ transaction })),
+      address,
     );
   }
 

@@ -190,7 +190,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description:
           'Build the unsigned transaction that /add would sign and send, for the caller to sign with ' +
-          'its own wallet and broadcast via /chains/{chain}/submit.',
+          'its own wallet and broadcast via /chains/{chain}/submit. A deposit into a Meteora position wider ' +
+          'than one transaction returns its other chunks in followingTransactions; submit them in order.',
         tags: ['/trading/clmm'],
         body: BuildAddLiquidityRequest,
         response: {
