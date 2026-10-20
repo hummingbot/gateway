@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { quoteLiquidity as meteoraQuoteLiquidity } from '../../connectors/meteora/amm-routes/quoteLiquidity';
 import { quoteLiquidity as pancakeswapQuoteLiquidity } from '../../connectors/pancakeswap/amm-routes/quoteLiquidity';
+import { quoteLiquidity as pumpQuoteLiquidity } from '../../connectors/pump/amm-routes/quoteLiquidity';
 import { quoteLiquidity as raydiumQuoteLiquidity } from '../../connectors/raydium/amm-routes/quoteLiquidity';
 import { quoteLiquidity as uniswapQuoteLiquidity } from '../../connectors/uniswap/amm-routes/quoteLiquidity';
 import { QuoteLiquidityResponse, QuoteLiquidityResponseType } from '../../schemas/amm-schema';
@@ -56,6 +57,8 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           switch (connector) {
             case 'meteora':
               return await meteoraQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
+            case 'pump':
+              return await pumpQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
             case 'raydium':
               return await raydiumQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
             case 'uniswap':

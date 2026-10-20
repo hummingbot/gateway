@@ -1588,6 +1588,172 @@
           "quoteTokenAmountMax"
         ]
       },
+      "LaunchCreateTokenResponse": {
+        "type": "object",
+        "properties": {
+          "signature": {
+            "description": "Transaction signature/hash",
+            "type": "string"
+          },
+          "status": {
+            "description": "Transaction status: 0 = PENDING, 1 = CONFIRMED, -1 = FAILED",
+            "type": "number"
+          },
+          "mint": {
+            "description": "Mint address of the newly created token",
+            "type": "string"
+          },
+          "metadataUri": {
+            "description": "Metadata URI embedded on-chain (the one passed in).",
+            "type": "string"
+          },
+          "poolAddress": {
+            "description": "The venue the token launched on, for launchpads that create a pool account per token (meteora-dbc: the virtual pool PDA). Absent for pump, whose bonding curve is derived from the mint.",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/LaunchCreateTokenResponseData"
+          }
+        },
+        "required": [
+          "signature",
+          "status",
+          "mint",
+          "metadataUri"
+        ]
+      },
+      "LaunchCreateTokenResponseData": {
+        "type": "object",
+        "properties": {
+          "fee": {
+            "format": "decimal",
+            "type": "string"
+          },
+          "tokenAmountBought": {
+            "format": "decimal",
+            "description": "Tokens received by the initial buy (devBuyAmount / firstBuySol)",
+            "type": "string"
+          },
+          "quoteTokenAmountSpent": {
+            "format": "decimal",
+            "description": "Quote currency spent on the initial buy (devBuyAmount / firstBuySol)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fee"
+        ]
+      },
+      "LaunchPoolInfoResponse": {
+        "type": "object",
+        "properties": {
+          "poolAddress": {
+            "description": "The curve account",
+            "type": "string"
+          },
+          "config": {
+            "description": "Config the pool was launched from (DBC partner config; LaunchLab global)",
+            "type": "string"
+          },
+          "creator": {
+            "description": "Pool creator (the launcher / manager)",
+            "type": "string"
+          },
+          "baseMint": {
+            "type": "string"
+          },
+          "quoteMint": {
+            "type": "string"
+          },
+          "tokenProgram": {
+            "description": "Token program owning the base mint",
+            "type": "string"
+          },
+          "isMigrated": {
+            "description": "True once the curve has finished; trade the token on the pool it graduated to (this connector's amm surface)",
+            "type": "boolean"
+          },
+          "migratedPool": {
+            "description": "pump: the PumpSwap pool a migrated token trades on (its price is that pool's)",
+            "type": "string"
+          },
+          "migrationProgress": {
+            "format": "decimal",
+            "description": "quoteReserve / migrationQuoteThreshold, 0..1",
+            "type": "string"
+          },
+          "quoteReserve": {
+            "format": "decimal",
+            "description": "Quote token held by the curve (UI units)",
+            "type": "string"
+          },
+          "migrationQuoteThreshold": {
+            "format": "decimal",
+            "description": "Quote reserve at which the pool migrates (UI units)",
+            "type": "string"
+          },
+          "price": {
+            "format": "decimal",
+            "description": "Spot price, quote per base",
+            "type": "string"
+          },
+          "marketCap": {
+            "format": "decimal",
+            "description": "raydium, pump: spot price times the supply, in quote",
+            "type": "string"
+          },
+          "sqrtPrice": {
+            "description": "meteora: raw Q64.64 sqrt price",
+            "type": "string"
+          },
+          "totalTradingBaseFee": {
+            "format": "decimal",
+            "description": "meteora: lifetime trading fees collected in base (UI units)",
+            "type": "string"
+          },
+          "totalTradingQuoteFee": {
+            "format": "decimal",
+            "description": "meteora: lifetime trading fees collected in quote (UI units)",
+            "type": "string"
+          },
+          "partnerQuoteFee": {
+            "format": "decimal",
+            "description": "meteora, raydium: unclaimed partner (meteora) or platform (raydium) fee in quote (UI units)",
+            "type": "string"
+          },
+          "creatorQuoteFee": {
+            "format": "decimal",
+            "description": "meteora: unclaimed creator fee in quote (UI units). A LaunchLab creator's fee accrues across all its launches in one vault per quote, so it is not a pool figure",
+            "type": "string"
+          },
+          "protocolQuoteFee": {
+            "format": "decimal",
+            "description": "meteora, raydium: unclaimed protocol fee in quote (UI units)",
+            "type": "string"
+          },
+          "baseDecimals": {
+            "type": "number"
+          },
+          "quoteDecimals": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "poolAddress",
+          "config",
+          "creator",
+          "baseMint",
+          "quoteMint",
+          "tokenProgram",
+          "isMigrated",
+          "migrationProgress",
+          "quoteReserve",
+          "migrationQuoteThreshold",
+          "price",
+          "baseDecimals",
+          "quoteDecimals"
+        ]
+      },
       "AmmCreatePoolRequest": {
         "additionalProperties": false,
         "type": "object",
@@ -1597,6 +1763,7 @@
             "enum": [
               "meteora",
               "raydium",
+              "pump",
               "uniswap",
               "pancakeswap"
             ],
@@ -1692,6 +1859,7 @@
             "enum": [
               "meteora",
               "raydium",
+              "pump",
               "uniswap",
               "pancakeswap"
             ],
@@ -1771,6 +1939,7 @@
             "enum": [
               "meteora",
               "raydium",
+              "pump",
               "uniswap",
               "pancakeswap"
             ],
@@ -1848,6 +2017,7 @@
             "enum": [
               "meteora",
               "raydium",
+              "pump",
               "uniswap",
               "pancakeswap"
             ],
@@ -1897,6 +2067,7 @@
             "enum": [
               "meteora",
               "raydium",
+              "pump",
               "uniswap",
               "pancakeswap"
             ],
@@ -1950,6 +2121,7 @@
             "enum": [
               "meteora",
               "raydium",
+              "pump",
               "uniswap",
               "pancakeswap"
             ],
@@ -1998,6 +2170,7 @@
             "enum": [
               "meteora",
               "raydium",
+              "pump",
               "uniswap",
               "pancakeswap"
             ],
@@ -2890,6 +3063,7 @@
               "titan",
               "uniswap",
               "pancakeswap",
+              "pump",
               "0x"
             ],
             "type": "string",
@@ -2944,6 +3118,7 @@
               "titan",
               "uniswap",
               "pancakeswap",
+              "pump",
               "0x"
             ],
             "type": "string",
@@ -2993,7 +3168,8 @@
               "jupiter",
               "dflow",
               "okx",
-              "titan"
+              "titan",
+              "pump"
             ],
             "type": "boolean"
           }
@@ -3041,6 +3217,7 @@
               "titan",
               "uniswap",
               "pancakeswap",
+              "pump",
               "0x"
             ],
             "type": "string",
@@ -3090,7 +3267,8 @@
               "jupiter",
               "dflow",
               "okx",
-              "titan"
+              "titan",
+              "pump"
             ],
             "type": "boolean"
           },
@@ -3108,6 +3286,767 @@
           "quoteToken",
           "amount",
           "side"
+        ]
+      },
+      "LaunchLaunchHistoryRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "connector": {
+            "description": "Launchpad connector",
+            "enum": [
+              "pump"
+            ],
+            "type": "string",
+            "example": "pump"
+          },
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "baseMint": {
+            "description": "The launched token",
+            "type": "string"
+          },
+          "walletAddress": {
+            "description": "A wallet whose net SOL and token change each transaction reports (the launcher's)",
+            "type": "string"
+          },
+          "maxTransactions": {
+            "minimum": 1,
+            "maximum": 5000,
+            "default": 1000,
+            "description": "Newest transactions to read; older ones are dropped and complete is false",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "connector",
+          "chainNetwork",
+          "baseMint"
+        ]
+      },
+      "LaunchHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "mint": {
+            "type": "string"
+          },
+          "creator": {
+            "type": "string"
+          },
+          "pumpswapPool": {
+            "description": "The canonical PumpSwap pool the token graduates to",
+            "type": "string"
+          },
+          "complete": {
+            "description": "False when maxTransactions cut the oldest history off",
+            "type": "boolean"
+          },
+          "transactions": {
+            "description": "Oldest first",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "signature": {
+                  "type": "string"
+                },
+                "blockTime": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "kind": {
+                  "description": "create, trade, migrate or other",
+                  "type": "string"
+                },
+                "trades": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "venue": {
+                        "description": "curve or pumpswap",
+                        "type": "string"
+                      },
+                      "side": {
+                        "description": "BUY or SELL",
+                        "type": "string"
+                      },
+                      "user": {
+                        "type": "string"
+                      },
+                      "baseAmount": {
+                        "description": "Tokens bought or sold",
+                        "type": "number"
+                      },
+                      "quoteAmount": {
+                        "description": "SOL the trader paid in or got out, fees included",
+                        "type": "number"
+                      },
+                      "creator": {
+                        "type": "string"
+                      },
+                      "creatorFee": {
+                        "description": "The creator's cut of this trade, in SOL",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "venue",
+                      "side",
+                      "user",
+                      "baseAmount",
+                      "quoteAmount",
+                      "creator",
+                      "creatorFee"
+                    ]
+                  }
+                },
+                "wallet": {
+                  "type": "object",
+                  "properties": {
+                    "quoteChange": {
+                      "description": "Net SOL (native + wrapped) change, fees and rent included",
+                      "type": "number"
+                    },
+                    "tokenChange": {
+                      "description": "Net change of the wallet balance of this token",
+                      "type": "number"
+                    },
+                    "signer": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "quoteChange",
+                    "tokenChange",
+                    "signer"
+                  ]
+                }
+              },
+              "required": [
+                "signature",
+                "blockTime",
+                "kind",
+                "trades"
+              ]
+            }
+          }
+        },
+        "required": [
+          "mint",
+          "creator",
+          "pumpswapPool",
+          "complete",
+          "transactions"
+        ]
+      },
+      "LaunchCreateTokenRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "connector": {
+            "description": "Launchpad connector",
+            "enum": [
+              "pump",
+              "meteora",
+              "raydium"
+            ],
+            "type": "string",
+            "example": "pump"
+          },
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "walletAddress": {
+            "description": "Wallet that creates the token (creator, dev-buyer, and fee payer). Defaults to the chain's configured default wallet.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Token name (on-chain limit: 32 bytes)",
+            "maxLength": 32,
+            "type": "string"
+          },
+          "symbol": {
+            "description": "Token ticker symbol (on-chain limit: 13 bytes)",
+            "maxLength": 13,
+            "type": "string"
+          },
+          "metadataUri": {
+            "description": "Metadata JSON URI (name, symbol, image, links) that the caller pinned, embedded on-chain as-is (on-chain limit: 200 bytes). Gateway uploads no images or metadata.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "creator": {
+            "description": "The token's creator, when it is not the signing wallet (base58) — e.g. a program that collects its creator fees. pump passes it to create_v2 (the wallet still pays and does any dev buy); meteora appends transfer_pool_creator to it after the pool creation. Omitted: the wallet.",
+            "type": "string"
+          },
+          "devBuyAmount": {
+            "format": "decimal",
+            "minimum": 0,
+            "description": "Optional initial dev buy in the quote currency, executed atomically with the create: SOL on pump; raydium: the launch's quote (quoteToken)",
+            "x-connectors": [
+              "pump",
+              "raydium"
+            ],
+            "type": "number"
+          },
+          "quoteToken": {
+            "description": "raydium: what the curve sells for, SOL or USDC (symbol or mint). Default SOL.",
+            "x-connectors": [
+              "raydium"
+            ],
+            "type": "string"
+          },
+          "supply": {
+            "minimum": 1,
+            "description": "raydium: tokens minted, at six decimals. Default 1,000,000,000.",
+            "x-connectors": [
+              "raydium"
+            ],
+            "type": "integer"
+          },
+          "sellSharePct": {
+            "format": "decimal",
+            "description": "raydium: the share of the supply the curve sells, percent. Above 50, and leaving at least what the quote's global config keeps for the graduated pool (15 %). Default 80.",
+            "x-connectors": [
+              "raydium"
+            ],
+            "type": "number"
+          },
+          "raise": {
+            "format": "decimal",
+            "description": "raydium: what the curve raises before it graduates to CPMM, in the quote. At least the global config's minimum (24 SOL). Default 85 SOL, or 85 SOL's worth of USDC at the chain's price.",
+            "x-connectors": [
+              "raydium"
+            ],
+            "type": "number"
+          },
+          "configAddress": {
+            "description": "meteora: the DBC config to launch from, instead of the connector's configured configAddress (so two launchers on one Gateway can each launch under their own terms)",
+            "x-connectors": [
+              "meteora"
+            ],
+            "type": "string"
+          },
+          "firstBuySol": {
+            "format": "decimal",
+            "minimum": 0,
+            "description": "meteora: optional first buy in SOL by the creator, executed atomically with the pool creation (createPoolWithFirstBuy). Omit or 0 for a bare launch.",
+            "x-connectors": [
+              "meteora"
+            ],
+            "type": "number"
+          }
+        },
+        "required": [
+          "connector",
+          "chainNetwork",
+          "name",
+          "symbol",
+          "metadataUri"
+        ]
+      },
+      "LaunchPoolInfoRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "connector": {
+            "description": "Launchpad connector",
+            "enum": [
+              "pump",
+              "meteora",
+              "raydium"
+            ],
+            "type": "string",
+            "example": "pump"
+          },
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "poolAddress": {
+            "description": "Pool account address. Pass this or baseMint.",
+            "type": "string"
+          },
+          "baseMint": {
+            "description": "Base token mint; the pool is resolved from it. Pass this or poolAddress.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connector",
+          "chainNetwork"
+        ]
+      },
+      "LaunchExecuteSwapRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "connector": {
+            "description": "Launchpad connector whose curve executes the swap",
+            "enum": [
+              "meteora",
+              "raydium"
+            ],
+            "type": "string",
+            "example": "meteora"
+          },
+          "walletAddress": {
+            "description": "Wallet address that will execute the swap. Defaults to the chain's configured default wallet.",
+            "type": "string"
+          },
+          "baseToken": {
+            "description": "Symbol or address of the launched token",
+            "type": "string"
+          },
+          "quoteToken": {
+            "description": "Symbol or address of the curve's quote currency",
+            "default": "SOL",
+            "type": "string"
+          },
+          "amount": {
+            "format": "decimal",
+            "description": "BUY: amount of quote token to spend. SELL: amount of base token to sell. Both sides are exact-in.",
+            "default": 0.01,
+            "type": "number"
+          },
+          "side": {
+            "description": "BUY means buying the launched token with the quote currency, SELL means selling it back",
+            "enum": [
+              "BUY",
+              "SELL"
+            ],
+            "default": "BUY",
+            "type": "string"
+          },
+          "slippagePct": {
+            "format": "decimal",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Maximum acceptable slippage percentage. Defaults to the connector's configured slippagePct.",
+            "type": "number",
+            "example": 1
+          }
+        },
+        "required": [
+          "chainNetwork",
+          "connector",
+          "baseToken",
+          "quoteToken",
+          "amount",
+          "side"
+        ]
+      },
+      "LaunchExecuteQuoteRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "connector": {
+            "description": "Launchpad connector that issued the quote",
+            "enum": [
+              "meteora",
+              "raydium"
+            ],
+            "type": "string",
+            "example": "meteora"
+          },
+          "walletAddress": {
+            "description": "Wallet address that will execute the quote. Defaults to the chain's configured default wallet.",
+            "type": "string"
+          },
+          "quoteId": {
+            "description": "ID of a quote returned by /trading/launch/quote-swap",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chainNetwork",
+          "connector",
+          "quoteId"
+        ]
+      },
+      "LaunchQuoteSwapRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "connector": {
+            "description": "Launchpad connector whose curve prices the swap",
+            "enum": [
+              "meteora",
+              "raydium"
+            ],
+            "type": "string",
+            "example": "meteora"
+          },
+          "baseToken": {
+            "description": "Symbol or address of the launched token",
+            "type": "string"
+          },
+          "quoteToken": {
+            "description": "Symbol or address of the curve's quote currency",
+            "default": "SOL",
+            "type": "string"
+          },
+          "amount": {
+            "format": "decimal",
+            "description": "BUY: amount of quote token to spend. SELL: amount of base token to sell. Both sides are exact-in.",
+            "default": 1,
+            "type": "number"
+          },
+          "side": {
+            "description": "BUY means buying the launched token with the quote currency, SELL means selling it back",
+            "enum": [
+              "BUY",
+              "SELL"
+            ],
+            "default": "BUY",
+            "type": "string"
+          },
+          "slippagePct": {
+            "format": "decimal",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Maximum acceptable slippage percentage. Defaults to the connector's configured slippagePct.",
+            "type": "number",
+            "example": 1
+          }
+        },
+        "required": [
+          "chainNetwork",
+          "connector",
+          "baseToken",
+          "quoteToken",
+          "amount",
+          "side"
+        ]
+      },
+      "LaunchCreatorFeesRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "connector": {
+            "description": "Launchpad connector",
+            "enum": [
+              "pump"
+            ],
+            "type": "string",
+            "example": "pump"
+          },
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "creator": {
+            "description": "The creator whose fees to read (base58); for pump, across all its coins",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connector",
+          "chainNetwork",
+          "creator"
+        ]
+      },
+      "LaunchClaimCreatorFeesRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "connector": {
+            "description": "Launchpad connector",
+            "enum": [
+              "pump"
+            ],
+            "type": "string",
+            "example": "pump"
+          },
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "walletAddress": {
+            "description": "Creator wallet that claims (and pays the fee). Defaults to the chain's configured default wallet.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connector",
+          "chainNetwork"
+        ]
+      },
+      "LaunchClaimCreatorFeesResponse": {
+        "type": "object",
+        "properties": {
+          "signature": {
+            "type": "string"
+          },
+          "status": {
+            "description": "0 = PENDING, 1 = CONFIRMED",
+            "type": "number"
+          },
+          "claimed": {
+            "description": "SOL collected (the vault balance read before the claim)",
+            "type": "number"
+          },
+          "fee": {
+            "description": "Transaction fee in SOL, once confirmed",
+            "type": "number"
+          }
+        },
+        "required": [
+          "signature",
+          "status",
+          "claimed"
+        ]
+      },
+      "LaunchCreatorFeesResponse": {
+        "type": "object",
+        "properties": {
+          "creator": {
+            "type": "string"
+          },
+          "unclaimed": {
+            "description": "Unclaimed creator fees, in SOL",
+            "type": "number"
+          }
+        },
+        "required": [
+          "creator",
+          "unclaimed"
+        ]
+      },
+      "LaunchMigrateRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "connector": {
+            "description": "Launchpad connector",
+            "enum": [
+              "pump"
+            ],
+            "type": "string",
+            "example": "pump"
+          },
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "walletAddress": {
+            "description": "Wallet that sends (and pays for) the migration. Defaults to the chain's configured default wallet.",
+            "type": "string"
+          },
+          "baseMint": {
+            "description": "The graduated token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connector",
+          "chainNetwork",
+          "baseMint"
+        ]
+      },
+      "LaunchMigrateResponse": {
+        "type": "object",
+        "properties": {
+          "signature": {
+            "type": "string"
+          },
+          "status": {
+            "description": "0 = PENDING, 1 = CONFIRMED",
+            "type": "number"
+          },
+          "poolAddress": {
+            "description": "The PumpSwap pool the token now trades on",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signature",
+          "status",
+          "poolAddress"
         ]
       },
       "AmmQuoteSwapRequest": {
@@ -3140,6 +4079,7 @@
             "enum": [
               "meteora",
               "raydium",
+              "pump",
               "uniswap",
               "pancakeswap"
             ],
@@ -3308,6 +4248,7 @@
             "enum": [
               "meteora",
               "raydium",
+              "pump",
               "uniswap",
               "pancakeswap"
             ],
@@ -6262,6 +7203,7 @@
                 "titan",
                 "uniswap",
                 "pancakeswap",
+                "pump",
                 "0x"
               ],
               "type": "string"
@@ -6346,7 +7288,8 @@
                 "jupiter",
                 "dflow",
                 "okx",
-                "titan"
+                "titan",
+                "pump"
               ],
               "type": "boolean"
             },
@@ -7672,6 +8615,7 @@
               "enum": [
                 "meteora",
                 "raydium",
+                "pump",
                 "uniswap",
                 "pancakeswap"
               ],
@@ -7768,6 +8712,7 @@
               "enum": [
                 "meteora",
                 "raydium",
+                "pump",
                 "uniswap",
                 "pancakeswap"
               ],
@@ -7873,6 +8818,7 @@
               "enum": [
                 "meteora",
                 "raydium",
+                "pump",
                 "uniswap",
                 "pancakeswap"
               ],
@@ -7972,6 +8918,7 @@
               "enum": [
                 "meteora",
                 "raydium",
+                "pump",
                 "uniswap",
                 "pancakeswap"
               ],
@@ -8128,6 +9075,7 @@
               "enum": [
                 "meteora",
                 "raydium",
+                "pump",
                 "uniswap",
                 "pancakeswap"
               ],
@@ -8415,6 +9363,705 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AmmCreatePoolResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/launch/create-token": {
+      "post": {
+        "operationId": "createToken",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "Create a new token on a launchpad from a metadataUri the caller pinned: a pump.fun bonding curve (optionally with an atomic dev buy), a Meteora DBC virtual pool from a DBC config (optional atomic firstBuySol), or a Raydium LaunchLab curve on Raydium's platform in SOL or USDC (supply, sellSharePct, raise; optional atomic devBuyAmount).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchCreateTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaunchCreateTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/launch/pool-info": {
+      "get": {
+        "operationId": "getLaunchPoolInfo",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "Pool state for a launchpad whose venue is a per-token curve (Meteora DBC virtual pools, Raydium LaunchLab pools): reserves, curve progress toward migration, price and accrued fees. Select by poolAddress or baseMint.",
+        "parameters": [
+          {
+            "schema": {
+              "enum": [
+                "pump",
+                "meteora",
+                "raydium"
+              ],
+              "type": "string"
+            },
+            "example": "pump",
+            "in": "query",
+            "name": "connector",
+            "required": true,
+            "description": "Launchpad connector"
+          },
+          {
+            "schema": {
+              "enum": [
+                "ethereum-arbitrum",
+                "ethereum-avalanche",
+                "ethereum-base",
+                "ethereum-bsc",
+                "ethereum-celo",
+                "ethereum-mainnet",
+                "ethereum-optimism",
+                "ethereum-polygon",
+                "ethereum-robinhoodchain",
+                "ethereum-robinhoodchain-testnet",
+                "ethereum-sepolia",
+                "ethereum-unichain",
+                "solana-devnet",
+                "solana-mainnet-beta"
+              ],
+              "default": "solana-mainnet-beta",
+              "type": "string"
+            },
+            "example": "solana-mainnet-beta",
+            "in": "query",
+            "name": "chainNetwork",
+            "required": true,
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "poolAddress",
+            "required": false,
+            "description": "Pool account address. Pass this or baseMint."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "baseMint",
+            "required": false,
+            "description": "Base token mint; the pool is resolved from it. Pass this or poolAddress."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaunchPoolInfoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/launch/quote-swap": {
+      "get": {
+        "operationId": "quoteLaunchSwap",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "Price a swap on a launchpad's bonding curve (Meteora DBC virtual pools, Raydium LaunchLab pools)",
+        "parameters": [
+          {
+            "schema": {
+              "enum": [
+                "ethereum-arbitrum",
+                "ethereum-avalanche",
+                "ethereum-base",
+                "ethereum-bsc",
+                "ethereum-celo",
+                "ethereum-mainnet",
+                "ethereum-optimism",
+                "ethereum-polygon",
+                "ethereum-robinhoodchain",
+                "ethereum-robinhoodchain-testnet",
+                "ethereum-sepolia",
+                "ethereum-unichain",
+                "solana-devnet",
+                "solana-mainnet-beta"
+              ],
+              "default": "solana-mainnet-beta",
+              "type": "string"
+            },
+            "example": "solana-mainnet-beta",
+            "in": "query",
+            "name": "chainNetwork",
+            "required": true,
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)"
+          },
+          {
+            "schema": {
+              "enum": [
+                "meteora",
+                "raydium"
+              ],
+              "type": "string"
+            },
+            "example": "meteora",
+            "in": "query",
+            "name": "connector",
+            "required": true,
+            "description": "Launchpad connector whose curve prices the swap"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "baseToken",
+            "required": true,
+            "description": "Symbol or address of the launched token"
+          },
+          {
+            "schema": {
+              "default": "SOL",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "quoteToken",
+            "required": true,
+            "description": "Symbol or address of the curve's quote currency"
+          },
+          {
+            "schema": {
+              "format": "decimal",
+              "default": 1,
+              "type": "number"
+            },
+            "in": "query",
+            "name": "amount",
+            "required": true,
+            "description": "BUY: amount of quote token to spend. SELL: amount of base token to sell. Both sides are exact-in."
+          },
+          {
+            "schema": {
+              "enum": [
+                "BUY",
+                "SELL"
+              ],
+              "default": "BUY",
+              "type": "string"
+            },
+            "in": "query",
+            "name": "side",
+            "required": true,
+            "description": "BUY means buying the launched token with the quote currency, SELL means selling it back"
+          },
+          {
+            "schema": {
+              "format": "decimal",
+              "minimum": 0,
+              "maximum": 100,
+              "type": "number"
+            },
+            "example": 1,
+            "in": "query",
+            "name": "slippagePct",
+            "required": false,
+            "description": "Maximum acceptable slippage percentage. Defaults to the connector's configured slippagePct."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouterQuoteSwapResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/launch/execute-swap": {
+      "post": {
+        "operationId": "executeLaunchSwap",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "Quote and execute a swap on a launchpad's bonding curve",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchExecuteSwapRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChainExecuteSwapResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/launch/execute-quote": {
+      "post": {
+        "operationId": "executeLaunchQuote",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "Execute a previously fetched launch-curve quote by its quote id",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchExecuteQuoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChainExecuteSwapResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/launch/creator-fees": {
+      "get": {
+        "operationId": "getCreatorFees",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "A launchpad creator's unclaimed fees (pump: across all its coins, curve and PumpSwap)",
+        "parameters": [
+          {
+            "schema": {
+              "enum": [
+                "pump"
+              ],
+              "type": "string"
+            },
+            "example": "pump",
+            "in": "query",
+            "name": "connector",
+            "required": true,
+            "description": "Launchpad connector"
+          },
+          {
+            "schema": {
+              "enum": [
+                "ethereum-arbitrum",
+                "ethereum-avalanche",
+                "ethereum-base",
+                "ethereum-bsc",
+                "ethereum-celo",
+                "ethereum-mainnet",
+                "ethereum-optimism",
+                "ethereum-polygon",
+                "ethereum-robinhoodchain",
+                "ethereum-robinhoodchain-testnet",
+                "ethereum-sepolia",
+                "ethereum-unichain",
+                "solana-devnet",
+                "solana-mainnet-beta"
+              ],
+              "default": "solana-mainnet-beta",
+              "type": "string"
+            },
+            "example": "solana-mainnet-beta",
+            "in": "query",
+            "name": "chainNetwork",
+            "required": true,
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "creator",
+            "required": true,
+            "description": "The creator whose fees to read (base58); for pump, across all its coins"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaunchCreatorFeesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/launch/claim-creator-fees": {
+      "post": {
+        "operationId": "claimCreatorFees",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "Collect a launchpad creator's fees into its wallet (pump: both vaults in one transaction)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchClaimCreatorFeesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaunchClaimCreatorFeesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/launch/migrate": {
+      "post": {
+        "operationId": "migrateLaunchCurve",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "Migrate a completed pump curve to its PumpSwap pool — permissionless; pump's keeper does it on mainnet, nothing does on a devnet or local validator",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchMigrateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaunchMigrateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/launch/launch-history": {
+      "get": {
+        "operationId": "getLaunchHistory",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "A launched token's creation and every trade on its curve and graduated pool, each with the creator fee it paid, plus one wallet's flows per transaction — the ledger a launch's P&L is computed from",
+        "parameters": [
+          {
+            "schema": {
+              "enum": [
+                "pump"
+              ],
+              "type": "string"
+            },
+            "example": "pump",
+            "in": "query",
+            "name": "connector",
+            "required": true,
+            "description": "Launchpad connector"
+          },
+          {
+            "schema": {
+              "enum": [
+                "ethereum-arbitrum",
+                "ethereum-avalanche",
+                "ethereum-base",
+                "ethereum-bsc",
+                "ethereum-celo",
+                "ethereum-mainnet",
+                "ethereum-optimism",
+                "ethereum-polygon",
+                "ethereum-robinhoodchain",
+                "ethereum-robinhoodchain-testnet",
+                "ethereum-sepolia",
+                "ethereum-unichain",
+                "solana-devnet",
+                "solana-mainnet-beta"
+              ],
+              "default": "solana-mainnet-beta",
+              "type": "string"
+            },
+            "example": "solana-mainnet-beta",
+            "in": "query",
+            "name": "chainNetwork",
+            "required": true,
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "baseMint",
+            "required": true,
+            "description": "The launched token"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "walletAddress",
+            "required": false,
+            "description": "A wallet whose net SOL and token change each transaction reports (the launcher's)"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 5000,
+              "default": 1000,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "maxTransactions",
+            "required": false,
+            "description": "Newest transactions to read; older ones are dropped and complete is false"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaunchHistoryResponse"
                 }
               }
             }
@@ -9044,6 +10691,10 @@
     {
       "name": "/trading/amm",
       "description": "Constant-product pools: swaps, liquidity, and pool management"
+    },
+    {
+      "name": "/trading/launch",
+      "description": "Launchpads (pump.fun, Meteora DBC, Raydium LaunchLab): token creation and bonding-curve trades"
     },
     {
       "name": "/",

@@ -73,6 +73,9 @@ importers:
       '@meteora-ag/dlmm':
         specifier: 1.7.5
         version: 1.7.5(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@meteora-ag/dynamic-bonding-curve-sdk':
+        specifier: 1.5.12
+        version: 1.5.12(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
       '@orca-so/common-sdk':
         specifier: ^0.6.11
         version: 0.6.11(@solana/spl-token@0.4.8(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10))(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))
@@ -115,6 +118,15 @@ importers:
       '@pancakeswap/v4-sdk':
         specifier: ^0.1.8
         version: 0.1.8(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.24.4)
+      '@pump-fun/pump-sdk':
+        specifier: 1.36.0
+        version: 1.36.0(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@pump-fun/pump-sdk-v2':
+        specifier: npm:@pump-fun/pump-sdk@2.0.0
+        version: '@pump-fun/pump-sdk@2.0.0(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)'
+      '@pump-fun/pump-swap-sdk':
+        specifier: 1.19.0
+        version: 1.19.0(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
       '@raydium-io/raydium-sdk-v2':
         specifier: 0.2.73-alpha
         version: 0.2.73-alpha(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -731,6 +743,10 @@ packages:
     resolution: {integrity: sha512-Yb1NwP1s4cWhAw7wL7vOLHSWWw3cD5D9pRCVSeJpdqPaI+w7sfRLScnVJL6ViYMZynB7nAG/5HcUPKUnY0L9rw==}
     engines: {node: '>=17'}
 
+  '@coral-xyz/anchor@0.31.1':
+    resolution: {integrity: sha512-QUqpoEK+gi2S6nlYc2atgT2r41TT3caWr/cPUEL8n8Md9437trZ68STknq897b82p5mW0XrTBNOzRbmIRJtfsA==}
+    engines: {node: '>=17'}
+
   '@coral-xyz/borsh@0.30.1':
     resolution: {integrity: sha512-aaxswpPrCFKl8vZTbxLssA2RvwX2zmKLlRCIktJOwW+VpVwYtXRtlWiIP+c2pPRKneiTiWCN2GEMSH9j1zTlWQ==}
     engines: {node: '>=10'}
@@ -739,6 +755,12 @@ packages:
 
   '@coral-xyz/borsh@0.31.0':
     resolution: {integrity: sha512-DwdQ5fuj+rGQCTKRnxnW1W2lvcpBaFc9m9M1TcGGlm+bwCcggmDgbLKLgF+LjIrKnc7Nd+bCACx5RA9YTK2I4Q==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      '@solana/web3.js': ^1.69.0
+
+  '@coral-xyz/borsh@0.31.1':
+    resolution: {integrity: sha512-9N8AU9F0ubriKfNE3g1WF0/4dtlGXoBN/hd1PvbNBamBNwRgHxH4P+o3Zt7rSEloW1HUs6LfZEchlx9fW7POYw==}
     engines: {node: '>=10'}
     peerDependencies:
       '@solana/web3.js': ^1.69.0
@@ -1347,6 +1369,11 @@ packages:
   '@meteora-ag/dlmm@1.7.5':
     resolution: {integrity: sha512-cXfEvAaInhuBwz4pKcMaJHMWbysEEApMTeYnL4kMD38e6YyOht6hfJme2cjaWXct5jAbVvA0AEoFZdjcC/nQhA==}
 
+  '@meteora-ag/dynamic-bonding-curve-sdk@1.5.12':
+    resolution: {integrity: sha512-xMtzUXriajNtNwYgNwk5T9IKxjfj6QP1I4yUKAe9JiGrVgpqoLkwvB2mKy8824nSWrVNVX5CAufHW5Kvjz/FNA==}
+    peerDependencies:
+      typescript: ^5
+
   '@napi-rs/wasm-runtime@0.2.11':
     resolution: {integrity: sha512-9DPkXtvHydrcOsopiYpUgPHpmj0HWZKMUnL2dZqpvC42lsratuBG06V5ipyno0fUek5VlFsNQ+AcFATSrJXgMA==}
 
@@ -1614,6 +1641,19 @@ packages:
     resolution: {integrity: sha512-ROFF39F6ZrnzSUEmQQZUar0Jt4xVoP9WnDRdWwF4NNcXs3xBTLgBUDoOwW141y1jP+S8nahIbdxbFC7IShw9Iw==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
 
+  '@pump-fun/agent-payments-sdk@1.0.7':
+    resolution: {integrity: sha512-RnYh3GDMTaLvrmu9Hz4W11ulRNQYhrQoOOJyhpMa/wMRuY7ibhoQczcA17R3Zy3fKyhveiLmYI+GKF4pnp2nVg==}
+
+  '@pump-fun/pump-sdk@1.36.0':
+    resolution: {integrity: sha512-X8rf+Wm/p/jhBj6zbwouM9blJ3UW8XJFSL7YTT8osBnpHsOH0ccT0DjCkIi6AAT7b6jf1nM3MXk7l78Fuf1M0g==}
+
+  '@pump-fun/pump-sdk@2.0.0':
+    resolution: {integrity: sha512-qDtUx/1eHJl4uMof3bxTJ/YqKNp+HtXoIWfmOArQD11Vp+Zb0AZHLod0ktii7tc3uAwRtg1GoteouT0ynM58YQ==}
+
+  '@pump-fun/pump-swap-sdk@1.19.0':
+    resolution: {integrity: sha512-ayLO7ESmPOpZfz1hQSiGJBanJVaQTQB/+8yRHiuZnaHIRMTwOYknH1EZr++tPNa+kYJgg8kccU98Jp9RGOdZLQ==}
+    engines: {node: '>=16'}
+
   '@randlabs/communication-bridge@1.0.1':
     resolution: {integrity: sha512-CzS0U8IFfXNK7QaJFE4pjbxDGfPjbXBEsEaCn9FN15F+ouSAEUQkva3Gl66hrkBZOGexKFEWMwUHIDKpZ2hfVg==}
 
@@ -1622,6 +1662,12 @@ packages:
 
   '@raydium-io/raydium-sdk-v2@0.2.73-alpha':
     resolution: {integrity: sha512-viAxQSNQE1dOPYLKxom+uzjgxNzKqUVCyYeW80APZRM1erjR8/XJSK5/zUoic4E3nCB+qVK9AwFqmMQDGmHeow==}
+
+  '@rollup/rollup-linux-x64-gnu@4.64.10':
+    resolution: {integrity: sha512-ntHtQOMw7oIshHRF1swV3vyBw+beQt9PeZ04O3D32EeDZUMoHMJuZKp4/fDllH/+xogeK0GUCONVfjjKusqKLg==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
 
   '@rtsao/scc@1.1.0':
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
@@ -6947,6 +6993,9 @@ packages:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==}
     engines: {node: '>= 0.4'}
 
+  undici-types@6.29.1:
+    resolution: {integrity: sha512-8ewZRMhr1pEZVOUITV/cBrtH8iz6juS76jNqam5zXA1LQuTjM5CcidoAEIp8u+3OJc7EWKfMhW7CBD2xJJVh4A==}
+
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
 
@@ -8007,6 +8056,27 @@ snapshots:
       - typescript
       - utf-8-validate
 
+  '@coral-xyz/anchor@0.31.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)':
+    dependencies:
+      '@coral-xyz/anchor-errors': 0.31.1
+      '@coral-xyz/borsh': 0.31.1(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@noble/hashes': 1.8.0
+      '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      bn.js: 5.2.1
+      bs58: 4.0.1
+      buffer-layout: 1.2.2
+      camelcase: 6.3.0
+      cross-fetch: 3.2.0(encoding@0.1.13)
+      eventemitter3: 4.0.7
+      pako: 2.1.0
+      superstruct: 0.15.5
+      toml: 3.0.0
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - typescript
+      - utf-8-validate
+
   '@coral-xyz/borsh@0.30.1(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))':
     dependencies:
       '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -8014,6 +8084,12 @@ snapshots:
       buffer-layout: 1.2.2
 
   '@coral-xyz/borsh@0.31.0(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      bn.js: 5.2.1
+      buffer-layout: 1.2.2
+
+  '@coral-xyz/borsh@0.31.1(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))':
     dependencies:
       '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
       bn.js: 5.2.1
@@ -9194,6 +9270,20 @@ snapshots:
       - typescript
       - utf-8-validate
 
+  '@meteora-ag/dynamic-bonding-curve-sdk@1.5.12(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)':
+    dependencies:
+      '@coral-xyz/anchor': 0.31.0(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@solana/spl-token': 0.4.14(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      bn.js: 5.2.1
+      decimal.js: 10.5.0
+      typescript: 5.8.3
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - fastestsmallesttextencoderdecoder
+      - utf-8-validate
+
   '@napi-rs/wasm-runtime@0.2.11':
     dependencies:
       '@emnapi/core': 1.4.3
@@ -9774,6 +9864,66 @@ snapshots:
 
   '@pkgr/core@0.2.4': {}
 
+  '@pump-fun/agent-payments-sdk@1.0.7(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)':
+    dependencies:
+      '@coral-xyz/anchor': 0.31.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@solana/spl-token': 0.4.14(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+    optionalDependencies:
+      '@rollup/rollup-linux-x64-gnu': 4.64.10
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - fastestsmallesttextencoderdecoder
+      - typescript
+      - utf-8-validate
+
+  '@pump-fun/pump-sdk@1.36.0(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)':
+    dependencies:
+      '@coral-xyz/anchor': 0.31.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@pump-fun/agent-payments-sdk': 1.0.7(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@pump-fun/pump-swap-sdk': 1.19.0(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@solana/spl-token': 0.4.14(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      bn.js: 5.2.1
+      undici-types: 6.29.1
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - fastestsmallesttextencoderdecoder
+      - typescript
+      - utf-8-validate
+
+  '@pump-fun/pump-sdk@2.0.0(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)':
+    dependencies:
+      '@coral-xyz/anchor': 0.31.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@pump-fun/agent-payments-sdk': 1.0.7(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@pump-fun/pump-swap-sdk': 1.19.0(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@solana/spl-token': 0.4.14(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      bn.js: 5.2.1
+      undici-types: 6.29.1
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - fastestsmallesttextencoderdecoder
+      - typescript
+      - utf-8-validate
+
+  '@pump-fun/pump-swap-sdk@1.19.0(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)':
+    dependencies:
+      '@coral-xyz/anchor': 0.31.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@solana/spl-token': 0.4.14(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      bn.js: 5.2.1
+      bs58: 6.0.0
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - fastestsmallesttextencoderdecoder
+      - typescript
+      - utf-8-validate
+
   '@randlabs/communication-bridge@1.0.1': {}
 
   '@randlabs/myalgo-connect@1.4.2':
@@ -9804,6 +9954,9 @@ snapshots:
       - fastestsmallesttextencoderdecoder
       - typescript
       - utf-8-validate
+
+  '@rollup/rollup-linux-x64-gnu@4.64.10':
+    optional: true
 
   '@rtsao/scc@1.1.0': {}
 
@@ -10846,6 +10999,14 @@ snapshots:
       - fastestsmallesttextencoderdecoder
       - typescript
 
+  '@solana/spl-token-group@0.0.7(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)':
+    dependencies:
+      '@solana/codecs': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)
+      '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - fastestsmallesttextencoderdecoder
+      - typescript
+
   '@solana/spl-token-metadata@0.1.6(@solana/web3.js@1.95.8(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10))(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)':
     dependencies:
       '@solana/codecs': 2.0.0-rc.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)
@@ -10900,6 +11061,21 @@ snapshots:
       '@solana/spl-token-group': 0.0.7(@solana/web3.js@1.95.8(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10))(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)
       '@solana/spl-token-metadata': 0.1.6(@solana/web3.js@1.95.8(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10))(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)
       '@solana/web3.js': 1.95.8(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
+      buffer: 6.0.3
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - fastestsmallesttextencoderdecoder
+      - typescript
+      - utf-8-validate
+
+  '@solana/spl-token@0.4.14(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)':
+    dependencies:
+      '@solana/buffer-layout': 4.0.1
+      '@solana/buffer-layout-utils': 0.2.0(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@solana/spl-token-group': 0.0.7(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)
+      '@solana/spl-token-metadata': 0.1.6(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)
+      '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
       buffer: 6.0.3
     transitivePeerDependencies:
       - bufferutil
@@ -16511,6 +16687,8 @@ snapshots:
       has-bigints: 1.1.0
       has-symbols: 1.1.0
       which-boxed-primitive: 1.1.1
+
+  undici-types@6.29.1: {}
 
   undici-types@7.16.0: {}
 

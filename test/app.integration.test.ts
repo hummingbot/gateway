@@ -4,7 +4,12 @@ import { FastifyInstance } from 'fastify';
 import './mocks/app-mocks';
 
 import { gatewayApp } from '../src/app';
-import { AMM_CONNECTORS, CLMM_CONNECTORS, ROUTER_CONNECTORS } from '../src/trading/connector-registry';
+import {
+  AMM_CONNECTORS,
+  CLMM_CONNECTORS,
+  LAUNCH_CONNECTORS,
+  ROUTER_CONNECTORS,
+} from '../src/trading/connector-registry';
 
 // The route table is now unified: the trading type is a path segment and the
 // connector is a parameter, so there is one set of routes rather than one set per
@@ -35,6 +40,7 @@ describe('App Integration - Route Registration', () => {
         router: ROUTER_CONNECTORS,
         clmm: CLMM_CONNECTORS,
         amm: AMM_CONNECTORS,
+        launch: LAUNCH_CONNECTORS,
       };
 
       for (const { name, trading_types } of await connectors()) {
@@ -48,7 +54,7 @@ describe('App Integration - Route Registration', () => {
       for (const connector of await connectors()) {
         expect(Array.isArray(connector.trading_types)).toBe(true);
         expect(connector.trading_types.length).toBeGreaterThan(0);
-        connector.trading_types.forEach((type) => expect(['router', 'amm', 'clmm']).toContain(type));
+        connector.trading_types.forEach((type) => expect(['router', 'amm', 'clmm', 'launch']).toContain(type));
         expect(new Set(connector.trading_types).size).toBe(connector.trading_types.length);
       }
     });

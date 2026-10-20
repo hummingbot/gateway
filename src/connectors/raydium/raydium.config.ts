@@ -9,7 +9,8 @@ export namespace RaydiumConfig {
   export type Network = string;
 
   // Supported trading types
-  export const tradingTypes = ['amm', 'clmm'] as const;
+  // launch: Raydium LaunchLab token creation and curve trades.
+  export const tradingTypes = ['amm', 'clmm', 'launch'] as const;
 
   export interface RootConfig {
     // Global configuration

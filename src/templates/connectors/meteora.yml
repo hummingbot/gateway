@@ -10,3 +10,17 @@ slippagePct: 2
 # CurveBalanced = 4,
 # BidAskBalanced = 5
 strategyType: 0
+
+# Launch: Meteora's Dynamic Bonding Curve (trading type `launch`). A virtual pool
+# per newly launched token, which migrates to DAMM v2 and is then traded through
+# this connector's `amm` surface.
+launch:
+  # Default slippage percentage for swaps on the curve (e.g., 1 = 1%). Kept apart
+  # from the DLMM/DAMM slippage above because a curve prices nothing like a pool.
+  slippagePct: 2
+
+  # The DBC config (a partner's curve, fee and migration terms) that
+  # /trading/launch/create-token creates pools from when the request names none.
+  # Leave empty to require configAddress on every create-token request; curve
+  # swaps work on any DBC pool regardless.
+  configAddress: ''

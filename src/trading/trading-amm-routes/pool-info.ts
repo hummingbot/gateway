@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { getPoolInfo as meteoraGetPoolInfo } from '../../connectors/meteora/amm-routes/poolInfo';
 import { getPoolInfo as pancakeswapGetPoolInfo } from '../../connectors/pancakeswap/amm-routes/poolInfo';
+import { getPoolInfo as pumpGetPoolInfo } from '../../connectors/pump/amm-routes/poolInfo';
 import { getPoolInfo as raydiumGetPoolInfo } from '../../connectors/raydium/amm-routes/poolInfo';
 import { getPoolInfo as uniswapGetPoolInfo } from '../../connectors/uniswap/amm-routes/poolInfo';
 import { PoolInfo, PoolInfoSchema } from '../../schemas/amm-schema';
@@ -23,6 +24,8 @@ export async function getAmmPoolInfo(connector: string, network: string, poolAdd
   switch (connector) {
     case 'meteora':
       return await meteoraGetPoolInfo(network, poolAddress);
+    case 'pump':
+      return await pumpGetPoolInfo(network, poolAddress);
     case 'raydium':
       return await raydiumGetPoolInfo(network, poolAddress);
     case 'uniswap':

@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { createPool as meteoraCreatePool } from '../../connectors/meteora/amm-routes/createPool';
 import { createPool as pancakeswapCreatePool } from '../../connectors/pancakeswap/amm-routes/createPool';
+import { createPool as pumpCreatePool } from '../../connectors/pump/amm-routes/createPool';
 import { createPool as raydiumCreatePool } from '../../connectors/raydium/amm-routes/createPool';
 import { createPool as uniswapCreatePool } from '../../connectors/uniswap/amm-routes/createPool';
 import { CreatePoolRequest, CreatePoolResponse, CreatePoolResponseType } from '../../schemas/amm-schema';
@@ -100,6 +101,17 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
               baseTokenAmount,
               quoteTokenAmount,
               configAddress,
+              initialPrice,
+            );
+
+          case 'pump':
+            return await pumpCreatePool(
+              network,
+              walletAddress,
+              baseToken,
+              quoteToken,
+              baseTokenAmount,
+              quoteTokenAmount,
               initialPrice,
             );
 
