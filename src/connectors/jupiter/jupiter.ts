@@ -1,4 +1,3 @@
-import { Wallet } from '@coral-xyz/anchor';
 import { VersionedTransaction } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
@@ -264,85 +263,6 @@ export class Jupiter {
       }
       throw error;
     }
-  }
-
-  /**
-   * Builds and prepares a swap transaction from a quote
-   * @param wallet The wallet to use for signing
-   * @param quote The quote response from Jupiter API
-   * @param maxLamports Maximum priority fee in lamports (optional)
-   * @param priorityLevel Priority level for transaction (optional)
-   * @returns Prepared and simulated transaction ready for execution
-   */
-  public async buildSwapTransaction(
-    wallet: Wallet,
-    quote: QuoteResponse,
-    maxLamports?: number,
-    priorityLevel?: string,
-  ): Promise<VersionedTransaction> {
-    // Use provided values or fall back to config
-    const feeLamports = maxLamports ? Math.floor(maxLamports) : Math.floor(this.config.maxLamports);
-    const level = priorityLevel || this.config.priorityLevel;
-
-    logger.info(`Sending swap with priority level ${level} and max ${feeLamports} lamports`);
-
-    // Get swap object from Jupiter API with retry logic
-    let lastError: Error | null = null;
-    let swapObj: SwapResponse;
-
-    const solanaConfig = getSolanaNetworkConfig(this.solana.network);
-    const retryCount = solanaConfig.confirmRetryCount;
-    const retryInterval = solanaConfig.confirmRetryInterval;
-
-    for (let attempt = 1; attempt <= retryCount; attempt++) {
-      try {
-        const swapRequest = {
-          quoteResponse: quote,
-          userPublicKey: wallet.publicKey.toBase58(),
-          dynamicComputeUnitLimit: true,
-          prioritizationFeeLamports: {
-            priorityLevelWithMaxLamports: {
-              maxLamports: feeLamports,
-              priorityLevel: level,
-            },
-          },
-        };
-
-        const response = await this.withRateLimitRetry('swap', () =>
-          this.httpClient.post<SwapResponse>('/swap/v1/swap', swapRequest),
-        );
-        swapObj = response.data;
-        break; // Success, exit the retry loop
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        if (error instanceof HttpClientError) {
-          logger.error(`Fetching swap object attempt ${attempt}/${retryCount} failed:`, {
-            error: error.message,
-            status: error.response?.status,
-            data: error.response?.data,
-          });
-        } else {
-          logger.error(`Fetching swap object attempt ${attempt}/${retryCount} failed:`, error);
-        }
-
-        if (attempt < retryCount) {
-          logger.info(`Waiting ${retryInterval}ms before retry...`);
-          await new Promise((resolve) => setTimeout(resolve, retryInterval));
-        }
-      }
-    }
-
-    if (!swapObj) {
-      throw new Error(`Failed to fetch swap route after ${retryCount} attempts. Last error: ${lastError?.message}`);
-    }
-
-    const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
-    const transaction = VersionedTransaction.deserialize(new Uint8Array(swapTransactionBuf));
-
-    // Sign the transaction (simulation will be done by caller with proper error handling)
-    transaction.sign([wallet.payer]);
-
-    return transaction;
   }
 
   /**

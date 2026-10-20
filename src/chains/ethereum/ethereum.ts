@@ -1,19 +1,20 @@
 import { Provider, TransactionResponse } from '@ethersproject/abstract-provider';
 import { BigNumber, Contract, ContractTransaction, providers, utils, Wallet, ethers } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
-import fse from 'fs-extra';
 
 import { ChainstackService } from '../../rpc/chainstack-service';
 import { InfuraService } from '../../rpc/infura-service';
 import { createRateLimitAwareEthereumProvider, rateLimitAwareConnection } from '../../rpc/rpc-connection-interceptor';
 import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { TokenValue, tokenValueToString } from '../../services/base';
-import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { transactionFailed } from '../../services/error-handler';
+import { httpErrors, transactionFailed } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
+import { loadEthereumWallet } from '../../wallet/signers/local';
+import { externalWalletRefusal, getEthereumSigner } from '../../wallet/signers/registry';
+import { UnsignedEvmTransaction } from '../../wallet/signers/types';
+import { getWalletRecord, listWalletRecords } from '../../wallet/signers/wallet-store';
 
 import { getEthereumNetworkConfig, getEthereumChainConfig } from './ethereum.config';
 import { EtherscanService } from './etherscan-service';
@@ -25,6 +26,21 @@ export interface TokenInfo {
   name: string;
   symbol: string;
   decimals: number;
+}
+
+/**
+ * What a route hands the signer seam: the call and, optionally, its gas options and
+ * nonce. The seam fills in what is missing (see Ethereum.populateForWallet).
+ */
+export interface EvmTransactionRequest {
+  to: string;
+  data?: string;
+  value?: ethers.BigNumberish;
+  nonce?: number;
+  gasLimit?: ethers.BigNumberish;
+  gasPrice?: ethers.BigNumberish;
+  maxFeePerGas?: ethers.BigNumberish;
+  maxPriorityFeePerGas?: ethers.BigNumberish;
 }
 
 export type NewBlockHandler = (bn: number) => void;
@@ -686,27 +702,97 @@ export class Ethereum {
     }
   }
 
+  /**
+   * The ethers wallet of a LOCAL wallet, connected to this network's provider.
+   *
+   * Only the routes that still pass a wallet to a contract call use this; they are
+   * listed as build gaps in src/wallet/signers/transaction-routes.ts and move to
+   * sendTransactionForWallet with their build twins. A wallet with any other signer
+   * is refused here with the same message the seam gives.
+   */
   public async getWallet(address: string): Promise<Wallet> {
-    try {
-      // Validate the address format first
-      const validatedAddress = Ethereum.validateAddress(address);
+    const validatedAddress = Ethereum.validateAddress(address);
+    const record = await getWalletRecord('ethereum', validatedAddress);
+    if (record.signer !== 'local') {
+      throw externalWalletRefusal(
+        'ethereum',
+        validatedAddress,
+        `this route needs a local key and the wallet's signer is ${record.signer}`,
+      );
+    }
+    return (await loadEthereumWallet(validatedAddress)).connect(this.provider);
+  }
 
-      const path = `${walletPath}/ethereum`;
-      const encryptedPrivateKey = await fse.readFile(`${path}/${validatedAddress}.json`, 'utf8');
+  /**
+   * Sign and send a transaction for a wallet through the signer seam (#673): the one
+   * place an Ethereum transaction is signed.
+   *
+   * The route gives the call (`to`, `data`, `value`) and its gas options; this sets the
+   * chain id and nonce, has the wallet's signer sign it, checks that what was signed is
+   * what was built, and broadcasts it.
+   */
+  public async sendTransactionForWallet(
+    address: string,
+    request: EvmTransactionRequest,
+  ): Promise<providers.TransactionResponse> {
+    const validatedAddress = Ethereum.validateAddress(address);
+    const signer = await getEthereumSigner(validatedAddress);
+    if (signer.kind === 'external') {
+      throw externalWalletRefusal('ethereum', validatedAddress, 'Gateway holds no key for an external wallet');
+    }
 
-      const walletKey = ConfigManagerCertPassphrase.readWalletKey();
-      if (!walletKey) {
-        throw new Error('Missing wallet encryption key');
-      }
-      return await this.decrypt(encryptedPrivateKey, walletKey);
-    } catch (error) {
-      if (error.message.includes('Invalid Ethereum address')) {
-        throw error; // Re-throw validation errors
-      }
-      if (error.code === 'ENOENT') {
-        throw new Error(`Wallet not found for address: ${address}`);
-      }
-      throw error;
+    const unsigned = await this.populateForWallet(validatedAddress, request);
+    const result = await signer.signTransaction(unsigned);
+    if (result.kind === 'unsigned') {
+      throw externalWalletRefusal('ethereum', validatedAddress, result.reason);
+    }
+    Ethereum.assertSignedAsBuilt(result.value, unsigned, validatedAddress, signer.kind);
+    return this.provider.sendTransaction(result.value);
+  }
+
+  /** The fully populated transaction a signer signs: chain id, nonce, gas limit and fee fields set. */
+  public async populateForWallet(address: string, request: EvmTransactionRequest): Promise<UnsignedEvmTransaction> {
+    const gas =
+      request.maxFeePerGas !== undefined || request.gasPrice !== undefined
+        ? request
+        : { ...(await this.prepareGasOptions(undefined, request.gasLimit ? Number(request.gasLimit) : undefined)) };
+    if (gas.gasLimit === undefined) {
+      throw httpErrors.internalServerError('A transaction reached the signer seam without a gas limit');
+    }
+    const eip1559 = gas.maxFeePerGas !== undefined;
+    return {
+      chainId: this.chainId,
+      to: request.to,
+      data: request.data ?? '0x',
+      value: BigNumber.from(request.value ?? 0),
+      nonce: request.nonce ?? (await this.provider.getTransactionCount(address, 'latest')),
+      gasLimit: BigNumber.from(request.gasLimit ?? gas.gasLimit),
+      type: eip1559 ? 2 : 0,
+      ...(eip1559
+        ? { maxFeePerGas: gas.maxFeePerGas, maxPriorityFeePerGas: gas.maxPriorityFeePerGas }
+        : { gasPrice: gas.gasPrice }),
+    };
+  }
+
+  /** A signer may not change what it was given: check the signed transaction against it. */
+  public static assertSignedAsBuilt(
+    signed: string,
+    unsigned: UnsignedEvmTransaction,
+    address: string,
+    kind: string,
+  ): void {
+    const parsed = utils.parseTransaction(signed);
+    const mismatches: string[] = [];
+    if (!parsed.from || parsed.from.toLowerCase() !== address.toLowerCase()) mismatches.push(`from ${parsed.from}`);
+    if (parsed.chainId !== unsigned.chainId) mismatches.push(`chainId ${parsed.chainId}`);
+    if (parsed.nonce !== unsigned.nonce) mismatches.push(`nonce ${parsed.nonce}`);
+    if ((parsed.to ?? '').toLowerCase() !== unsigned.to.toLowerCase()) mismatches.push(`to ${parsed.to}`);
+    if (parsed.data.toLowerCase() !== unsigned.data.toLowerCase()) mismatches.push('data');
+    if (!parsed.value.eq(unsigned.value)) mismatches.push(`value ${parsed.value.toString()}`);
+    if (mismatches.length > 0) {
+      throw httpErrors.internalServerError(
+        `The ${kind} signer of ${address} returned a transaction that differs from the one built: ${mismatches.join(', ')}`,
+      );
     }
   }
 
@@ -714,32 +800,8 @@ export class Ethereum {
    * Get the first available Ethereum wallet address
    */
   public static async getFirstWalletAddress(): Promise<string | null> {
-    const path = `${walletPath}/ethereum`;
-    try {
-      // Create directory if it doesn't exist
-      await fse.ensureDir(path);
-
-      // Get all .json files in the directory
-      const files = await fse.readdir(path);
-      const walletFiles = files.filter((f) => f.endsWith('.json'));
-
-      if (walletFiles.length === 0) {
-        return null;
-      }
-
-      // Get the first wallet address (without .json extension)
-      const walletAddress = walletFiles[0].slice(0, -5);
-
-      try {
-        // Attempt to validate the address
-        return Ethereum.validateAddress(walletAddress);
-      } catch (e) {
-        logger.warn(`Invalid Ethereum address found in wallet directory: ${walletAddress}`);
-        return null;
-      }
-    } catch (err) {
-      return null;
-    }
+    const records = await listWalletRecords('ethereum');
+    return records.length > 0 ? records[0].address : null;
   }
 
   /**
@@ -749,18 +811,6 @@ export class Ethereum {
    */
   public getRpcProviderService(): RPCProvider | null {
     return this.chainstackService || this.infuraService || null;
-  }
-
-  /**
-   * Check if an address is a hardware wallet
-   */
-  public async isHardwareWallet(address: string): Promise<boolean> {
-    try {
-      return await checkIsHardwareWallet('ethereum', address);
-    } catch (error) {
-      logger.error(`Error checking hardware wallet status: ${error.message}`);
-      return false;
-    }
   }
 
   /**
@@ -780,48 +830,11 @@ export class Ethereum {
   }
 
   /**
-   * Get native token balance
-   */
-  public async getNativeBalance(wallet: Wallet): Promise<TokenValue> {
-    const balance = await wallet.getBalance();
-    return { value: balance, decimals: 18 };
-  }
-
-  /**
    * Get native token balance by address
    */
   public async getNativeBalanceByAddress(address: string): Promise<TokenValue> {
     const balance = await this.provider.getBalance(address);
     return { value: balance, decimals: 18 };
-  }
-
-  /**
-   * Get ERC-20 token balance
-   */
-  public async getERC20Balance(
-    contract: Contract,
-    wallet: Wallet,
-    decimals: number,
-    timeoutMs: number = 5000, // Default 5 second timeout
-    tokenSymbol?: string, // Optional token symbol for logging
-  ): Promise<TokenValue> {
-    // Add timeout to prevent hanging on problematic tokens
-    const balancePromise = contract.balanceOf(wallet.address);
-
-    // Create a timeout promise that rejects after specified timeout
-    const timeoutPromise = new Promise<BigNumber>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error('Token balance request timed out'));
-      }, timeoutMs);
-    });
-
-    // Race the balance request against the timeout
-    const balance: BigNumber = await Promise.race([balancePromise, timeoutPromise]);
-
-    if (tokenSymbol) {
-      logger.debug(`Token balance for ${tokenSymbol}: ${balance.toString()}`);
-    }
-    return { value: balance, decimals: decimals };
   }
 
   /**
@@ -1295,26 +1308,16 @@ export class Ethereum {
     // Treat empty array as if no tokens were specified
     const effectiveTokens = tokens && tokens.length === 0 ? undefined : tokens;
 
-    // Check if this is a hardware wallet
-    const isHardware = await this.isHardwareWallet(address);
-    let wallet: Wallet | null = null;
-
-    if (!isHardware) {
-      wallet = await this.getWallet(address);
-    }
-
-    // Always get native token balance
-    const nativeBalance = isHardware
-      ? await this.getNativeBalanceByAddress(address)
-      : await this.getNativeBalance(wallet!);
+    // Reads take the address: no key is loaded to read a balance.
+    const nativeBalance = await this.getNativeBalanceByAddress(address);
     balances[this.nativeTokenSymbol] = parseFloat(tokenValueToString(nativeBalance));
 
     if (!effectiveTokens) {
       // No tokens specified, check all tokens in token list
-      await this.getAllTokenBalances(address, wallet, isHardware, balances);
+      await this.getAllTokenBalances(address, balances);
     } else {
       // Get specific token balances
-      await this.getSpecificTokenBalances(effectiveTokens, address, wallet, isHardware, balances);
+      await this.getSpecificTokenBalances(effectiveTokens, address, balances);
     }
 
     return balances;
@@ -1324,21 +1327,14 @@ export class Ethereum {
    * Get balances for all tokens in the token list
    * Processes tokens sequentially to prevent RPC timeouts
    */
-  private async getAllTokenBalances(
-    address: string,
-    wallet: Wallet | null,
-    isHardware: boolean,
-    balances: Record<string, number>,
-  ): Promise<void> {
+  private async getAllTokenBalances(address: string, balances: Record<string, number>): Promise<void> {
     const tokenList = await this.getTokenList();
     logger.info(`Checking balances for all ${tokenList.length} tokens in the token list`);
 
     for (const token of tokenList) {
       try {
         const contract = this.getContract(token.address, this.provider);
-        const balance = isHardware
-          ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000, token.symbol)
-          : await this.getERC20Balance(contract, wallet!, token.decimals, 5000, token.symbol);
+        const balance = await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000, token.symbol);
 
         const balanceNum = parseFloat(tokenValueToString(balance));
 
@@ -1362,8 +1358,6 @@ export class Ethereum {
   private async getSpecificTokenBalances(
     tokens: string[],
     address: string,
-    wallet: Wallet | null,
-    isHardware: boolean,
     balances: Record<string, number>,
   ): Promise<void> {
     await Promise.all(
@@ -1377,9 +1371,7 @@ export class Ethereum {
         if (token) {
           try {
             const contract = this.getContract(token.address, this.provider);
-            const balance = isHardware
-              ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000, token.symbol)
-              : await this.getERC20Balance(contract, wallet!, token.decimals, 5000, token.symbol);
+            const balance = await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000, token.symbol);
 
             balances[token.symbol] = parseFloat(tokenValueToString(balance));
           } catch (err) {

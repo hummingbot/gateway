@@ -1,6 +1,7 @@
 import sensible from '@fastify/sensible';
 import { FastifyPluginAsync } from 'fastify';
 
+import { addExternalWalletRoute } from './routes/addExternalWallet';
 import { addHardwareWalletRoute } from './routes/addHardwareWallet';
 import { addWalletRoute } from './routes/addWallet';
 import { getWalletsRoute } from './routes/getWallets';
@@ -15,6 +16,7 @@ export const walletRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(getWalletsRoute);
   await fastify.register(addWalletRoute);
   await fastify.register(addHardwareWalletRoute);
+  await fastify.register(addExternalWalletRoute);
   await fastify.register(removeWalletRoute);
   await fastify.register(setDefaultRoute);
 };

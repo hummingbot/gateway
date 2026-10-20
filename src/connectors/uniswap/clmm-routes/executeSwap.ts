@@ -1,7 +1,6 @@
-import { BigNumber, Contract, providers, utils } from 'ethers';
+import { BigNumber, providers, utils } from 'ethers';
 
 import { Ethereum, EthereumTransactionOutcome } from '../../../chains/ethereum/ethereum';
-import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { SwapExecuteResponseType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
@@ -73,9 +72,6 @@ export async function executeClmmSwap(
   // Get quote using the shared quote function
   const { quote } = await getUniswapClmmQuote(network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
 
-  // Check if this is a hardware wallet
-  const isHardwareWallet = await ethereum.isHardwareWallet(walletAddress);
-
   // Get SwapRouter02 contract address
   const routerAddress = getUniswapV3SwapRouter02Address(network);
 
@@ -142,144 +138,66 @@ export async function executeClmmSwap(
   let outcome: EthereumTransactionOutcome;
 
   try {
-    if (isHardwareWallet) {
-      // Hardware wallet flow
-      logger.info(`Hardware wallet detected for ${walletAddress}. Building swap transaction for Ledger signing.`);
+    // Build the swap transaction data
+    const iface = new utils.Interface(ISwapRouter02ABI);
+    let data;
 
-      const ledger = new EthereumLedger();
-      const nonce = await ethereum.provider.getTransactionCount(walletAddress, 'latest');
+    if (side === 'SELL') {
+      // exactInputSingle - we know the exact input amount
+      swapParams.amountIn = quote.rawAmountIn;
+      swapParams.amountOutMinimum = quote.rawMinAmountOut;
 
-      // Build the swap transaction data
-      const iface = new utils.Interface(ISwapRouter02ABI);
-      let data;
+      logger.info(`ExactInputSingle params:`);
+      logger.info(`  amountIn: ${swapParams.amountIn}`);
+      logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum}`);
 
-      if (side === 'SELL') {
-        // exactInputSingle - we know the exact input amount
-        swapParams.amountIn = quote.rawAmountIn;
-        swapParams.amountOutMinimum = quote.rawMinAmountOut;
-
-        logger.info(`ExactInputSingle params:`);
-        logger.info(`  amountIn: ${swapParams.amountIn}`);
-        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum}`);
-
-        const exactInputParams = {
-          tokenIn: swapParams.tokenIn,
-          tokenOut: swapParams.tokenOut,
-          fee: swapParams.fee,
-          recipient: swapParams.recipient,
-          amountIn: swapParams.amountIn,
-          amountOutMinimum: swapParams.amountOutMinimum,
-          sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
-        };
-
-        data = iface.encodeFunctionData('exactInputSingle', [exactInputParams]);
-      } else {
-        // exactOutputSingle - we know the exact output amount
-        swapParams.amountOut = quote.rawAmountOut;
-        swapParams.amountInMaximum = quote.rawMaxAmountIn;
-
-        logger.info(`ExactOutputSingle params:`);
-        logger.info(`  amountOut: ${swapParams.amountOut}`);
-        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum}`);
-
-        const exactOutputParams = {
-          tokenIn: swapParams.tokenIn,
-          tokenOut: swapParams.tokenOut,
-          fee: swapParams.fee,
-          recipient: swapParams.recipient,
-          amountOut: swapParams.amountOut,
-          amountInMaximum: swapParams.amountInMaximum,
-          sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
-        };
-
-        data = iface.encodeFunctionData('exactOutputSingle', [exactOutputParams]);
-      }
-
-      // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions(undefined, CLMM_SWAP_GAS_LIMIT);
-
-      // Build unsigned transaction with gas parameters
-      const unsignedTx = {
-        to: routerAddress,
-        data: data,
-        nonce: nonce,
-        chainId: ethereum.chainId,
-        ...gasOptions, // Include gas parameters from prepareGasOptions
+      const exactInputParams = {
+        tokenIn: swapParams.tokenIn,
+        tokenOut: swapParams.tokenOut,
+        fee: swapParams.fee,
+        recipient: swapParams.recipient,
+        amountIn: swapParams.amountIn,
+        amountOutMinimum: swapParams.amountOutMinimum,
+        sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
       };
 
-      // Sign with Ledger
-      const signedTx = await ledger.signTransaction(walletAddress, unsignedTx as any);
-
-      // Send the signed transaction
-      const txResponse = await ethereum.provider.sendTransaction(signedTx);
-
-      logger.info(`Transaction sent: ${txResponse.hash}`);
-
-      // Wait for confirmation with timeout
-      outcome = await ethereum.handleTransactionConfirmation(txResponse);
+      data = iface.encodeFunctionData('exactInputSingle', [exactInputParams]);
     } else {
-      // Regular wallet flow
-      let wallet;
-      try {
-        wallet = await ethereum.getWallet(walletAddress);
-      } catch (err) {
-        logger.error(`Failed to load wallet: ${err.message}`);
-        throw httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
-      }
+      // exactOutputSingle - we know the exact output amount
+      swapParams.amountOut = quote.rawAmountOut;
+      swapParams.amountInMaximum = quote.rawMaxAmountIn;
 
-      const routerContract = new Contract(routerAddress, ISwapRouter02ABI, wallet);
+      logger.info(`ExactOutputSingle params:`);
+      logger.info(`  amountOut: ${swapParams.amountOut}`);
+      logger.info(`  amountInMaximum: ${swapParams.amountInMaximum}`);
 
-      // Use Ethereum's gas options
-      const txOptions = await ethereum.prepareGasOptions(undefined, CLMM_SWAP_GAS_LIMIT);
+      const exactOutputParams = {
+        tokenIn: swapParams.tokenIn,
+        tokenOut: swapParams.tokenOut,
+        fee: swapParams.fee,
+        recipient: swapParams.recipient,
+        amountOut: swapParams.amountOut,
+        amountInMaximum: swapParams.amountInMaximum,
+        sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
+      };
 
-      let tx;
-      if (side === 'SELL') {
-        // exactInputSingle - we know the exact input amount
-        swapParams.amountIn = quote.rawAmountIn;
-        swapParams.amountOutMinimum = quote.rawMinAmountOut;
-
-        logger.info(`ExactInputSingle params:`);
-        logger.info(`  amountIn: ${swapParams.amountIn}`);
-        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum}`);
-
-        const exactInputParams = {
-          tokenIn: swapParams.tokenIn,
-          tokenOut: swapParams.tokenOut,
-          fee: swapParams.fee,
-          recipient: swapParams.recipient,
-          amountIn: swapParams.amountIn,
-          amountOutMinimum: swapParams.amountOutMinimum,
-          sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
-        };
-
-        tx = await routerContract.exactInputSingle(exactInputParams, txOptions);
-      } else {
-        // exactOutputSingle - we know the exact output amount
-        swapParams.amountOut = quote.rawAmountOut;
-        swapParams.amountInMaximum = quote.rawMaxAmountIn;
-
-        logger.info(`ExactOutputSingle params:`);
-        logger.info(`  amountOut: ${swapParams.amountOut}`);
-        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum}`);
-
-        const exactOutputParams = {
-          tokenIn: swapParams.tokenIn,
-          tokenOut: swapParams.tokenOut,
-          fee: swapParams.fee,
-          recipient: swapParams.recipient,
-          amountOut: swapParams.amountOut,
-          amountInMaximum: swapParams.amountInMaximum,
-          sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
-        };
-
-        tx = await routerContract.exactOutputSingle(exactOutputParams, txOptions);
-      }
-
-      logger.info(`Transaction sent: ${tx.hash}`);
-
-      // Wait for transaction confirmation
-      outcome = await ethereum.handleTransactionConfirmation(tx);
+      data = iface.encodeFunctionData('exactOutputSingle', [exactOutputParams]);
     }
+
+    // Get gas options using estimateGasPrice
+    const gasOptions = await ethereum.prepareGasOptions(undefined, CLMM_SWAP_GAS_LIMIT);
+
+    // Signed through the signer seam: local key, Ledger, or refused for an external wallet.
+    const txResponse = await ethereum.sendTransactionForWallet(walletAddress, {
+      to: routerAddress,
+      data: data,
+      ...gasOptions, // Include gas parameters from prepareGasOptions
+    });
+
+    logger.info(`Transaction sent: ${txResponse.hash}`);
+
+    // Wait for confirmation with timeout
+    outcome = await ethereum.handleTransactionConfirmation(txResponse);
 
     // A revert threw out of the confirmation helper as a 400 TRANSACTION_FAILED. What is left
     // is a transaction that is still pending after the extended poll: report it as PENDING
@@ -345,12 +263,6 @@ export async function executeClmmSwap(
       throw httpErrors.badRequest(
         'Insufficient funds for transaction. Please ensure you have enough ETH to cover gas costs.',
       );
-    } else if (error.message.includes('rejected on Ledger')) {
-      throw httpErrors.badRequest('Transaction rejected on Ledger device');
-    } else if (error.message.includes('Ledger device is locked')) {
-      throw httpErrors.badRequest(error.message);
-    } else if (error.message.includes('Wrong app is open')) {
-      throw httpErrors.badRequest(error.message);
     }
 
     // Re-throw if already a fastify error

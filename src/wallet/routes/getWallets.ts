@@ -23,7 +23,7 @@ export const getWalletsRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const { showHardware = true } = request.query;
       logger.info(`Getting all wallets (showHardware: ${showHardware})`);
-      return await getWallets(fastify, true, showHardware);
+      return await getWallets(showHardware);
     },
   );
 };

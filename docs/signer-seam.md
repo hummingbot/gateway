@@ -45,18 +45,18 @@ The exact TypeScript is in `src/wallet/signers/types.ts`.
 returns the 64-byte signature. The chokepoint prepares the transaction first (compute
 budget, blockhash, ephemeral co-signers' signatures), then places the signature in the
 wallet's slot and verifies it against the message. A signer cannot change what is sent.
-`signMessage(bytes)` signs an off-chain message.
 
 **Ethereum.** `signTransaction(tx: UnsignedEvmTransaction)` gets a fully populated
 transaction (chainId, nonce, gas limit, fee fields) and returns the signed serialized
 transaction. The chokepoint parses it and checks the sender, chainId, nonce, to, data and
-value before it sends it. `signMessage(text)` is EIP-191.
+value before it sends it.
 
 **Result.** Both return `{kind: 'signed', value}` or `{kind: 'unsigned', reason}`. Only the
 `external` backend returns `unsigned`.
 
-**Backends.** `src/wallet/signers/registry.ts` maps a signer kind to a factory per chain.
-A new backend adds one entry there. A kind with no entry fails with an error that names it.
+**Backends.** `signerBackends` in `src/wallet/signers/registry.ts` maps a signer kind to a
+factory per chain. A new backend adds one entry there. A kind with no entry fails with an
+error that names it.
 
 ## Chokepoints
 

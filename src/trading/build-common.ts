@@ -30,21 +30,7 @@ export function assertBuildSupported(connector: string, chain: string): void {
       `Build endpoints currently support Solana connectors only; '${connector}' runs on ${chain}.`,
     );
   }
-  if (SIGNS_OUTSIDE_CHOKEPOINT.has(connector)) {
-    throw httpErrors.badRequest(
-      `'${connector}' signs its transactions with a wallet stored in Gateway rather than through the ` +
-        'wallet chokepoint, so it cannot build an unsigned transaction yet. Use its execute route.',
-    );
-  }
 }
-
-/**
- * Solana connectors that load the stored keypair and sign themselves instead of handing
- * the unsigned transaction to Solana.sendAndConfirmTransactionForWallet. Build mode
- * captures at that chokepoint, so these are refused by name rather than failing on a
- * wallet the build request never had to store.
- */
-const SIGNS_OUTSIDE_CHOKEPOINT = new Set(['pancakeswap-sol']);
 
 /**
  * Run a connector's operation in build mode: assert the connector is buildable, then

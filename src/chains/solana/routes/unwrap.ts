@@ -6,7 +6,6 @@ import { logger } from '../../../services/logger';
 import { UnwrapResponseType } from '../schemas';
 import { Solana } from '../solana';
 import { handleSolanaTransactionError } from '../solana-errors';
-import { SolanaLedger } from '../solana-ledger';
 
 /**
  * Unwrap WSOL to SOL
@@ -20,9 +19,6 @@ export async function unwrapSolana(
 ): Promise<UnwrapResponseType> {
   // Get Solana instance for the specified network
   const solana = await Solana.getInstance(network);
-
-  // Check if this is a hardware wallet
-  const isHardware = await solana.isHardwareWallet(address);
 
   try {
     const walletPubkey = new PublicKey(address);
@@ -82,27 +78,12 @@ export async function unwrapSolana(
       instructions: [unwrapInstruction],
     }).compileToV0Message();
 
-    // Create versioned transaction
-    let transaction = new VersionedTransaction(messageV0);
+    const transaction = new VersionedTransaction(messageV0);
 
-    if (isHardware) {
-      // Hardware wallet flow
-      logger.info(`Hardware wallet detected for ${address}. Building unwrap transaction for Ledger signing.`);
-
-      const ledger = new SolanaLedger();
-      const signedTx = await ledger.signTransaction(address, transaction);
-      transaction = signedTx as VersionedTransaction;
-    } else {
-      // Regular wallet flow
-      const keypair = await solana.getWallet(address);
-      transaction.sign([keypair]);
-    }
-
-    // Simulate transaction with proper error handling before sending
-    await solana.simulateWithErrorHandling(transaction);
-
-    // Send and confirm transaction
-    const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+    // Signed and sent through the wallet chokepoint (the signer seam), which simulates first.
+    const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, address);
+    const txData = await solana.getConfirmedTransactionData(signature);
+    const confirmed = txData !== null;
 
     // Calculate fee from transaction data
     let feeInSol = '0';

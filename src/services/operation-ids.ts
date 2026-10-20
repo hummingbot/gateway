@@ -28,6 +28,7 @@ export const OPERATION_IDS: Record<string, string> = {
   'GET /wallet/': 'listWallets',
   'POST /wallet/add': 'addWallet',
   'POST /wallet/add-hardware': 'addHardwareWallet',
+  'POST /wallet/add-external': 'addExternalWallet',
   'DELETE /wallet/remove': 'removeWallet',
   'POST /wallet/setDefault': 'setDefaultWallet',
 

@@ -27,14 +27,7 @@ export async function getEthereumAllowances(
     const ethereum = await Ethereum.getInstance(network);
     await ethereum.init();
 
-    // Check if this is a hardware wallet
-    const isHardware = await ethereum.isHardwareWallet(address);
-    let wallet: ethers.Wallet | null = null;
-
-    if (!isHardware) {
-      wallet = await ethereum.getWallet(address);
-    }
-
+    // A read: allowances are looked up by address, and no key is loaded.
     // If tokens array is empty, get all tokens from the token list
     let tokenInfoMap: Record<string, TokenInfo>;
     if (!tokens || tokens.length === 0) {
@@ -119,19 +112,12 @@ export async function getEthereumAllowances(
           try {
             // First check if token is approved to Permit2
             const tokenContract = ethereum.getContract(tokenInfoMap[symbol].address, ethereum.provider);
-            const tokenToPermit2Allowance = isHardware
-              ? await ethereum.getERC20AllowanceByAddress(
-                  tokenContract,
-                  address,
-                  PERMIT2_ADDRESS,
-                  tokenInfoMap[symbol].decimals,
-                )
-              : await ethereum.getERC20Allowance(
-                  tokenContract,
-                  wallet!,
-                  PERMIT2_ADDRESS,
-                  tokenInfoMap[symbol].decimals,
-                );
+            const tokenToPermit2Allowance = await ethereum.getERC20AllowanceByAddress(
+              tokenContract,
+              address,
+              PERMIT2_ADDRESS,
+              tokenInfoMap[symbol].decimals,
+            );
 
             // Then check Permit2's allowance to Universal Router
             const [amount, expiration] = await permit2Contract.allowance(
@@ -179,14 +165,7 @@ export async function getEthereumAllowances(
         Object.keys(tokenInfoMap).map(async (symbol) => {
           const contract = ethereum.getContract(tokenInfoMap[symbol].address, ethereum.provider);
           approvals[symbol] = tokenValueToString(
-            isHardware
-              ? await ethereum.getERC20AllowanceByAddress(
-                  contract,
-                  address,
-                  spenderAddress,
-                  tokenInfoMap[symbol].decimals,
-                )
-              : await ethereum.getERC20Allowance(contract, wallet!, spenderAddress, tokenInfoMap[symbol].decimals),
+            await ethereum.getERC20AllowanceByAddress(contract, address, spenderAddress, tokenInfoMap[symbol].decimals),
           );
         }),
       );

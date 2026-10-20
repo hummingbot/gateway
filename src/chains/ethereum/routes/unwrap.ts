@@ -4,8 +4,7 @@ import { FastifyInstance } from 'fastify';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
-import { Ethereum, EthereumTransactionOutcome } from '../ethereum';
-import { EthereumLedger } from '../ethereum-ledger';
+import { Ethereum } from '../ethereum';
 
 // Default gas limit for unwrap operations
 const UNWRAP_GAS_LIMIT = 50000;
@@ -65,95 +64,35 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
     throw fastify.httpErrors.badRequest(error.message);
   }
 
-  // Check if this is a hardware wallet
-  const isHardware = await ethereum.isHardwareWallet(address);
-
   // Parse amount to wei
   const amountInWei = utils.parseEther(amount);
 
   try {
-    let transaction: ethers.providers.TransactionResponse;
-    let nonce: number;
-    let outcome: EthereumTransactionOutcome;
-
-    if (isHardware) {
-      // Hardware wallet flow
-      logger.info(`Hardware wallet detected for ${address}. Building unwrap transaction for Ledger signing.`);
-
-      const ledger = new EthereumLedger();
-
-      // Get nonce for the address
-      nonce = await ethereum.provider.getTransactionCount(address, 'latest');
-
-      // Check balance before unwrapping
-      const wrappedContract = new ethers.Contract(wrappedInfo.address, WETH9ABI, ethereum.provider);
-      const balance = await wrappedContract.balanceOf(address);
-      if (balance.lt(amountInWei)) {
-        throw fastify.httpErrors.badRequest(
-          `Insufficient ${wrappedInfo.symbol} balance. Available: ${utils.formatEther(balance)}, Required: ${amount}`,
-        );
-      }
-
-      // Build the unwrap transaction data
-      const iface = new utils.Interface(WETH9ABI);
-      const data = iface.encodeFunctionData('withdraw', [amountInWei]);
-
-      // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions(undefined, UNWRAP_GAS_LIMIT);
-
-      // Build unsigned transaction with gas parameters
-      const unsignedTx = {
-        to: wrappedInfo.address,
-        data: data,
-        nonce: nonce,
-        chainId: ethereum.chainId,
-        ...gasOptions, // Include gas parameters from prepareGasOptions
-      };
-
-      // Sign with Ledger
-      const signedTx = await ledger.signTransaction(address, unsignedTx as any);
-
-      // Send the signed transaction
-      const txResponse = await ethereum.provider.sendTransaction(signedTx);
-
-      // Wait for confirmation with timeout
-      outcome = await ethereum.handleTransactionConfirmation(txResponse);
-    } else {
-      // Regular wallet flow
-      let wallet: ethers.Wallet;
-      try {
-        wallet = await ethereum.getWallet(address);
-      } catch (err) {
-        logger.error(`Failed to load wallet: ${err.message}`);
-        throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
-      }
-
-      // Create wrapped token contract instance
-      const wrappedContract = new ethers.Contract(wrappedInfo.address, WETH9ABI, wallet);
-
-      // Check balance before unwrapping
-      const balance = await wrappedContract.balanceOf(wallet.address);
-      if (balance.lt(amountInWei)) {
-        throw fastify.httpErrors.badRequest(
-          `Insufficient ${wrappedInfo.symbol} balance. Available: ${utils.formatEther(balance)}, Required: ${amount}`,
-        );
-      }
-
-      // Prepare gas options for unwrap transaction
-      const gasOptions = await ethereum.prepareGasOptions(undefined, UNWRAP_GAS_LIMIT);
-      const params: any = {
-        ...gasOptions,
-        nonce: await ethereum.provider.getTransactionCount(wallet.address),
-      };
-
-      // Create transaction to call withdraw() function
-      const withdrawTx = await wrappedContract.populateTransaction.withdraw(amountInWei, params);
-      transaction = await wallet.sendTransaction(withdrawTx);
-      nonce = transaction.nonce;
-
-      // Wait for transaction confirmation with timeout
-      outcome = await ethereum.handleTransactionConfirmation(transaction);
+    // Check balance before unwrapping
+    const wrappedContract = new ethers.Contract(wrappedInfo.address, WETH9ABI, ethereum.provider);
+    const balance = await wrappedContract.balanceOf(address);
+    if (balance.lt(amountInWei)) {
+      throw fastify.httpErrors.badRequest(
+        `Insufficient ${wrappedInfo.symbol} balance. Available: ${utils.formatEther(balance)}, Required: ${amount}`,
+      );
     }
+
+    // Build the unwrap transaction data
+    const iface = new utils.Interface(WETH9ABI);
+    const data = iface.encodeFunctionData('withdraw', [amountInWei]);
+
+    // Get gas options using estimateGasPrice
+    const gasOptions = await ethereum.prepareGasOptions(undefined, UNWRAP_GAS_LIMIT);
+
+    // Signed through the signer seam: local key, Ledger, or refused for an external wallet.
+    const txResponse = await ethereum.sendTransactionForWallet(address, {
+      to: wrappedInfo.address,
+      data: data,
+      ...gasOptions, // Include gas parameters from prepareGasOptions
+    });
+
+    // Wait for confirmation with timeout
+    const outcome = await ethereum.handleTransactionConfirmation(txResponse);
 
     // A revert threw out of the confirmation helper as a 400 TRANSACTION_FAILED — it is never
     // reported as PENDING (receipt.status 0 and TransactionStatus.PENDING are the same number).
@@ -168,7 +107,7 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       signature: outcome.signature,
       status: TransactionStatus.CONFIRMED,
       data: {
-        nonce: nonce,
+        nonce: txResponse.nonce,
         fee: feeInEth,
         amount: bigNumberWithDecimalToStr(amountInWei, 18),
         wrappedAddress: wrappedInfo.address,
@@ -190,12 +129,10 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       throw fastify.httpErrors.requestTimeout(
         `Transaction timeout. The transaction may still be pending. Hash: ${error.transactionHash || 'unknown'}`,
       );
-    } else if (error.message.includes('rejected on Ledger')) {
-      throw fastify.httpErrors.badRequest('Transaction rejected on Ledger device');
-    } else if (error.message.includes('Ledger device is locked')) {
-      throw fastify.httpErrors.badRequest(error.message);
-    } else if (error.message.includes('Wrong app is open')) {
-      throw fastify.httpErrors.badRequest(error.message);
+    }
+    // HTTP errors (the seam's refusal of an external wallet, a Ledger rejection) as they are.
+    if (error.statusCode) {
+      throw error;
     }
 
     throw fastify.httpErrors.internalServerError(

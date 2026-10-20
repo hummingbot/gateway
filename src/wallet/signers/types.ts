@@ -63,8 +63,6 @@ export interface SolanaSigner {
   /** Base58 public key: the account whose signature this signer produces. */
   readonly address: string;
   signTransactionMessage(message: Uint8Array): Promise<SignResult<Uint8Array>>;
-  /** Off-chain message signing (POST /wallet/sign-message): ed25519 over the bytes. */
-  signMessage(message: Uint8Array): Promise<SignResult<Uint8Array>>;
 }
 
 /**
@@ -98,14 +96,12 @@ export interface EthereumSigner {
   readonly address: string;
   /** Returns the signed, RLP-serialized transaction (0x hex) for eth_sendRawTransaction. */
   signTransaction(tx: UnsignedEvmTransaction): Promise<SignResult<string>>;
-  /** EIP-191 personal_sign over the UTF-8 message; returns the 0x signature. */
-  signMessage(message: string): Promise<SignResult<string>>;
 }
 
 /**
- * How a backend makes a signer from a wallet record. Each signer kind registers one
- * factory per chain in `signerFactories` (src/wallet/signers/registry.ts); a new
- * backend adds an entry there and nothing else in the chokepoints.
+ * How a backend makes a signer from a wallet record: one factory per chain. Each signer
+ * kind has one entry in `signerBackends` (src/wallet/signers/registry.ts); a new backend
+ * adds its entry there and changes nothing in the chokepoints.
  */
 export interface SignerFactories {
   solana: (record: WalletRecord) => Promise<SolanaSigner>;

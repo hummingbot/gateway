@@ -1,7 +1,6 @@
 import { BigNumber, utils, ethers } from 'ethers';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
 import { MAX_UINT48 } from '../../../chains/ethereum/routes/approve';
 import { SwapExecuteResponseType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
@@ -23,12 +22,7 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
 
   const ethereum = await Ethereum.getInstance(network);
 
-  // Check if this is a hardware wallet
-  const isHardwareWallet = await ethereum.isHardwareWallet(walletAddress);
-
-  logger.info(
-    `Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}${isHardwareWallet ? ' with hardware wallet' : ''}`,
-  );
+  logger.info(`Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
 
   // Check and approve allowance if needed - Universal Router V2 uses Permit2
   if (inputToken.address !== ethereum.nativeTokenSymbol) {
@@ -113,72 +107,22 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
   let txHash: string | undefined;
 
   try {
-    if (isHardwareWallet) {
-      // Hardware wallet flow
-      logger.info('Hardware wallet detected. Building swap transaction for Ledger signing.');
+    // Get gas options with increased gas limit for Universal Router V2
+    const gasLimit = 500000; // Increased for Universal Router V2
+    const gasOptions = await ethereum.prepareGasOptions(undefined, gasLimit);
 
-      const ledger = new EthereumLedger();
-      const nonce = await ethereum.provider.getTransactionCount(walletAddress, 'latest');
+    // Signed through the signer seam: local key, Ledger, or refused for an external wallet.
+    const txResponse = await ethereum.sendTransactionForWallet(walletAddress, {
+      to: quote.methodParameters.to,
+      data: quote.methodParameters.calldata,
+      value: quote.methodParameters.value,
+      ...gasOptions, // Include gas parameters from prepareGasOptions (includes gasLimit)
+    });
+    txHash = txResponse.hash;
+    logger.info(`Transaction sent: ${txHash}`);
 
-      // Get gas options with increased gas limit for Universal Router V2
-      const gasLimit = 500000; // Increased for Universal Router V2
-      const gasOptions = await ethereum.prepareGasOptions(undefined, gasLimit);
-
-      // Build unsigned transaction with gas parameters
-      const unsignedTx = {
-        to: quote.methodParameters.to,
-        data: quote.methodParameters.calldata,
-        value: quote.methodParameters.value,
-        nonce: nonce,
-        chainId: ethereum.chainId,
-        ...gasOptions, // Include gas parameters from prepareGasOptions (includes gasLimit)
-      };
-
-      // Sign with Ledger
-      const signedTx = await ledger.signTransaction(walletAddress, unsignedTx as any);
-
-      // Send the signed transaction
-      const txResponse = await ethereum.provider.sendTransaction(signedTx);
-      txHash = txResponse.hash;
-      logger.info(`Transaction sent: ${txHash}`);
-
-      // Wait for confirmation with timeout
-      txReceipt = await ethereum.handleTransactionExecution(txResponse);
-    } else {
-      // Regular wallet flow
-      let wallet;
-      try {
-        wallet = await ethereum.getWallet(walletAddress);
-      } catch (err) {
-        logger.error(`Failed to load wallet: ${err.message}`);
-        throw httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
-      }
-
-      // Get gas options with increased gas limit for Universal Router V2
-      // Uniswap Universal Router V2 swaps typically use between 200k-500k gas
-      const gasLimit = 500000; // Increased for Universal Router V2
-      const gasOptions = await ethereum.prepareGasOptions(undefined, gasLimit);
-      logger.info(`Using gas limit: ${gasOptions.gasLimit?.toString() || gasLimit}`);
-
-      // Build transaction parameters with gas options
-      const txData = {
-        to: quote.methodParameters.to,
-        data: quote.methodParameters.calldata,
-        value: quote.methodParameters.value,
-        nonce: await ethereum.provider.getTransactionCount(walletAddress, 'latest'),
-        ...gasOptions, // Include gas parameters from prepareGasOptions (includes gasLimit)
-      };
-
-      logger.info(`Using gas options: ${JSON.stringify({ ...gasOptions, gasLimit: gasLimit.toString() })}`);
-
-      // Send transaction directly without relying on ethers' automatic gas estimation
-      const txResponse = await wallet.sendTransaction(txData);
-      txHash = txResponse.hash;
-      logger.info(`Transaction sent: ${txHash}`);
-
-      // Wait for transaction confirmation with timeout
-      txReceipt = await ethereum.handleTransactionExecution(txResponse);
-    }
+    // Wait for confirmation with timeout
+    txReceipt = await ethereum.handleTransactionExecution(txResponse);
 
     // Log transaction info if available
     if (txReceipt) {
@@ -244,12 +188,6 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
           `Common causes: expired Permit2 allowance, insufficient balance, slippage tolerance too tight, or quote expired.${extraContext} ` +
           'Please check token approvals and request a new quote.',
       );
-    } else if (error.message.includes('rejected on Ledger')) {
-      throw httpErrors.badRequest('Transaction rejected on Ledger device');
-    } else if (error.message.includes('Ledger device is locked')) {
-      throw httpErrors.badRequest(error.message);
-    } else if (error.message.includes('Wrong app is open')) {
-      throw httpErrors.badRequest(error.message);
     }
 
     // Re-throw if already a fastify error

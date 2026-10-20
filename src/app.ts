@@ -56,6 +56,7 @@ import {
 } from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
 import * as walletSchemas from './wallet/schemas';
+import { requestRoute } from './wallet/signers/registry';
 import { walletRoutes } from './wallet/wallet.routes';
 
 import { asciiLogo } from './index';
@@ -337,6 +338,13 @@ const configureGatewayServer = () => {
       }
     });
   }
+
+  // The route a request was sent to, for the signer seam: when it refuses to sign for an
+  // external wallet, it names the route's build twin. preHandler, so the store is entered
+  // after the body is parsed and holds for the handler.
+  server.addHook('preHandler', (request, _reply, done) => {
+    requestRoute.run({ method: request.method, url: request.routeOptions.url ?? request.url }, done);
+  });
 
   // `x-connectors` marks a field as belonging to particular venues — `configAddress` is
   // meteora's, `ammConfigIndex` is raydium's — and it was documentation only: passing the
