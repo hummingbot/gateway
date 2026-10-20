@@ -929,7 +929,12 @@ export class Solana {
    * @returns Map of token symbol to balance (only includes tokens in network's token list)
    */
   private async getBalancesFromRPC(address: string, tokens?: string[]): Promise<Record<string, number>> {
-    const publicKey = new PublicKey(address);
+    let publicKey: PublicKey;
+    try {
+      publicKey = new PublicKey(address);
+    } catch {
+      throw httpErrors.badRequest(`Invalid Solana address: ${address}`);
+    }
     const balances: Record<string, number> = {};
 
     // Treat empty array as if no tokens were specified
@@ -951,10 +956,9 @@ export class Solana {
     }
 
     // Fetch all token accounts
+    // A wallet with no token accounts goes through the same steps, so a requested token
+    // is reported under the same key whether or not the wallet holds it.
     const tokenAccounts = await this.fetchTokenAccounts(publicKey);
-    if (tokenAccounts.size === 0) {
-      return this.handleEmptyTokenAccounts(balances, effectiveSymbols);
-    }
 
     // Process tokens based on request type
     if (effectiveSymbols) {
@@ -1021,13 +1025,11 @@ export class Solana {
           const accountInfo = AccountLayout.decode(data);
           const mintAddress = accountInfo.mint.toString();
 
-          // Get decimals from token list (only process tokens in our list)
+          // Decimals come from the token list when the mint is listed. An unlisted mint is
+          // kept too, so a caller asking for it by address gets its balance, with decimals
+          // read from the mint (getTokenBalanceWithMintInfo). The default list-only view
+          // still leaves it out, since processTokenListOnly walks the list, not this map.
           const tokenInList = tokenList.find((t) => t.address === mintAddress);
-          if (!tokenInList) {
-            // Skip tokens not in our token list
-            logger.debug(`Skipping token ${mintAddress} - not in token list`);
-            continue;
-          }
 
           // Store in the same format as parsed accounts
           tokenAccountsMap.set(mintAddress, {
@@ -1035,8 +1037,8 @@ export class Solana {
               mint: accountInfo.mint,
               owner: accountInfo.owner,
               amount: accountInfo.amount,
-              decimals: tokenInList.decimals,
-              uiAmount: Number(accountInfo.amount) / Math.pow(10, tokenInList.decimals),
+              decimals: tokenInList?.decimals,
+              uiAmount: tokenInList ? Number(accountInfo.amount) / Math.pow(10, tokenInList.decimals) : undefined,
               isNative: accountInfo.isNative !== null && accountInfo.isNativeOption === 1,
               delegatedAmount: accountInfo.delegateOption ? accountInfo.delegatedAmount : BigInt(0),
               delegate: accountInfo.delegateOption ? accountInfo.delegate : null,
@@ -1135,25 +1137,6 @@ export class Solana {
   }
 
   /**
-   * Handle case when no token accounts are found
-   */
-  private handleEmptyTokenAccounts(
-    balances: Record<string, number>,
-    effectiveSymbols?: string[],
-  ): Record<string, number> {
-    const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
-    if (effectiveSymbols) {
-      // Set all requested tokens to 0
-      for (const symbol of effectiveSymbols) {
-        if (symbol.toUpperCase() !== 'SOL' && symbol !== SOL_NATIVE_MINT) {
-          balances[symbol] = 0;
-        }
-      }
-    }
-    return balances;
-  }
-
-  /**
    * Process specific tokens requested by the user
    */
   private async processSpecificTokens(
@@ -1167,11 +1150,19 @@ export class Solana {
     for (const symbol of symbols) {
       if (symbol.toUpperCase() === 'SOL' || symbol === SOL_NATIVE_MINT) continue;
 
-      // Try to find token by symbol
-      const tokenInfo = tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase());
+      // A listed token, asked for by symbol or by mint, is reported under its symbol so
+      // the caller can name and price it.
+      const tokenInfo = tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase() || t.address === symbol);
 
       if (tokenInfo) {
-        // Token found in list
+        // 'SOL' is the native balance's key. A listed token of another mint under that
+        // symbol would overwrite it, so the list is refused instead.
+        if (tokenInfo.symbol.toUpperCase() === 'SOL') {
+          throw new Error(
+            `Token list entry ${tokenInfo.address} has the symbol ${tokenInfo.symbol}, which names native SOL ` +
+              `(${SOL_NATIVE_MINT}); give it another symbol`,
+          );
+        }
         const balance = this.getTokenBalance(tokenAccounts.get(tokenInfo.address), tokenInfo.decimals);
         balances[tokenInfo.symbol] = balance;
       } else if (this.isValidSolanaAddress(symbol)) {
@@ -1258,24 +1249,23 @@ export class Solana {
    * Get token balance with mint info lookup
    */
   private async getTokenBalanceWithMintInfo(tokenAccount: TokenAccount, mintAddress: string): Promise<number> {
-    try {
-      const programId = tokenAccount.value.account.owner;
-      const mintInfo = await Promise.race([
-        getMint(this.connection, new PublicKey(mintAddress), undefined, programId),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Mint info timeout')), 1000)),
-      ]);
-
-      // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
-      return (
-        tokenAccount.parsedAccount.uiAmount ??
-        Number(tokenAccount.parsedAccount.amount) / Math.pow(10, mintInfo.decimals)
-      );
-    } catch (error) {
-      // Use default 9 decimals if mint info fails
-      logger.debug(`Failed to get mint info for ${mintAddress}, using default decimals`);
-      // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
-      return tokenAccount.parsedAccount.uiAmount ?? Number(tokenAccount.parsedAccount.amount) / Math.pow(10, 9);
+    if (tokenAccount.parsedAccount.uiAmount !== undefined) {
+      return tokenAccount.parsedAccount.uiAmount;
     }
+    // Read the mint through the token program that owns the account (legacy or
+    // Token-2022). Guessing the decimals would report a wrong balance as if it were right.
+    const programId: PublicKey = tokenAccount.value.account.owner;
+    let mintInfo: Awaited<ReturnType<typeof getMint>>;
+    try {
+      mintInfo = await getMint(this.connection, new PublicKey(mintAddress), undefined, programId);
+    } catch (error) {
+      // A rate limit stays a 429, so the route reports it as one.
+      if ((error as any).statusCode === 429) throw error;
+      throw new Error(
+        `Failed to read mint ${mintAddress} through token program ${programId.toBase58()}: ${(error as Error).message}`,
+      );
+    }
+    return Number(tokenAccount.parsedAccount.amount) / Math.pow(10, mintInfo.decimals);
   }
 
   /**
@@ -2309,8 +2299,8 @@ export class Solana {
     accountSol: number;
   }> {
     const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
-    const isBaseSol = baseTokenInfo.symbol === 'SOL' || baseTokenInfo.address === SOL_NATIVE_MINT;
-    const isQuoteSol = quoteTokenInfo.symbol === 'SOL' || quoteTokenInfo.address === SOL_NATIVE_MINT;
+    const isBaseSol = baseTokenInfo.address === SOL_NATIVE_MINT;
+    const isQuoteSol = quoteTokenInfo.address === SOL_NATIVE_MINT;
 
     // Build unique token list for extraction
     const tokensToExtract: string[] = [];

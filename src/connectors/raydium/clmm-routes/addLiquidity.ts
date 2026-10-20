@@ -88,9 +88,8 @@ export async function addLiquidity(
     const tokenAddresses = [];
     const baseTokenAddress = baseToken?.address || poolInfo.mintA.address;
     const quoteTokenAddress = quoteToken?.address || poolInfo.mintB.address;
-    const isBaseSol = baseToken?.symbol === 'SOL' || baseTokenAddress === 'So11111111111111111111111111111111111111112';
-    const isQuoteSol =
-      quoteToken?.symbol === 'SOL' || quoteTokenAddress === 'So11111111111111111111111111111111111111112';
+    const isBaseSol = baseTokenAddress === 'So11111111111111111111111111111111111111112';
+    const isQuoteSol = quoteTokenAddress === 'So11111111111111111111111111111111111111112';
 
     // Always get SOL balance change first
     tokenAddresses.push('So11111111111111111111111111111111111111112');

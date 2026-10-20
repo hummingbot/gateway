@@ -29,6 +29,9 @@ import {
   StatusRequestSchema,
   StatusRequestType,
   StatusResponseSchema,
+  TransactionsRequestSchema,
+  TransactionsRequestType,
+  TransactionsResponseSchema,
   UnwrapRequestSchema,
   UnwrapRequestType,
   WrapRequestSchema,
@@ -55,6 +58,7 @@ import { getSolanaBalances } from './solana/routes/balances';
 import { estimateGasSolana } from './solana/routes/estimate-gas';
 import { pollSolanaTransaction } from './solana/routes/poll';
 import { getSolanaStatus } from './solana/routes/status';
+import { getSolanaTransactions } from './solana/routes/transactions';
 import { unwrapSolana } from './solana/routes/unwrap';
 import { wrapSolana } from './solana/routes/wrap';
 import { getSolanaChainConfig, getSolanaNetworkConfig, networks as solanaNetworks } from './solana/solana.config';
@@ -68,6 +72,18 @@ interface ChainOps {
   poll: (fastify: FastifyInstance, network: string, signature: string) => Promise<any>;
   wrap: (fastify: FastifyInstance, network: string, address: string, amount: string) => Promise<any>;
   unwrap: (fastify: FastifyInstance, network: string, address: string, amount?: string) => Promise<any>;
+  /**
+   * A wallet's recent transactions, each named as what it did. Optional: a chain
+   * without a parser answers 501 rather than the path not existing.
+   */
+  transactions?: (
+    fastify: FastifyInstance,
+    network: string,
+    address: string,
+    limit: number,
+    before?: string,
+    includeOther?: boolean,
+  ) => Promise<any>;
   /** EVM chains require an explicit unwrap amount; Solana unwraps the full balance. */
   unwrapRequiresAmount: boolean;
 }
@@ -83,6 +99,8 @@ const CHAINS: Record<string, ChainOps> = {
     wrap: (fastify, network, address, amount) => wrapSolana(fastify, network, address, amount),
     unwrap: (fastify, network, address, amount) => unwrapSolana(fastify, network, address, amount),
     unwrapRequiresAmount: false,
+    transactions: (fastify, network, address, limit, before, includeOther) =>
+      getSolanaTransactions(fastify, network, address, limit, before, includeOther),
   },
   ethereum: {
     networks: ethereumNetworks,
@@ -177,6 +195,38 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const { ops, network } = resolveChain(request.params.chain, request.query.network);
       return ops.estimateGas(fastify, network);
+    },
+  );
+
+  fastify.get<{ Params: ChainParams; Querystring: TransactionsRequestType }>(
+    '/:chain/transactions',
+    {
+      schema: {
+        description:
+          "A wallet's recent transactions, newest first, each named as what it did — swap, open_position, " +
+          'add_liquidity, remove_liquidity, collect_fees, close_position, deposit, withdraw — with what the ' +
+          "wallet's own balances did. Page with `before` = the last page's cursor. Solana mainnet-beta only. " +
+          "Reads the wallet address's own signature history, so a transfer into an existing token account " +
+          'that does not name the wallet is not listed.',
+        tags: ['/chains'],
+        params: ChainParamsSchema,
+        querystring: TransactionsRequestSchema,
+        response: { 200: TransactionsResponseSchema },
+      },
+    },
+    async (request) => {
+      const { ops, network } = resolveChain(request.params.chain, request.query.network);
+      if (!ops.transactions) {
+        throw httpErrors.createError(501, `Transaction parsing is not available for ${request.params.chain}`);
+      }
+      return ops.transactions(
+        fastify,
+        network,
+        request.query.address,
+        request.query.limit ?? 25,
+        request.query.before,
+        request.query.includeOther,
+      );
     },
   );
 
