@@ -26,11 +26,9 @@ import {
   ListStoreEntry,
   listWalletRecords,
   localKeyFilePath,
-  readListStore,
   walletPath,
   WALLET_CHAINS,
   updateListStore,
-  writeListStore,
 } from './signers/wallet-store';
 
 // Validate chain name against known chains to prevent injection
@@ -127,11 +125,12 @@ export async function addExternalWallet(
   const address = canonicalAddress(chain, addressInput);
   await assertNotRegisteredAs(chain, address, 'external');
 
-  const entries = await readListStore(chain, 'external');
-  if (!entries.some((e) => e.address === address)) {
-    entries.push({ address, addedAt: new Date().toISOString() });
-    await writeListStore(chain, 'external', entries);
-  }
+  await updateListStore(chain, 'external', async (entries) => {
+    if (!entries.some((e) => e.address === address)) {
+      entries.push({ address, addedAt: new Date().toISOString() });
+    }
+    return { entries, result: undefined };
+  });
   if (setDefault) {
     updateDefaultWallet(fastify, chain, address);
   }
@@ -227,14 +226,17 @@ export interface HardwareWalletData {
   addedAt: string;
 }
 
-export async function getHardwareWallets(chain: string): Promise<HardwareWalletData[]> {
-  return (await readListStore(asWalletChain(chain), 'hardware')) as HardwareWalletData[];
-}
-
-export async function saveHardwareWallets(chain: string, wallets: HardwareWalletData[]): Promise<void> {
+/**
+ * Add a hardware wallet to its chain's list, or replace its entry when the address is
+ * already there. Returns whether an entry was replaced.
+ */
+export async function upsertHardwareWallet(chain: string, wallet: HardwareWalletData): Promise<boolean> {
   const walletChain = asWalletChain(chain);
-  for (const wallet of wallets) {
-    await assertNotRegisteredAs(walletChain, wallet.address, 'hardware');
-  }
-  await writeListStore(walletChain, 'hardware', wallets);
+  await assertNotRegisteredAs(walletChain, wallet.address, 'hardware');
+  return updateListStore(walletChain, 'hardware', async (entries) => {
+    const index = entries.findIndex((e) => e.address === wallet.address);
+    if (index >= 0) entries[index] = wallet;
+    else entries.push(wallet);
+    return { entries, result: index >= 0 };
+  });
 }

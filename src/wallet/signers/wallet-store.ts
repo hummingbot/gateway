@@ -201,7 +201,7 @@ export async function getWalletRecord(chainName: string, address: string): Promi
   if (!record) {
     throw httpErrors.notFound(
       `Wallet ${address} is not registered in Gateway for ${chainName}. Add it with POST /wallet/add, ` +
-        'POST /wallet/add-hardware or POST /wallet/add-external.',
+        'POST /wallet/add-hardware, POST /wallet/add-external or POST /wallet/add-privy.',
     );
   }
   return record;
