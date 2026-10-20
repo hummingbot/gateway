@@ -213,6 +213,55 @@
           "quoteTokenAmountRemoved"
         ]
       },
+      "AmmCollectFeesResponse": {
+        "type": "object",
+        "properties": {
+          "signature": {
+            "type": "string"
+          },
+          "status": {
+            "description": "TransactionStatus enum value",
+            "type": "number"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AmmCollectFeesResponseData"
+          }
+        },
+        "required": [
+          "signature",
+          "status"
+        ]
+      },
+      "AmmCollectFeesResponseData": {
+        "type": "object",
+        "properties": {
+          "fee": {
+            "format": "decimal",
+            "type": "string"
+          },
+          "poolAddress": {
+            "description": "Pool this operation acted on",
+            "type": "string"
+          },
+          "positionAddress": {
+            "description": "Position this operation acted on",
+            "type": "string"
+          },
+          "baseFeeAmountCollected": {
+            "format": "decimal",
+            "type": "string"
+          },
+          "quoteFeeAmountCollected": {
+            "format": "decimal",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fee",
+          "baseFeeAmountCollected",
+          "quoteFeeAmountCollected"
+        ]
+      },
       "AmmCreatePoolResponse": {
         "type": "object",
         "properties": {
@@ -595,6 +644,38 @@
             "items": {
               "type": "string"
             }
+          },
+          "feePayer": {
+            "description": "Who pays the transaction fee and signs its first slot (base58), when it is not walletAddress. The wallet still signs, as the signer its instructions name. Default: walletAddress.",
+            "type": "string"
+          },
+          "memo": {
+            "maxLength": 128,
+            "description": "A signer-less SPL Memo appended to the transaction (at most 128 bytes), e.g. \"app:ref=<id>\".",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Compute-unit price baked into the built transaction: normal (the configured level), high, or urgent. Default: normal.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "normal"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "high"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "urgent"
+                ]
+              }
+            ]
           }
         },
         "required": [
@@ -2574,6 +2655,216 @@
           "percentageToRemove"
         ]
       },
+      "AmmCollectFeesRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "connector": {
+            "description": "AMM connector",
+            "enum": [
+              "meteora"
+            ],
+            "type": "string",
+            "example": "meteora"
+          },
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "walletAddress": {
+            "description": "Wallet address. Defaults to the chain's configured default wallet.",
+            "type": "string"
+          },
+          "poolAddress": {
+            "description": "Pool address",
+            "type": "string"
+          },
+          "positionAddress": {
+            "description": "The position whose fees to collect. List positions with position-info or positions-owned.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connector",
+          "chainNetwork",
+          "poolAddress",
+          "positionAddress"
+        ]
+      },
+      "AmmBuildCollectFeesRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "connector": {
+            "description": "AMM connector",
+            "enum": [
+              "meteora"
+            ],
+            "type": "string",
+            "example": "meteora"
+          },
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "walletAddress": {
+            "description": "Wallet address. Defaults to the chain's configured default wallet.",
+            "type": "string"
+          },
+          "poolAddress": {
+            "description": "Pool address",
+            "type": "string"
+          },
+          "positionAddress": {
+            "description": "The position whose fees to collect. List positions with position-info or positions-owned.",
+            "type": "string"
+          },
+          "extraInstructions": {
+            "description": "Instructions appended to the transaction after the operation’s own, before the ephemeral keypairs partial-sign — so they are covered by every signature. Only the wallet may be named as a signer. Account addresses are literal: an instruction cannot reference an account the build itself creates (e.g. a position keypair generated during build-open), because the caller cannot know that address before the response. Compose atomically only when every account is known pre-build; otherwise follow up with /chains/{chain}/build-transaction after the first transaction confirms, reading the new address from extraSigners.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "programId": {
+                  "description": "Program to invoke (base58 address)",
+                  "type": "string"
+                },
+                "accounts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Account address (base58)",
+                        "type": "string"
+                      },
+                      "isSigner": {
+                        "type": "boolean"
+                      },
+                      "isWritable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "isSigner",
+                      "isWritable"
+                    ]
+                  }
+                },
+                "data": {
+                  "description": "Instruction data, base64-encoded",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "programId",
+                "accounts",
+                "data"
+              ]
+            }
+          },
+          "feePayer": {
+            "description": "Who pays the transaction fee and signs its first slot (base58), when it is not walletAddress. The wallet still signs as the owner of what the operation moves. Default: walletAddress.",
+            "type": "string"
+          },
+          "format": {
+            "description": "transaction (default): a compiled transaction, ephemeral keypairs partial-signed. instructions: the operation's raw instructions, lookup-table addresses, compute budget and the ephemeral keypairs, for a caller that wraps them (a smart wallet's execute instruction) and compiles its own transaction.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "transaction"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "instructions"
+                ]
+              }
+            ]
+          },
+          "references": {
+            "maxItems": 3,
+            "description": "Up to 3 Solana Pay references (base58): read-only, non-signer accounts attached to the transaction (on a 0-lamport self-transfer by the fee payer), so it can be found with getSignaturesForAddress(reference) once it lands.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "memo": {
+            "maxLength": 128,
+            "description": "A signer-less SPL Memo appended to the transaction (at most 128 bytes), e.g. \"app:ref=<id>\" to attribute a transaction on chain.",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Compute-unit price baked into the built transaction: normal (the configured level), high, or urgent. Raises what the transaction pays to land, up to the network's configured maximum — where that ceiling is low, high and urgent can cost the same. It cannot make an invalid transaction valid. Default: normal.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "normal"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "high"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "urgent"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "connector",
+          "chainNetwork",
+          "poolAddress",
+          "positionAddress"
+        ]
+      },
       "AmmPoolInfoRequest": {
         "additionalProperties": false,
         "type": "object",
@@ -3122,6 +3413,172 @@
               "mint",
               "symbol"
             ]
+          },
+          "followingTransactions": {
+            "description": "An operation of several transactions: the ones after this one, in the order they are submitted. Each has its own extraSigners for /chains/{chain}/submit. They were not simulated (they run against state the transactions before them create), so submit each only after the one before it confirms; if one fails, stop. Absent when the operation is one transaction.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transaction": {
+                  "description": "Base64-serialized transaction, ready for the wallet to sign. Ephemeral keypairs (e.g. a position NFT mint) have already partial-signed; the fee-payer slot is empty. Sign it AS-IS — any mutation invalidates the ephemeral signatures. Absent with format \"instructions\".",
+                  "type": "string"
+                },
+                "feePayer": {
+                  "description": "Who must sign the fee-payer slot (base58): walletAddress, or the feePayer the request named. With a separate fee payer the wallet signs too, as the owner of what the operation moves.",
+                  "type": "string"
+                },
+                "recentBlockhash": {
+                  "description": "Blockhash embedded in the transaction",
+                  "type": "string"
+                },
+                "lastValidBlockHeight": {
+                  "description": "The transaction is valid until this block height (~60-90s). Signing after expiry fails at submit; call build again for a fresh transaction.",
+                  "type": "number"
+                },
+                "currentBlockHeight": {
+                  "description": "Block height when the transaction was built, fetched alongside the blockhash — so a client can render an expiry countdown ((lastValidBlockHeight − currentBlockHeight) blocks, ~0.4s each) without an RPC call of its own.",
+                  "type": "number"
+                },
+                "extraSigners": {
+                  "description": "Ephemeral signatures already applied to the transaction. Pass these to /chains/{chain}/submit so it can re-merge them in case the signer did not preserve them. For a position open, the position account / NFT mint address is among these pubkeys. The keypairs themselves are discarded after the build — Gateway stores nothing.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "signature": {
+                        "description": "Its signature over the message, base64",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "signature"
+                    ]
+                  }
+                },
+                "instructions": {
+                  "description": "format \"instructions\": the operation's instructions, in order, compute-budget ones excluded. The caller compiles its own transaction around them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "programId": {
+                        "description": "Program to invoke (base58 address)",
+                        "type": "string"
+                      },
+                      "accounts": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "pubkey": {
+                              "description": "Account address (base58)",
+                              "type": "string"
+                            },
+                            "isSigner": {
+                              "type": "boolean"
+                            },
+                            "isWritable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "pubkey",
+                            "isSigner",
+                            "isWritable"
+                          ]
+                        }
+                      },
+                      "data": {
+                        "description": "Instruction data, base64-encoded",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "programId",
+                      "accounts",
+                      "data"
+                    ]
+                  }
+                },
+                "addressLookupTableAddresses": {
+                  "description": "format \"instructions\": lookup tables the instructions were compiled against (base58)",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "computeUnits": {
+                  "description": "format \"instructions\": the compute limit the transaction would have set",
+                  "type": "integer"
+                },
+                "computeUnitPriceMicroLamports": {
+                  "description": "format \"instructions\": the compute-unit price, in micro-lamports",
+                  "type": "integer"
+                },
+                "ephemeralSigners": {
+                  "description": "format \"instructions\": the keypairs made for this build (a new mint, a position account). Signatures would not survive the caller rebuilding the message, so the keys are handed over; nothing else holds them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "secretKey": {
+                        "description": "Its secret key, base58",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "secretKey"
+                    ]
+                  }
+                },
+                "platformFee": {
+                  "description": "The platform fee this transaction carries, echoed when the build was asked for one (platformFee in the request); absent otherwise.",
+                  "type": "object",
+                  "properties": {
+                    "bps": {
+                      "description": "the fee asked, in basis points",
+                      "type": "integer"
+                    },
+                    "amount": {
+                      "description": "the fee the transaction pays, in UI units of mint as a decimal string (rounded down as built)",
+                      "type": "string"
+                    },
+                    "mint": {
+                      "description": "the fee mint (wSOL, So11111111111111111111111111111111111111112, for SOL)",
+                      "type": "string"
+                    },
+                    "symbol": {
+                      "description": "the fee mint's symbol in Gateway's token list, or the mint if unlisted",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bps",
+                    "amount",
+                    "mint",
+                    "symbol"
+                  ]
+                }
+              },
+              "required": [
+                "feePayer",
+                "recentBlockhash",
+                "lastValidBlockHeight",
+                "currentBlockHeight",
+                "extraSigners"
+              ]
+            }
           },
           "poolAddress": {
             "description": "The address this transaction will create the pool at",
@@ -4844,6 +5301,172 @@
               "symbol"
             ]
           },
+          "followingTransactions": {
+            "description": "An operation of several transactions: the ones after this one, in the order they are submitted. Each has its own extraSigners for /chains/{chain}/submit. They were not simulated (they run against state the transactions before them create), so submit each only after the one before it confirms; if one fails, stop. Absent when the operation is one transaction.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transaction": {
+                  "description": "Base64-serialized transaction, ready for the wallet to sign. Ephemeral keypairs (e.g. a position NFT mint) have already partial-signed; the fee-payer slot is empty. Sign it AS-IS — any mutation invalidates the ephemeral signatures. Absent with format \"instructions\".",
+                  "type": "string"
+                },
+                "feePayer": {
+                  "description": "Who must sign the fee-payer slot (base58): walletAddress, or the feePayer the request named. With a separate fee payer the wallet signs too, as the owner of what the operation moves.",
+                  "type": "string"
+                },
+                "recentBlockhash": {
+                  "description": "Blockhash embedded in the transaction",
+                  "type": "string"
+                },
+                "lastValidBlockHeight": {
+                  "description": "The transaction is valid until this block height (~60-90s). Signing after expiry fails at submit; call build again for a fresh transaction.",
+                  "type": "number"
+                },
+                "currentBlockHeight": {
+                  "description": "Block height when the transaction was built, fetched alongside the blockhash — so a client can render an expiry countdown ((lastValidBlockHeight − currentBlockHeight) blocks, ~0.4s each) without an RPC call of its own.",
+                  "type": "number"
+                },
+                "extraSigners": {
+                  "description": "Ephemeral signatures already applied to the transaction. Pass these to /chains/{chain}/submit so it can re-merge them in case the signer did not preserve them. For a position open, the position account / NFT mint address is among these pubkeys. The keypairs themselves are discarded after the build — Gateway stores nothing.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "signature": {
+                        "description": "Its signature over the message, base64",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "signature"
+                    ]
+                  }
+                },
+                "instructions": {
+                  "description": "format \"instructions\": the operation's instructions, in order, compute-budget ones excluded. The caller compiles its own transaction around them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "programId": {
+                        "description": "Program to invoke (base58 address)",
+                        "type": "string"
+                      },
+                      "accounts": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "pubkey": {
+                              "description": "Account address (base58)",
+                              "type": "string"
+                            },
+                            "isSigner": {
+                              "type": "boolean"
+                            },
+                            "isWritable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "pubkey",
+                            "isSigner",
+                            "isWritable"
+                          ]
+                        }
+                      },
+                      "data": {
+                        "description": "Instruction data, base64-encoded",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "programId",
+                      "accounts",
+                      "data"
+                    ]
+                  }
+                },
+                "addressLookupTableAddresses": {
+                  "description": "format \"instructions\": lookup tables the instructions were compiled against (base58)",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "computeUnits": {
+                  "description": "format \"instructions\": the compute limit the transaction would have set",
+                  "type": "integer"
+                },
+                "computeUnitPriceMicroLamports": {
+                  "description": "format \"instructions\": the compute-unit price, in micro-lamports",
+                  "type": "integer"
+                },
+                "ephemeralSigners": {
+                  "description": "format \"instructions\": the keypairs made for this build (a new mint, a position account). Signatures would not survive the caller rebuilding the message, so the keys are handed over; nothing else holds them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "secretKey": {
+                        "description": "Its secret key, base58",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "secretKey"
+                    ]
+                  }
+                },
+                "platformFee": {
+                  "description": "The platform fee this transaction carries, echoed when the build was asked for one (platformFee in the request); absent otherwise.",
+                  "type": "object",
+                  "properties": {
+                    "bps": {
+                      "description": "the fee asked, in basis points",
+                      "type": "integer"
+                    },
+                    "amount": {
+                      "description": "the fee the transaction pays, in UI units of mint as a decimal string (rounded down as built)",
+                      "type": "string"
+                    },
+                    "mint": {
+                      "description": "the fee mint (wSOL, So11111111111111111111111111111111111111112, for SOL)",
+                      "type": "string"
+                    },
+                    "symbol": {
+                      "description": "the fee mint's symbol in Gateway's token list, or the mint if unlisted",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bps",
+                    "amount",
+                    "mint",
+                    "symbol"
+                  ]
+                }
+              },
+              "required": [
+                "feePayer",
+                "recentBlockhash",
+                "lastValidBlockHeight",
+                "currentBlockHeight",
+                "extraSigners"
+              ]
+            }
+          },
           "poolAddress": {
             "description": "The address this transaction will create the pool at",
             "type": "string"
@@ -5843,6 +6466,172 @@
               "symbol"
             ]
           },
+          "followingTransactions": {
+            "description": "An operation of several transactions: the ones after this one, in the order they are submitted. Each has its own extraSigners for /chains/{chain}/submit. They were not simulated (they run against state the transactions before them create), so submit each only after the one before it confirms; if one fails, stop. Absent when the operation is one transaction.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transaction": {
+                  "description": "Base64-serialized transaction, ready for the wallet to sign. Ephemeral keypairs (e.g. a position NFT mint) have already partial-signed; the fee-payer slot is empty. Sign it AS-IS — any mutation invalidates the ephemeral signatures. Absent with format \"instructions\".",
+                  "type": "string"
+                },
+                "feePayer": {
+                  "description": "Who must sign the fee-payer slot (base58): walletAddress, or the feePayer the request named. With a separate fee payer the wallet signs too, as the owner of what the operation moves.",
+                  "type": "string"
+                },
+                "recentBlockhash": {
+                  "description": "Blockhash embedded in the transaction",
+                  "type": "string"
+                },
+                "lastValidBlockHeight": {
+                  "description": "The transaction is valid until this block height (~60-90s). Signing after expiry fails at submit; call build again for a fresh transaction.",
+                  "type": "number"
+                },
+                "currentBlockHeight": {
+                  "description": "Block height when the transaction was built, fetched alongside the blockhash — so a client can render an expiry countdown ((lastValidBlockHeight − currentBlockHeight) blocks, ~0.4s each) without an RPC call of its own.",
+                  "type": "number"
+                },
+                "extraSigners": {
+                  "description": "Ephemeral signatures already applied to the transaction. Pass these to /chains/{chain}/submit so it can re-merge them in case the signer did not preserve them. For a position open, the position account / NFT mint address is among these pubkeys. The keypairs themselves are discarded after the build — Gateway stores nothing.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "signature": {
+                        "description": "Its signature over the message, base64",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "signature"
+                    ]
+                  }
+                },
+                "instructions": {
+                  "description": "format \"instructions\": the operation's instructions, in order, compute-budget ones excluded. The caller compiles its own transaction around them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "programId": {
+                        "description": "Program to invoke (base58 address)",
+                        "type": "string"
+                      },
+                      "accounts": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "pubkey": {
+                              "description": "Account address (base58)",
+                              "type": "string"
+                            },
+                            "isSigner": {
+                              "type": "boolean"
+                            },
+                            "isWritable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "pubkey",
+                            "isSigner",
+                            "isWritable"
+                          ]
+                        }
+                      },
+                      "data": {
+                        "description": "Instruction data, base64-encoded",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "programId",
+                      "accounts",
+                      "data"
+                    ]
+                  }
+                },
+                "addressLookupTableAddresses": {
+                  "description": "format \"instructions\": lookup tables the instructions were compiled against (base58)",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "computeUnits": {
+                  "description": "format \"instructions\": the compute limit the transaction would have set",
+                  "type": "integer"
+                },
+                "computeUnitPriceMicroLamports": {
+                  "description": "format \"instructions\": the compute-unit price, in micro-lamports",
+                  "type": "integer"
+                },
+                "ephemeralSigners": {
+                  "description": "format \"instructions\": the keypairs made for this build (a new mint, a position account). Signatures would not survive the caller rebuilding the message, so the keys are handed over; nothing else holds them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "secretKey": {
+                        "description": "Its secret key, base58",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "secretKey"
+                    ]
+                  }
+                },
+                "platformFee": {
+                  "description": "The platform fee this transaction carries, echoed when the build was asked for one (platformFee in the request); absent otherwise.",
+                  "type": "object",
+                  "properties": {
+                    "bps": {
+                      "description": "the fee asked, in basis points",
+                      "type": "integer"
+                    },
+                    "amount": {
+                      "description": "the fee the transaction pays, in UI units of mint as a decimal string (rounded down as built)",
+                      "type": "string"
+                    },
+                    "mint": {
+                      "description": "the fee mint (wSOL, So11111111111111111111111111111111111111112, for SOL)",
+                      "type": "string"
+                    },
+                    "symbol": {
+                      "description": "the fee mint's symbol in Gateway's token list, or the mint if unlisted",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bps",
+                    "amount",
+                    "mint",
+                    "symbol"
+                  ]
+                }
+              },
+              "required": [
+                "feePayer",
+                "recentBlockhash",
+                "lastValidBlockHeight",
+                "currentBlockHeight",
+                "extraSigners"
+              ]
+            }
+          },
           "quote": {
             "$ref": "#/components/schemas/RouterQuoteSwapResponse"
           }
@@ -6186,6 +6975,172 @@
               "mint",
               "symbol"
             ]
+          },
+          "followingTransactions": {
+            "description": "An operation of several transactions: the ones after this one, in the order they are submitted. Each has its own extraSigners for /chains/{chain}/submit. They were not simulated (they run against state the transactions before them create), so submit each only after the one before it confirms; if one fails, stop. Absent when the operation is one transaction.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transaction": {
+                  "description": "Base64-serialized transaction, ready for the wallet to sign. Ephemeral keypairs (e.g. a position NFT mint) have already partial-signed; the fee-payer slot is empty. Sign it AS-IS — any mutation invalidates the ephemeral signatures. Absent with format \"instructions\".",
+                  "type": "string"
+                },
+                "feePayer": {
+                  "description": "Who must sign the fee-payer slot (base58): walletAddress, or the feePayer the request named. With a separate fee payer the wallet signs too, as the owner of what the operation moves.",
+                  "type": "string"
+                },
+                "recentBlockhash": {
+                  "description": "Blockhash embedded in the transaction",
+                  "type": "string"
+                },
+                "lastValidBlockHeight": {
+                  "description": "The transaction is valid until this block height (~60-90s). Signing after expiry fails at submit; call build again for a fresh transaction.",
+                  "type": "number"
+                },
+                "currentBlockHeight": {
+                  "description": "Block height when the transaction was built, fetched alongside the blockhash — so a client can render an expiry countdown ((lastValidBlockHeight − currentBlockHeight) blocks, ~0.4s each) without an RPC call of its own.",
+                  "type": "number"
+                },
+                "extraSigners": {
+                  "description": "Ephemeral signatures already applied to the transaction. Pass these to /chains/{chain}/submit so it can re-merge them in case the signer did not preserve them. For a position open, the position account / NFT mint address is among these pubkeys. The keypairs themselves are discarded after the build — Gateway stores nothing.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "signature": {
+                        "description": "Its signature over the message, base64",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "signature"
+                    ]
+                  }
+                },
+                "instructions": {
+                  "description": "format \"instructions\": the operation's instructions, in order, compute-budget ones excluded. The caller compiles its own transaction around them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "programId": {
+                        "description": "Program to invoke (base58 address)",
+                        "type": "string"
+                      },
+                      "accounts": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "pubkey": {
+                              "description": "Account address (base58)",
+                              "type": "string"
+                            },
+                            "isSigner": {
+                              "type": "boolean"
+                            },
+                            "isWritable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "pubkey",
+                            "isSigner",
+                            "isWritable"
+                          ]
+                        }
+                      },
+                      "data": {
+                        "description": "Instruction data, base64-encoded",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "programId",
+                      "accounts",
+                      "data"
+                    ]
+                  }
+                },
+                "addressLookupTableAddresses": {
+                  "description": "format \"instructions\": lookup tables the instructions were compiled against (base58)",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "computeUnits": {
+                  "description": "format \"instructions\": the compute limit the transaction would have set",
+                  "type": "integer"
+                },
+                "computeUnitPriceMicroLamports": {
+                  "description": "format \"instructions\": the compute-unit price, in micro-lamports",
+                  "type": "integer"
+                },
+                "ephemeralSigners": {
+                  "description": "format \"instructions\": the keypairs made for this build (a new mint, a position account). Signatures would not survive the caller rebuilding the message, so the keys are handed over; nothing else holds them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "secretKey": {
+                        "description": "Its secret key, base58",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "secretKey"
+                    ]
+                  }
+                },
+                "platformFee": {
+                  "description": "The platform fee this transaction carries, echoed when the build was asked for one (platformFee in the request); absent otherwise.",
+                  "type": "object",
+                  "properties": {
+                    "bps": {
+                      "description": "the fee asked, in basis points",
+                      "type": "integer"
+                    },
+                    "amount": {
+                      "description": "the fee the transaction pays, in UI units of mint as a decimal string (rounded down as built)",
+                      "type": "string"
+                    },
+                    "mint": {
+                      "description": "the fee mint (wSOL, So11111111111111111111111111111111111111112, for SOL)",
+                      "type": "string"
+                    },
+                    "symbol": {
+                      "description": "the fee mint's symbol in Gateway's token list, or the mint if unlisted",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bps",
+                    "amount",
+                    "mint",
+                    "symbol"
+                  ]
+                }
+              },
+              "required": [
+                "feePayer",
+                "recentBlockhash",
+                "lastValidBlockHeight",
+                "currentBlockHeight",
+                "extraSigners"
+              ]
+            }
           }
         },
         "required": [
@@ -6474,6 +7429,13 @@
             ],
             "type": "number"
           },
+          "lookupTableAddress": {
+            "description": "pump: the address lookup table a create with devBuyAmount compiles against, instead of the connector's pump.lookupTableAddress. With neither, the build is two transactions: the first makes a lookup table (the wallet its authority) holding the create's accounts, the second is the create and the dev buy, atomic, in followingTransactions — submit it after the first confirms.",
+            "x-connectors": [
+              "pump"
+            ],
+            "type": "string"
+          },
           "configAddress": {
             "description": "meteora: the DBC config to launch from, instead of the connector's configured configAddress (so two launchers on one Gateway can each launch under their own terms)",
             "x-connectors": [
@@ -6598,6 +7560,13 @@
               "raydium"
             ],
             "type": "number"
+          },
+          "lookupTableAddress": {
+            "description": "pump: the address lookup table a create with devBuyAmount compiles against, instead of the connector's pump.lookupTableAddress. With neither, the build is two transactions: the first makes a lookup table (the wallet its authority) holding the create's accounts, the second is the create and the dev buy, atomic, in followingTransactions — submit it after the first confirms.",
+            "x-connectors": [
+              "pump"
+            ],
+            "type": "string"
           },
           "configAddress": {
             "description": "meteora: the DBC config to launch from, instead of the connector's configured configAddress (so two launchers on one Gateway can each launch under their own terms)",
@@ -6878,6 +7847,172 @@
               "mint",
               "symbol"
             ]
+          },
+          "followingTransactions": {
+            "description": "An operation of several transactions: the ones after this one, in the order they are submitted. Each has its own extraSigners for /chains/{chain}/submit. They were not simulated (they run against state the transactions before them create), so submit each only after the one before it confirms; if one fails, stop. Absent when the operation is one transaction.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transaction": {
+                  "description": "Base64-serialized transaction, ready for the wallet to sign. Ephemeral keypairs (e.g. a position NFT mint) have already partial-signed; the fee-payer slot is empty. Sign it AS-IS — any mutation invalidates the ephemeral signatures. Absent with format \"instructions\".",
+                  "type": "string"
+                },
+                "feePayer": {
+                  "description": "Who must sign the fee-payer slot (base58): walletAddress, or the feePayer the request named. With a separate fee payer the wallet signs too, as the owner of what the operation moves.",
+                  "type": "string"
+                },
+                "recentBlockhash": {
+                  "description": "Blockhash embedded in the transaction",
+                  "type": "string"
+                },
+                "lastValidBlockHeight": {
+                  "description": "The transaction is valid until this block height (~60-90s). Signing after expiry fails at submit; call build again for a fresh transaction.",
+                  "type": "number"
+                },
+                "currentBlockHeight": {
+                  "description": "Block height when the transaction was built, fetched alongside the blockhash — so a client can render an expiry countdown ((lastValidBlockHeight − currentBlockHeight) blocks, ~0.4s each) without an RPC call of its own.",
+                  "type": "number"
+                },
+                "extraSigners": {
+                  "description": "Ephemeral signatures already applied to the transaction. Pass these to /chains/{chain}/submit so it can re-merge them in case the signer did not preserve them. For a position open, the position account / NFT mint address is among these pubkeys. The keypairs themselves are discarded after the build — Gateway stores nothing.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "signature": {
+                        "description": "Its signature over the message, base64",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "signature"
+                    ]
+                  }
+                },
+                "instructions": {
+                  "description": "format \"instructions\": the operation's instructions, in order, compute-budget ones excluded. The caller compiles its own transaction around them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "programId": {
+                        "description": "Program to invoke (base58 address)",
+                        "type": "string"
+                      },
+                      "accounts": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "pubkey": {
+                              "description": "Account address (base58)",
+                              "type": "string"
+                            },
+                            "isSigner": {
+                              "type": "boolean"
+                            },
+                            "isWritable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "pubkey",
+                            "isSigner",
+                            "isWritable"
+                          ]
+                        }
+                      },
+                      "data": {
+                        "description": "Instruction data, base64-encoded",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "programId",
+                      "accounts",
+                      "data"
+                    ]
+                  }
+                },
+                "addressLookupTableAddresses": {
+                  "description": "format \"instructions\": lookup tables the instructions were compiled against (base58)",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "computeUnits": {
+                  "description": "format \"instructions\": the compute limit the transaction would have set",
+                  "type": "integer"
+                },
+                "computeUnitPriceMicroLamports": {
+                  "description": "format \"instructions\": the compute-unit price, in micro-lamports",
+                  "type": "integer"
+                },
+                "ephemeralSigners": {
+                  "description": "format \"instructions\": the keypairs made for this build (a new mint, a position account). Signatures would not survive the caller rebuilding the message, so the keys are handed over; nothing else holds them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "secretKey": {
+                        "description": "Its secret key, base58",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "secretKey"
+                    ]
+                  }
+                },
+                "platformFee": {
+                  "description": "The platform fee this transaction carries, echoed when the build was asked for one (platformFee in the request); absent otherwise.",
+                  "type": "object",
+                  "properties": {
+                    "bps": {
+                      "description": "the fee asked, in basis points",
+                      "type": "integer"
+                    },
+                    "amount": {
+                      "description": "the fee the transaction pays, in UI units of mint as a decimal string (rounded down as built)",
+                      "type": "string"
+                    },
+                    "mint": {
+                      "description": "the fee mint (wSOL, So11111111111111111111111111111111111111112, for SOL)",
+                      "type": "string"
+                    },
+                    "symbol": {
+                      "description": "the fee mint's symbol in Gateway's token list, or the mint if unlisted",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bps",
+                    "amount",
+                    "mint",
+                    "symbol"
+                  ]
+                }
+              },
+              "required": [
+                "feePayer",
+                "recentBlockhash",
+                "lastValidBlockHeight",
+                "currentBlockHeight",
+                "extraSigners"
+              ]
+            }
           },
           "mint": {
             "description": "Mint address the transaction will create",
@@ -7517,6 +8652,172 @@
               "symbol"
             ]
           },
+          "followingTransactions": {
+            "description": "An operation of several transactions: the ones after this one, in the order they are submitted. Each has its own extraSigners for /chains/{chain}/submit. They were not simulated (they run against state the transactions before them create), so submit each only after the one before it confirms; if one fails, stop. Absent when the operation is one transaction.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transaction": {
+                  "description": "Base64-serialized transaction, ready for the wallet to sign. Ephemeral keypairs (e.g. a position NFT mint) have already partial-signed; the fee-payer slot is empty. Sign it AS-IS — any mutation invalidates the ephemeral signatures. Absent with format \"instructions\".",
+                  "type": "string"
+                },
+                "feePayer": {
+                  "description": "Who must sign the fee-payer slot (base58): walletAddress, or the feePayer the request named. With a separate fee payer the wallet signs too, as the owner of what the operation moves.",
+                  "type": "string"
+                },
+                "recentBlockhash": {
+                  "description": "Blockhash embedded in the transaction",
+                  "type": "string"
+                },
+                "lastValidBlockHeight": {
+                  "description": "The transaction is valid until this block height (~60-90s). Signing after expiry fails at submit; call build again for a fresh transaction.",
+                  "type": "number"
+                },
+                "currentBlockHeight": {
+                  "description": "Block height when the transaction was built, fetched alongside the blockhash — so a client can render an expiry countdown ((lastValidBlockHeight − currentBlockHeight) blocks, ~0.4s each) without an RPC call of its own.",
+                  "type": "number"
+                },
+                "extraSigners": {
+                  "description": "Ephemeral signatures already applied to the transaction. Pass these to /chains/{chain}/submit so it can re-merge them in case the signer did not preserve them. For a position open, the position account / NFT mint address is among these pubkeys. The keypairs themselves are discarded after the build — Gateway stores nothing.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "signature": {
+                        "description": "Its signature over the message, base64",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "signature"
+                    ]
+                  }
+                },
+                "instructions": {
+                  "description": "format \"instructions\": the operation's instructions, in order, compute-budget ones excluded. The caller compiles its own transaction around them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "programId": {
+                        "description": "Program to invoke (base58 address)",
+                        "type": "string"
+                      },
+                      "accounts": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "pubkey": {
+                              "description": "Account address (base58)",
+                              "type": "string"
+                            },
+                            "isSigner": {
+                              "type": "boolean"
+                            },
+                            "isWritable": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "pubkey",
+                            "isSigner",
+                            "isWritable"
+                          ]
+                        }
+                      },
+                      "data": {
+                        "description": "Instruction data, base64-encoded",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "programId",
+                      "accounts",
+                      "data"
+                    ]
+                  }
+                },
+                "addressLookupTableAddresses": {
+                  "description": "format \"instructions\": lookup tables the instructions were compiled against (base58)",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "computeUnits": {
+                  "description": "format \"instructions\": the compute limit the transaction would have set",
+                  "type": "integer"
+                },
+                "computeUnitPriceMicroLamports": {
+                  "description": "format \"instructions\": the compute-unit price, in micro-lamports",
+                  "type": "integer"
+                },
+                "ephemeralSigners": {
+                  "description": "format \"instructions\": the keypairs made for this build (a new mint, a position account). Signatures would not survive the caller rebuilding the message, so the keys are handed over; nothing else holds them.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Ephemeral signer address (base58)",
+                        "type": "string"
+                      },
+                      "secretKey": {
+                        "description": "Its secret key, base58",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "secretKey"
+                    ]
+                  }
+                },
+                "platformFee": {
+                  "description": "The platform fee this transaction carries, echoed when the build was asked for one (platformFee in the request); absent otherwise.",
+                  "type": "object",
+                  "properties": {
+                    "bps": {
+                      "description": "the fee asked, in basis points",
+                      "type": "integer"
+                    },
+                    "amount": {
+                      "description": "the fee the transaction pays, in UI units of mint as a decimal string (rounded down as built)",
+                      "type": "string"
+                    },
+                    "mint": {
+                      "description": "the fee mint (wSOL, So11111111111111111111111111111111111111112, for SOL)",
+                      "type": "string"
+                    },
+                    "symbol": {
+                      "description": "the fee mint's symbol in Gateway's token list, or the mint if unlisted",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bps",
+                    "amount",
+                    "mint",
+                    "symbol"
+                  ]
+                }
+              },
+              "required": [
+                "feePayer",
+                "recentBlockhash",
+                "lastValidBlockHeight",
+                "currentBlockHeight",
+                "extraSigners"
+              ]
+            }
+          },
           "quote": {
             "$ref": "#/components/schemas/RouterQuoteSwapResponse"
           }
@@ -7582,7 +8883,9 @@
           "connector": {
             "description": "Launchpad connector",
             "enum": [
-              "pump"
+              "pump",
+              "meteora",
+              "raydium"
             ],
             "type": "string",
             "example": "pump"
@@ -7610,7 +8913,11 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Creator wallet that claims (and pays the fee). Defaults to the chain's configured default wallet.",
+            "description": "Wallet that claims (and pays the fee): the creator; for meteora, the creator or the config fee claimer. Defaults to the chain's configured default wallet.",
+            "type": "string"
+          },
+          "baseMint": {
+            "description": "The launched token whose fees to claim. Required for meteora (the DBC pool of this token: the creator's share, and the partner's when the wallet is the config's fee claimer) and raydium (the creator's LaunchLab fee vault for this token's quote, and the creator fee of the CPMM pools it graduated into). Not taken by pump, whose claim collects all of a creator's coins at once.",
             "type": "string"
           }
         },
@@ -7630,8 +8937,12 @@
             "type": "number"
           },
           "claimed": {
-            "description": "SOL collected (the vault balance read before the claim)",
+            "description": "Quote collected, in quoteMint's units (pump: SOL), as read before the claim; base-token fees a DBC pool also pays are not counted here",
             "type": "number"
+          },
+          "quoteMint": {
+            "description": "The quote token claimed (meteora, raydium)",
+            "type": "string"
           },
           "fee": {
             "description": "Transaction fee in SOL, once confirmed",
@@ -7667,7 +8978,8 @@
           "connector": {
             "description": "Launchpad connector",
             "enum": [
-              "pump"
+              "pump",
+              "meteora"
             ],
             "type": "string",
             "example": "pump"
@@ -7720,7 +9032,7 @@
             "type": "number"
           },
           "poolAddress": {
-            "description": "The PumpSwap pool the token now trades on",
+            "description": "The pool the token now trades on (pump: its PumpSwap pool; meteora: its DAMM v2 pool)",
             "type": "string"
           }
         },
@@ -7728,6 +9040,310 @@
           "signature",
           "status",
           "poolAddress"
+        ]
+      },
+      "LaunchBuildClaimCreatorFeesRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "connector": {
+            "description": "Launchpad connector",
+            "enum": [
+              "pump",
+              "meteora",
+              "raydium"
+            ],
+            "type": "string",
+            "example": "pump"
+          },
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "walletAddress": {
+            "description": "Wallet that claims (and pays the fee): the creator; for meteora, the creator or the config fee claimer. Defaults to the chain's configured default wallet.",
+            "type": "string"
+          },
+          "baseMint": {
+            "description": "The launched token whose fees to claim. Required for meteora (the DBC pool of this token: the creator's share, and the partner's when the wallet is the config's fee claimer) and raydium (the creator's LaunchLab fee vault for this token's quote, and the creator fee of the CPMM pools it graduated into). Not taken by pump, whose claim collects all of a creator's coins at once.",
+            "type": "string"
+          },
+          "extraInstructions": {
+            "description": "Instructions appended to the transaction after the operation’s own, before the ephemeral keypairs partial-sign — so they are covered by every signature. Only the wallet may be named as a signer. Account addresses are literal: an instruction cannot reference an account the build itself creates (e.g. a position keypair generated during build-open), because the caller cannot know that address before the response. Compose atomically only when every account is known pre-build; otherwise follow up with /chains/{chain}/build-transaction after the first transaction confirms, reading the new address from extraSigners.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "programId": {
+                  "description": "Program to invoke (base58 address)",
+                  "type": "string"
+                },
+                "accounts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Account address (base58)",
+                        "type": "string"
+                      },
+                      "isSigner": {
+                        "type": "boolean"
+                      },
+                      "isWritable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "isSigner",
+                      "isWritable"
+                    ]
+                  }
+                },
+                "data": {
+                  "description": "Instruction data, base64-encoded",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "programId",
+                "accounts",
+                "data"
+              ]
+            }
+          },
+          "feePayer": {
+            "description": "Who pays the transaction fee and signs its first slot (base58), when it is not walletAddress. The wallet still signs as the owner of what the operation moves. Default: walletAddress.",
+            "type": "string"
+          },
+          "format": {
+            "description": "transaction (default): a compiled transaction, ephemeral keypairs partial-signed. instructions: the operation's raw instructions, lookup-table addresses, compute budget and the ephemeral keypairs, for a caller that wraps them (a smart wallet's execute instruction) and compiles its own transaction.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "transaction"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "instructions"
+                ]
+              }
+            ]
+          },
+          "references": {
+            "maxItems": 3,
+            "description": "Up to 3 Solana Pay references (base58): read-only, non-signer accounts attached to the transaction (on a 0-lamport self-transfer by the fee payer), so it can be found with getSignaturesForAddress(reference) once it lands.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "memo": {
+            "maxLength": 128,
+            "description": "A signer-less SPL Memo appended to the transaction (at most 128 bytes), e.g. \"app:ref=<id>\" to attribute a transaction on chain.",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Compute-unit price baked into the built transaction: normal (the configured level), high, or urgent. Raises what the transaction pays to land, up to the network's configured maximum — where that ceiling is low, high and urgent can cost the same. It cannot make an invalid transaction valid. Default: normal.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "normal"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "high"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "urgent"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "connector",
+          "chainNetwork"
+        ]
+      },
+      "LaunchBuildMigrateRequest": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "connector": {
+            "description": "Launchpad connector",
+            "enum": [
+              "pump",
+              "meteora"
+            ],
+            "type": "string",
+            "example": "pump"
+          },
+          "chainNetwork": {
+            "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+            "enum": [
+              "ethereum-arbitrum",
+              "ethereum-avalanche",
+              "ethereum-base",
+              "ethereum-bsc",
+              "ethereum-celo",
+              "ethereum-mainnet",
+              "ethereum-optimism",
+              "ethereum-polygon",
+              "ethereum-robinhoodchain",
+              "ethereum-robinhoodchain-testnet",
+              "ethereum-sepolia",
+              "ethereum-unichain",
+              "solana-devnet",
+              "solana-mainnet-beta"
+            ],
+            "default": "solana-mainnet-beta",
+            "type": "string",
+            "example": "solana-mainnet-beta"
+          },
+          "walletAddress": {
+            "description": "Wallet that sends (and pays for) the migration. Defaults to the chain's configured default wallet.",
+            "type": "string"
+          },
+          "baseMint": {
+            "description": "The graduated token",
+            "type": "string"
+          },
+          "extraInstructions": {
+            "description": "Instructions appended to the transaction after the operation’s own, before the ephemeral keypairs partial-sign — so they are covered by every signature. Only the wallet may be named as a signer. Account addresses are literal: an instruction cannot reference an account the build itself creates (e.g. a position keypair generated during build-open), because the caller cannot know that address before the response. Compose atomically only when every account is known pre-build; otherwise follow up with /chains/{chain}/build-transaction after the first transaction confirms, reading the new address from extraSigners.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "programId": {
+                  "description": "Program to invoke (base58 address)",
+                  "type": "string"
+                },
+                "accounts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pubkey": {
+                        "description": "Account address (base58)",
+                        "type": "string"
+                      },
+                      "isSigner": {
+                        "type": "boolean"
+                      },
+                      "isWritable": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "pubkey",
+                      "isSigner",
+                      "isWritable"
+                    ]
+                  }
+                },
+                "data": {
+                  "description": "Instruction data, base64-encoded",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "programId",
+                "accounts",
+                "data"
+              ]
+            }
+          },
+          "feePayer": {
+            "description": "Who pays the transaction fee and signs its first slot (base58), when it is not walletAddress. The wallet still signs as the owner of what the operation moves. Default: walletAddress.",
+            "type": "string"
+          },
+          "format": {
+            "description": "transaction (default): a compiled transaction, ephemeral keypairs partial-signed. instructions: the operation's raw instructions, lookup-table addresses, compute budget and the ephemeral keypairs, for a caller that wraps them (a smart wallet's execute instruction) and compiles its own transaction.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "transaction"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "instructions"
+                ]
+              }
+            ]
+          },
+          "references": {
+            "maxItems": 3,
+            "description": "Up to 3 Solana Pay references (base58): read-only, non-signer accounts attached to the transaction (on a 0-lamport self-transfer by the fee payer), so it can be found with getSignaturesForAddress(reference) once it lands.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "memo": {
+            "maxLength": 128,
+            "description": "A signer-less SPL Memo appended to the transaction (at most 128 bytes), e.g. \"app:ref=<id>\" to attribute a transaction on chain.",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Compute-unit price baked into the built transaction: normal (the configured level), high, or urgent. Raises what the transaction pays to land, up to the network's configured maximum — where that ceiling is low, high and urgent can cost the same. It cannot make an invalid transaction valid. Default: normal.",
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "normal"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "high"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "urgent"
+                ]
+              }
+            ]
+          }
+        },
+        "required": [
+          "connector",
+          "chainNetwork",
+          "baseMint"
         ]
       },
       "AmmQuoteSwapRequest": {
@@ -12573,7 +14189,7 @@
         "tags": [
           "/trading/clmm"
         ],
-        "description": "Build the unsigned transaction that /open would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. The position NFT mint has already partial-signed (its address is in extraSigners); sign the fee-payer slot as-is.",
+        "description": "Build the unsigned transaction that /open would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. The position NFT mint has already partial-signed (its address is in extraSigners); sign the fee-payer slot as-is. A Meteora range wider than one transaction can fund comes back as the position creation, then each deposit chunk in followingTransactions; sign them together and submit them in order.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12673,7 +14289,7 @@
         "tags": [
           "/trading/clmm"
         ],
-        "description": "Build the unsigned transaction that /add would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit.",
+        "description": "Build the unsigned transaction that /add would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. A deposit into a Meteora position wider than one transaction returns its other chunks in followingTransactions; submit them in order.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12773,7 +14389,7 @@
         "tags": [
           "/trading/clmm"
         ],
-        "description": "Build the unsigned transaction that /remove would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. A removal that spans several transactions returns the first; submit it and call build again.",
+        "description": "Build the unsigned transaction that /remove would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. A removal that spans several transactions (a wide Meteora position) returns the rest in followingTransactions; submit them in order.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12973,7 +14589,7 @@
         "tags": [
           "/trading/clmm"
         ],
-        "description": "Build the unsigned transaction that /close would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. A close that spans several transactions (e.g. a wide Meteora position) returns the first; submit it and call build again.",
+        "description": "Build the unsigned transaction that /close would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. A close that spans several transactions (a wide Meteora position) returns the rest in followingTransactions; submit them in order.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -13961,7 +15577,7 @@
         "tags": [
           "/trading/amm"
         ],
-        "description": "Build the unsigned transaction that /remove would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit.",
+        "description": "Build the unsigned transaction that /remove would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. percentageToRemove 100 is the AMM close: a meteora (DAMM v2) position withdraws everything and closes its position account and NFT (rent back); a fungible-LP pool takes all the wallet's LP tokens.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14028,6 +15644,106 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AmmRemoveLiquidityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/amm/build-collect-fees": {
+      "post": {
+        "operationId": "buildCollectAmmFees",
+        "tags": [
+          "/trading/amm"
+        ],
+        "description": "Build the unsigned transaction that /collect-fees would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AmmBuildCollectFeesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildTransactionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/amm/collect-fees": {
+      "post": {
+        "operationId": "collectAmmFees",
+        "tags": [
+          "/trading/amm"
+        ],
+        "description": "Collect an AMM position's trading fees into the wallet, leaving its liquidity in place (meteora: DAMM v2 positions)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AmmCollectFeesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AmmCollectFeesResponse"
                 }
               }
             }
@@ -14161,7 +15877,7 @@
         "tags": [
           "/trading/launch"
         ],
-        "description": "Build the unsigned transaction that /create-token would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. The mint keypair has already partial-signed (see extraSigners); Gateway discards it after the build.",
+        "description": "Build the unsigned transaction that /create-token would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. The mint keypair has already partial-signed (see extraSigners); Gateway discards it after the build. A pump launch with a dev buy and no lookup table is two transactions (see lookupTableAddress).",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14747,7 +16463,7 @@
         "tags": [
           "/trading/launch"
         ],
-        "description": "Collect a launchpad creator's fees into its wallet (pump: both vaults in one transaction)",
+        "description": "Collect a launchpad creator's fees into its wallet (pump: both vaults, all its coins; meteora: a DBC pool's creator and partner shares; raydium: the LaunchLab vault and the graduated CPMM pools)",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14797,7 +16513,7 @@
         "tags": [
           "/trading/launch"
         ],
-        "description": "Migrate a completed pump curve to its PumpSwap pool — permissionless; pump's keeper does it on mainnet, nothing does on a devnet or local validator",
+        "description": "Migrate a completed curve to its pool — pump: its PumpSwap pool; meteora: its DAMM v2 pool (the locker first when the config locks vesting). Permissionless; the launchpads' keepers usually do it.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -14814,6 +16530,106 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LaunchMigrateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/launch/build-claim-creator-fees": {
+      "post": {
+        "operationId": "buildClaimCreatorFees",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "Build the unsigned transaction that /claim-creator-fees would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchBuildClaimCreatorFeesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildTransactionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/launch/build-migrate": {
+      "post": {
+        "operationId": "buildMigrateLaunchCurve",
+        "tags": [
+          "/trading/launch"
+        ],
+        "description": "Build the unsigned transaction(s) that /migrate would sign and send, for the caller to sign with its own wallet and broadcast via /chains/{chain}/submit. A meteora config that locks vesting needs its locker first: the migration then comes in followingTransactions, to submit after the locker confirms.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchBuildMigrateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildTransactionResponse"
                 }
               }
             }
