@@ -221,6 +221,42 @@ async function readLookupTable(solana: Solana, address: string): Promise<Address
   return value;
 }
 
+/** Slots this process has made a table at, per wallet, so no two builds share one. */
+const tableSlotsTaken = new Set<string>();
+/** How far back a table's slot may be: the SlotHashes sysvar holds the last 512. */
+const TABLE_SLOT_WINDOW = 150;
+
+/**
+ * A slot to make the wallet's new table at. A table's address is derived from its
+ * authority and a recent slot, so two launches by one wallet built in the same slot
+ * would derive one table and fill it with different accounts. Each build takes a slot
+ * that held a block (a skipped slot is not in SlotHashes), that no build here has taken
+ * for this wallet, and whose table does not exist on chain.
+ */
+async function freshTableSlot(solana: Solana, wallet: PublicKey) {
+  const finalized = await solana.connection.getSlot('finalized');
+  for (const key of tableSlotsTaken) {
+    if (Number(key.split(':')[1]) < finalized - TABLE_SLOT_WINDOW) tableSlotsTaken.delete(key);
+  }
+  const blocks = await solana.connection.getBlocks(finalized - TABLE_SLOT_WINDOW, finalized, 'finalized');
+  for (const recentSlot of blocks.reverse()) {
+    const key = `${wallet.toBase58()}:${recentSlot}`;
+    if (tableSlotsTaken.has(key)) continue;
+    const [createTable, tableAddress] = AddressLookupTableProgram.createLookupTable({
+      authority: wallet,
+      payer: wallet,
+      recentSlot,
+    });
+    tableSlotsTaken.add(key);
+    if (await solana.connection.getAccountInfo(tableAddress)) continue;
+    return { recentSlot, createTable, tableAddress };
+  }
+  throw httpErrors.serviceUnavailable(
+    `No recent slot is free to make a lookup table for ${wallet.toBase58()} at; try again in a few seconds, ` +
+      'or name a lookupTableAddress.',
+  );
+}
+
 /**
  * A create with a dev buy and no lookup table to compile against: make one for it. The
  * first transaction creates a table, with the wallet its authority, holding every
@@ -246,12 +282,7 @@ async function createWithNewLookupTable(
       addresses.push(k);
     }
   }
-  const recentSlot = await solana.connection.getSlot('finalized');
-  const [createTable, tableAddress] = AddressLookupTableProgram.createLookupTable({
-    authority: wallet,
-    payer: wallet,
-    recentSlot,
-  });
+  const { recentSlot, createTable, tableAddress } = await freshTableSlot(solana, wallet);
   const extendTable = AddressLookupTableProgram.extendLookupTable({
     lookupTable: tableAddress,
     authority: wallet,

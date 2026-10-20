@@ -40,6 +40,8 @@ const solana = {
     getMultipleAccountsInfo: jest.fn(async () => [{ data: Buffer.alloc(0) }, null]),
     getLatestBlockhash: jest.fn(async () => ({ blockhash: '4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi5' })),
     getSlot: jest.fn(async () => 1000),
+    getBlocks: jest.fn(async () => Array.from({ length: 11 }, (_, i) => 990 + i)),
+    getAccountInfo: jest.fn(async () => null),
     getAddressLookupTable: jest.fn(),
   },
   sendAndConfirmTransactionForWallet: jest.fn(async () => ({ signature: 'sig', fee: 0 })),
@@ -144,5 +146,20 @@ describe('pump create with a dev buy', () => {
       { transaction: VersionedTransaction }[],
     ];
     expect(steps[1].transaction.message.staticAccountKeys[0].toBase58()).toBe(payer.toBase58());
+  });
+
+  it('gives two launches by one wallet different tables', async () => {
+    const tableOf = async () => {
+      solana.captureSequenceForExternalSigner.mockClear();
+      const prepared = await prepareCreateToken(params);
+      await expect(
+        captureUnsignedTransaction({}, () => createToken('mainnet-beta', WALLET.toBase58(), params, prepared)),
+      ).rejects.toThrow('captured');
+      const [steps] = solana.captureSequenceForExternalSigner.mock.calls[0] as unknown as [
+        { transaction: VersionedTransaction }[],
+      ];
+      return steps[1].transaction.message.addressTableLookups[0].accountKey.toBase58();
+    };
+    expect(await tableOf()).not.toBe(await tableOf());
   });
 });
