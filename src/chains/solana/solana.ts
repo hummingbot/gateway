@@ -2096,7 +2096,7 @@ export class Solana {
     let wake = () => {};
     void (async () => {
       let resends = 0;
-      for (;;) {
+      while (!stopped) {
         await new Promise<void>((resolve) => {
           const timer = setTimeout(resolve, REBROADCAST_INTERVAL_MS);
           wake = () => {
