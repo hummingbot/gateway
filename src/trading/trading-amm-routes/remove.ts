@@ -115,7 +115,9 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description:
           'Build the unsigned transaction that /remove would sign and send, for the caller to sign with ' +
-          'its own wallet and broadcast via /chains/{chain}/submit.',
+          'its own wallet and broadcast via /chains/{chain}/submit. percentageToRemove 100 is the AMM close: ' +
+          'a meteora (DAMM v2) position withdraws everything and closes its position account and NFT (rent ' +
+          "back); a fungible-LP pool takes all the wallet's LP tokens.",
         tags: ['/trading/amm'],
         body: BuildAmmRemoveLiquidityRequest,
         response: { 200: BuildTransactionResponse },

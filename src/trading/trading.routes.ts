@@ -15,6 +15,7 @@ import {
   quoteLiquidityRoute as ammQuoteLiquidityRoute,
   addLiquidityRoute as ammAddLiquidityRoute,
   removeLiquidityRoute as ammRemoveLiquidityRoute,
+  collectFeesRoute as ammCollectFeesRoute,
 } from './trading-amm-routes';
 import {
   openPositionRoute,
@@ -133,6 +134,7 @@ export const tradingAmmRoutes: FastifyPluginAsync = async (fastify) => {
   // Liquidity transaction routes
   fastify.register(ammAddLiquidityRoute);
   fastify.register(ammRemoveLiquidityRoute);
+  fastify.register(ammCollectFeesRoute);
   fastify.register(createPoolRoute);
   fastify.register(ammBuildCreatePoolRoute);
 };

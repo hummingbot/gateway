@@ -115,5 +115,7 @@ export const OPERATION_IDS: Record<string, string> = {
   'POST /trading/amm/remove': 'removeAmmLiquidity',
   'POST /trading/amm/build-add': 'buildAddAmmLiquidity',
   'POST /trading/amm/build-remove': 'buildRemoveAmmLiquidity',
+  'POST /trading/amm/collect-fees': 'collectAmmFees',
+  'POST /trading/amm/build-collect-fees': 'buildCollectAmmFees',
   'POST /trading/amm/build-create-pool': 'buildCreateAmmPool',
 };

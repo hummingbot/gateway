@@ -6,6 +6,7 @@ export { positionsOwnedRoute } from './positions-owned';
 export { quoteLiquidityRoute } from './quote-liquidity';
 export { addLiquidityRoute } from './add';
 export { removeLiquidityRoute } from './remove';
+export { collectFeesRoute } from './collect-fees';
 
 // The request bodies, re-exported so app.ts can publish them as spec components. Only
 // the POSTs appear here: the GET routes carry their fields as `parameters`, which never
@@ -13,6 +14,7 @@ export { removeLiquidityRoute } from './remove';
 export { UnifiedCreatePoolRequest } from './create-pool';
 export { UnifiedAmmAddLiquidityRequest, BuildAmmAddLiquidityRequest } from './add';
 export { UnifiedAmmRemoveLiquidityRequest, BuildAmmRemoveLiquidityRequest } from './remove';
+export { UnifiedAmmCollectFeesRequest, BuildAmmCollectFeesRequest } from './collect-fees';
 
 // The GET querystrings. Registering these publishes them as components; the routes still
 // expand their fields into `parameters`, so the operations are unchanged and a generated
