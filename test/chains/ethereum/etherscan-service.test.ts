@@ -27,34 +27,10 @@ describe('EtherscanService', () => {
       }).not.toThrow();
     });
 
-    it('should create service for Polygon (chainId 137)', () => {
-      expect(() => {
-        new EtherscanService(137, 'polygon', testApiKey);
-      }).not.toThrow();
-    });
-
-    it('should create service for BSC (chainId 56)', () => {
-      expect(() => {
-        new EtherscanService(56, 'bsc', testApiKey);
-      }).not.toThrow();
-    });
-
     it('should throw error for Base (chainId 8453) - not supported', () => {
       expect(() => {
         new EtherscanService(8453, 'base', testApiKey);
       }).toThrow('Etherscan API not supported for chainId: 8453');
-    });
-
-    it('should throw error for Arbitrum (chainId 42161) - not supported', () => {
-      expect(() => {
-        new EtherscanService(42161, 'arbitrum', testApiKey);
-      }).toThrow('Etherscan API not supported for chainId: 42161');
-    });
-
-    it('should throw error for Optimism (chainId 10) - not supported', () => {
-      expect(() => {
-        new EtherscanService(10, 'optimism', testApiKey);
-      }).toThrow('Etherscan API not supported for chainId: 10');
     });
 
     it('should return true for supported chain IDs', () => {

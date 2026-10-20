@@ -5,7 +5,6 @@ import { Solana } from '../../../chains/solana/solana';
 import { ExecuteSwapResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 
@@ -30,9 +29,6 @@ export async function executeSwap(
 
   // Get pool info from address
   const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
-  if (!poolInfo) {
-    throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
-  }
 
   // Derive the counter ("quote") token from the pool given the requested base token.
   const baseTokenInfo = await solana.getToken(baseToken);
@@ -76,7 +72,7 @@ export async function executeSwap(
   let transaction: VersionedTransaction;
 
   // Get transaction based on pool type
-  if (poolInfo.poolType === 'amm') {
+  if (quote.poolType === 'amm') {
     if (side === 'BUY') {
       // AMM swap base out (exact output)
       ({ transaction } = (await raydium.raydiumSDK.liquidity.swap({
@@ -108,7 +104,7 @@ export async function executeSwap(
         },
       })) as { transaction: VersionedTransaction });
     }
-  } else if (poolInfo.poolType === 'cpmm') {
+  } else if (quote.poolType === 'cpmm') {
     if (side === 'BUY') {
       // CPMM swap base out (exact output)
       ({ transaction } = (await raydium.raydiumSDK.cpmm.swap({
@@ -148,7 +144,7 @@ export async function executeSwap(
       })) as { transaction: VersionedTransaction });
     }
   } else {
-    throw new Error(`Unsupported pool type: ${poolInfo.poolType}`);
+    throw new Error(`Unsupported pool type: ${quote.poolType}`);
   }
 
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and

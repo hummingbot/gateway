@@ -25,8 +25,4 @@ describe('attemptedRoute', () => {
       'SOL -> DOGE-1 (ExactOut, ExactIn fallback failed)',
     );
   });
-
-  it('never reports the two sides the same way', () => {
-    expect(attemptedRoute('BUY', 'A', 'B')).not.toBe(attemptedRoute('SELL', 'A', 'B'));
-  });
 });

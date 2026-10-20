@@ -29,6 +29,11 @@ jest.mock('../../../src/connectors/meteora/clmm-routes/quoteSwap', () => ({
   quoteSwap: (...args: any[]) => mockMeteoraClmmQuoteSwap(...args),
 }));
 
+const mockMeteoraClmmExecuteSwap = jest.fn();
+jest.mock('../../../src/connectors/meteora/clmm-routes/executeSwap', () => ({
+  executeSwap: (...args: any[]) => mockMeteoraClmmExecuteSwap(...args),
+}));
+
 const mockJupiterRouterQuoteSwap = jest.fn();
 jest.mock('../../../src/connectors/jupiter/router-routes/quoteSwap', () => ({
   quoteSwap: (...args: any[]) => mockJupiterRouterQuoteSwap(...args),
@@ -133,5 +138,63 @@ describe('a quote records nothing; only a fill does', () => {
     expect(response.statusCode).toBe(200);
     expect(mockEnsureTokenSaved).not.toHaveBeenCalled();
     expect(mockEnsurePoolSaved).not.toHaveBeenCalled();
+  });
+});
+
+describe('a fill records the pool it ran against', () => {
+  let app: any;
+
+  beforeAll(async () => {
+    app = await buildApp();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockMeteoraClmmExecuteSwap.mockResolvedValue({ signature: 'sig', status: 0 });
+  });
+
+  const executeSwap = () =>
+    app.inject({
+      method: 'POST',
+      url: '/trading/clmm/execute-swap',
+      payload: {
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
+        walletAddress: 'AabEVCB1sWgCPxbn6hFYM4Ukj7UubpBRbbYqRnqRXnZD',
+        baseToken: 'SOL',
+        quoteToken: 'USDC',
+        amount: 1,
+        side: 'SELL',
+        poolAddress: PINNED_POOL,
+      },
+    });
+
+  it('records the pinned pool, not the pair the caller named', async () => {
+    mockEnsurePoolSaved.mockResolvedValue(undefined);
+
+    const response = await executeSwap();
+
+    expect(response.statusCode).toBe(200);
+    expect(mockEnsurePoolSaved).toHaveBeenCalledTimes(1);
+    expect(mockEnsurePoolSaved.mock.calls[0][0]).toMatchObject({
+      chain: 'solana',
+      network: 'mainnet-beta',
+      connector: 'meteora',
+      type: 'clmm',
+      poolAddress: PINNED_POOL,
+    });
+  });
+
+  it('still answers the fill when the record cannot be written', async () => {
+    mockEnsurePoolSaved.mockRejectedValue(new Error('disk full'));
+
+    const response = await executeSwap();
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toMatchObject({ signature: 'sig', status: 0 });
   });
 });

@@ -1,30 +1,19 @@
-import {
-  AmmV4Keys,
-  CpmmKeys,
-  ApiV3PoolInfoStandardItem,
-  ApiV3PoolInfoStandardItemCpmm,
-  Percent,
-  TokenAmount,
-  toToken,
-} from '@raydium-io/raydium-sdk-v2';
+import { Percent, TokenAmount, toToken } from '@raydium-io/raydium-sdk-v2';
 import { VersionedTransaction, Transaction, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
 import { AddLiquidityResponseType, QuoteLiquidityResponseType } from '../../../schemas/amm-schema';
-import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { Raydium } from '../raydium';
+import { Raydium, RaydiumAmmPool } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 
 import { quoteLiquidity } from './quoteLiquidity';
 
 async function createAddLiquidityTransaction(
   raydium: Raydium,
-  ammPoolInfo: any,
-  poolInfo: any,
-  poolKeys: any,
+  pool: RaydiumAmmPool,
   baseTokenAmountAdded: number,
   quoteTokenAmountAdded: number,
   baseLimited: boolean,
@@ -33,21 +22,25 @@ async function createAddLiquidityTransaction(
   userBaseAmount: number,
   userQuoteAmount: number,
 ): Promise<VersionedTransaction | Transaction> {
-  if (ammPoolInfo.poolType === 'amm') {
-    // Use user's provided amounts as the maximum they're willing to spend
-    const amountInA = new TokenAmount(
-      toToken(poolInfo.mintA),
-      new Decimal(userBaseAmount).mul(10 ** poolInfo.mintA.decimals).toFixed(0),
-    );
-    const amountInB = new TokenAmount(
-      toToken(poolInfo.mintB),
-      new Decimal(userQuoteAmount).mul(10 ** poolInfo.mintB.decimals).toFixed(0),
-    );
-
-    // Calculate otherAmountMin based on the quoted amounts and slippage
+  if (pool.poolType === 'amm') {
+    const { poolInfo } = pool;
     // Convert Percent to decimal (e.g., 1% = 0.01)
     const slippageDecimal = slippage.numerator.toNumber() / slippage.denominator.toNumber();
     const slippageMultiplier = new Decimal(1).minus(slippageDecimal);
+    const maxMultiplier = new Decimal(1).plus(slippageDecimal);
+
+    // The fixed side is exactly what the user gave. The OTHER side's max is the quoted
+    // amount plus the slippage tolerance — the same `…AmountMax` the quote reported.
+    // The program computes that side from live vault reserves, which sit slightly
+    // off the reserves the quote read; capping it at the user's raw figure (or the
+    // bare quote) leaves no headroom and the deposit fails with "Exceeded desired
+    // slippage limit" (0x1e) whenever the quote side is the limiting one.
+    const baseMax = baseLimited ? new Decimal(userBaseAmount) : new Decimal(baseTokenAmountAdded).mul(maxMultiplier);
+    const quoteMax = baseLimited ? new Decimal(quoteTokenAmountAdded).mul(maxMultiplier) : new Decimal(userQuoteAmount);
+    const amountInA = new TokenAmount(toToken(poolInfo.mintA), baseMax.mul(10 ** poolInfo.mintA.decimals).toFixed(0));
+    const amountInB = new TokenAmount(toToken(poolInfo.mintB), quoteMax.mul(10 ** poolInfo.mintB.decimals).toFixed(0));
+
+    // Calculate otherAmountMin based on the quoted amounts and slippage
 
     // For minimum amounts, we use the quoted amounts (exact pool ratio) with slippage
     const otherAmountMin = baseLimited
@@ -67,8 +60,8 @@ async function createAddLiquidityTransaction(
         );
 
     const response = await raydium.raydiumSDK.liquidity.addLiquidity({
-      poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
-      poolKeys: poolKeys as AmmV4Keys,
+      poolInfo,
+      poolKeys: pool.poolKeys,
       amountInA,
       amountInB,
       otherAmountMin,
@@ -77,25 +70,25 @@ async function createAddLiquidityTransaction(
       computeBudgetConfig,
     });
     return response.transaction;
-  } else if (ammPoolInfo.poolType === 'cpmm') {
-    const baseIn = baseLimited;
-    const inputAmount = new BN(
-      new Decimal(baseLimited ? baseTokenAmountAdded : quoteTokenAmountAdded)
-        .mul(10 ** (baseLimited ? poolInfo.mintA.decimals : poolInfo.mintB.decimals))
-        .toFixed(0),
-    );
-    const response = await raydium.raydiumSDK.cpmm.addLiquidity({
-      poolInfo: poolInfo as ApiV3PoolInfoStandardItemCpmm,
-      poolKeys: poolKeys as CpmmKeys,
-      inputAmount,
-      slippage,
-      baseIn,
-      txVersion: raydium.txVersion,
-      computeBudgetConfig,
-    });
-    return response.transaction;
   }
-  throw new Error(`Unsupported pool type: ${ammPoolInfo.poolType}`);
+
+  const { poolInfo } = pool;
+  const baseIn = baseLimited;
+  const inputAmount = new BN(
+    new Decimal(baseLimited ? baseTokenAmountAdded : quoteTokenAmountAdded)
+      .mul(10 ** (baseLimited ? poolInfo.mintA.decimals : poolInfo.mintB.decimals))
+      .toFixed(0),
+  );
+  const response = await raydium.raydiumSDK.cpmm.addLiquidity({
+    poolInfo,
+    poolKeys: pool.poolKeys,
+    inputAmount,
+    slippage,
+    baseIn,
+    txVersion: raydium.txVersion,
+    computeBudgetConfig,
+  });
+  return response.transaction;
 }
 
 export async function addLiquidity(
@@ -114,17 +107,8 @@ export async function addLiquidity(
   // sendAndConfirmTransactionForWallet, which signs for the wallet's type.
   await raydium.setOwner(new PublicKey(walletAddress));
 
-  const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
-  if (!ammPoolInfo) {
-    throw httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
-  }
-
-  // Get pool info and keys since they're no longer in quoteLiquidity response
-  const poolResponse = await raydium.getPoolfromAPI(poolAddress);
-  if (!poolResponse) {
-    throw httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
-  }
-  const [poolInfo, poolKeys] = poolResponse;
+  const pool = await raydium.getAmmPoolFromRpc(poolAddress);
+  const { poolInfo } = pool;
 
   const quoteResponse = (await quoteLiquidity(
     network,
@@ -139,7 +123,7 @@ export async function addLiquidity(
   const baseTokenAmountAdded = baseLimited ? baseTokenAmount : quotedBaseAmount;
   const quoteTokenAmountAdded = baseLimited ? quotedQuoteAmount : quoteTokenAmount;
 
-  logger.info(`Adding liquidity to Raydium ${ammPoolInfo.poolType} position...`);
+  logger.info(`Adding liquidity to Raydium ${pool.poolType} position...`);
   logger.info(
     `Quote response: baseLimited=${baseLimited}, quotedBase=${quotedBaseAmount}, quotedQuote=${quotedQuoteAmount}`,
   );
@@ -157,9 +141,7 @@ export async function addLiquidity(
 
   const transaction = await createAddLiquidityTransaction(
     raydium,
-    ammPoolInfo,
-    poolInfo,
-    poolKeys,
+    pool,
     baseTokenAmountAdded,
     quoteTokenAmountAdded,
     baseLimited,

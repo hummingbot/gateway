@@ -18,6 +18,8 @@ import {
   PublicKey,
   ComputeBudgetProgram,
   MessageV0,
+  SendOptions,
+  SendTransactionError,
   Signer,
   Transaction,
   TransactionResponse,
@@ -42,6 +44,7 @@ const SOLANA_CONNECTION_CONFIG: ConnectionConfig = {
 
 import { ChainstackService } from '../../rpc/chainstack-service';
 import { HeliusService } from '../../rpc/helius-service';
+import { InfuraSolanaService } from '../../rpc/infura-solana-service';
 import { createRateLimitAwareSolanaConnection } from '../../rpc/rpc-connection-interceptor';
 import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { TransactionStatusCode } from '../../schemas/chain-schema';
@@ -69,6 +72,19 @@ const METAPLEX_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3y
 const METAPLEX_NAME_OFFSET = 65;
 
 export const BASE_FEE = 5000;
+
+/**
+ * Options for every broadcast. Preflight stays on: some RPC providers (QuickNode) accept a
+ * transaction sent with skipPreflight and answer its signature, but never forward it to
+ * the leader, so it does not land.
+ */
+export const SEND_OPTIONS: SendOptions = { skipPreflight: false, preflightCommitment: 'confirmed', maxRetries: 0 };
+
+/**
+ * How often a sent transaction is broadcast again while it waits to confirm. With
+ * maxRetries 0 the RPC sends it to the leader once; a dropped send is not retried.
+ */
+export const REBROADCAST_INTERVAL_MS = 2000;
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 
 // Interface for token account data
@@ -76,6 +92,20 @@ interface TokenAccount {
   parsedAccount: any;
   value: any;
 }
+
+/**
+ * What the compute-budget instructions cost themselves, in compute units.
+ *
+ * Simulation runs the transaction *without* them and reports only what the
+ * caller's instructions used, but the prepared transaction carries two — set
+ * limit and set price — at 150 units each. A percentage margin cannot cover a
+ * fixed cost: a plain SOL transfer simulates at ~150 units, gets a limit of
+ * ceil(150 x 1.1) = 165, and then spends 450. It lands on chain and fails with
+ * "Computational budget exceeded" pointing at the ComputeBudget program, after
+ * the user has signed. Every expensive instruction hides this behind its own
+ * margin, so it only bites the cheapest transactions.
+ */
+const COMPUTE_BUDGET_OVERHEAD_UNITS = 450;
 
 export class Solana {
   public connection: Connection;
@@ -101,6 +131,8 @@ export class Solana {
       this.initializeHeliusProvider();
     } else if (rpcProvider === 'chainstack') {
       this.initializeChainstackProvider();
+    } else if (rpcProvider === 'infura') {
+      this.initializeInfuraProvider();
     } else {
       // Default: use nodeURL
       this.connection = createRateLimitAwareSolanaConnection(
@@ -143,6 +175,21 @@ export class Solana {
     } catch (error: any) {
       logger.warn(`Failed to initialize Chainstack provider: ${error.message}, falling back to standard RPC`);
     }
+  }
+
+  /**
+   * Initialize Infura RPC provider (shares apiKeys.infura with Ethereum).
+   * Throws when the API key is missing or the network is not served by Infura.
+   */
+  private initializeInfuraProvider() {
+    const apiKey = ConfigManagerV2.getInstance().get('apiKeys.infura') || '';
+    this.rpcProviderService = new InfuraSolanaService(
+      { apiKey },
+      { chain: 'solana', network: this.network, chainId: this.config.chainID },
+    );
+    const rpcUrl = this.rpcProviderService.getHttpUrl();
+    logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(rpcUrl)}`);
+    this.connection = createRateLimitAwareSolanaConnection(new Connection(rpcUrl, SOLANA_CONNECTION_CONFIG), rpcUrl);
   }
 
   /**
@@ -900,7 +947,12 @@ export class Solana {
    * @returns Map of token symbol to balance (only includes tokens in network's token list)
    */
   private async getBalancesFromRPC(address: string, tokens?: string[]): Promise<Record<string, number>> {
-    const publicKey = new PublicKey(address);
+    let publicKey: PublicKey;
+    try {
+      publicKey = new PublicKey(address);
+    } catch {
+      throw httpErrors.badRequest(`Invalid Solana address: ${address}`);
+    }
     const balances: Record<string, number> = {};
 
     // Treat empty array as if no tokens were specified
@@ -922,10 +974,9 @@ export class Solana {
     }
 
     // Fetch all token accounts
+    // A wallet with no token accounts goes through the same steps, so a requested token
+    // is reported under the same key whether or not the wallet holds it.
     const tokenAccounts = await this.fetchTokenAccounts(publicKey);
-    if (tokenAccounts.size === 0) {
-      return this.handleEmptyTokenAccounts(balances, effectiveSymbols);
-    }
 
     // Process tokens based on request type
     if (effectiveSymbols) {
@@ -992,13 +1043,11 @@ export class Solana {
           const accountInfo = AccountLayout.decode(data);
           const mintAddress = accountInfo.mint.toString();
 
-          // Get decimals from token list (only process tokens in our list)
+          // Decimals come from the token list when the mint is listed. An unlisted mint is
+          // kept too, so a caller asking for it by address gets its balance, with decimals
+          // read from the mint (getTokenBalanceWithMintInfo). The default list-only view
+          // still leaves it out, since processTokenListOnly walks the list, not this map.
           const tokenInList = tokenList.find((t) => t.address === mintAddress);
-          if (!tokenInList) {
-            // Skip tokens not in our token list
-            logger.debug(`Skipping token ${mintAddress} - not in token list`);
-            continue;
-          }
 
           // Store in the same format as parsed accounts
           tokenAccountsMap.set(mintAddress, {
@@ -1006,8 +1055,8 @@ export class Solana {
               mint: accountInfo.mint,
               owner: accountInfo.owner,
               amount: accountInfo.amount,
-              decimals: tokenInList.decimals,
-              uiAmount: Number(accountInfo.amount) / Math.pow(10, tokenInList.decimals),
+              decimals: tokenInList?.decimals,
+              uiAmount: tokenInList ? Number(accountInfo.amount) / Math.pow(10, tokenInList.decimals) : undefined,
               isNative: accountInfo.isNative !== null && accountInfo.isNativeOption === 1,
               delegatedAmount: accountInfo.delegateOption ? accountInfo.delegatedAmount : BigInt(0),
               delegate: accountInfo.delegateOption ? accountInfo.delegate : null,
@@ -1106,25 +1155,6 @@ export class Solana {
   }
 
   /**
-   * Handle case when no token accounts are found
-   */
-  private handleEmptyTokenAccounts(
-    balances: Record<string, number>,
-    effectiveSymbols?: string[],
-  ): Record<string, number> {
-    const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
-    if (effectiveSymbols) {
-      // Set all requested tokens to 0
-      for (const symbol of effectiveSymbols) {
-        if (symbol.toUpperCase() !== 'SOL' && symbol !== SOL_NATIVE_MINT) {
-          balances[symbol] = 0;
-        }
-      }
-    }
-    return balances;
-  }
-
-  /**
    * Process specific tokens requested by the user
    */
   private async processSpecificTokens(
@@ -1138,11 +1168,19 @@ export class Solana {
     for (const symbol of symbols) {
       if (symbol.toUpperCase() === 'SOL' || symbol === SOL_NATIVE_MINT) continue;
 
-      // Try to find token by symbol
-      const tokenInfo = tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase());
+      // A listed token, asked for by symbol or by mint, is reported under its symbol so
+      // the caller can name and price it.
+      const tokenInfo = tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase() || t.address === symbol);
 
       if (tokenInfo) {
-        // Token found in list
+        // 'SOL' is the native balance's key. A listed token of another mint under that
+        // symbol would overwrite it, so the list is refused instead.
+        if (tokenInfo.symbol.toUpperCase() === 'SOL') {
+          throw new Error(
+            `Token list entry ${tokenInfo.address} has the symbol ${tokenInfo.symbol}, which names native SOL ` +
+              `(${SOL_NATIVE_MINT}); give it another symbol`,
+          );
+        }
         const balance = this.getTokenBalance(tokenAccounts.get(tokenInfo.address), tokenInfo.decimals);
         balances[tokenInfo.symbol] = balance;
       } else if (this.isValidSolanaAddress(symbol)) {
@@ -1229,24 +1267,23 @@ export class Solana {
    * Get token balance with mint info lookup
    */
   private async getTokenBalanceWithMintInfo(tokenAccount: TokenAccount, mintAddress: string): Promise<number> {
-    try {
-      const programId = tokenAccount.value.account.owner;
-      const mintInfo = await Promise.race([
-        getMint(this.connection, new PublicKey(mintAddress), undefined, programId),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Mint info timeout')), 1000)),
-      ]);
-
-      // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
-      return (
-        tokenAccount.parsedAccount.uiAmount ??
-        Number(tokenAccount.parsedAccount.amount) / Math.pow(10, mintInfo.decimals)
-      );
-    } catch (error) {
-      // Use default 9 decimals if mint info fails
-      logger.debug(`Failed to get mint info for ${mintAddress}, using default decimals`);
-      // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
-      return tokenAccount.parsedAccount.uiAmount ?? Number(tokenAccount.parsedAccount.amount) / Math.pow(10, 9);
+    if (tokenAccount.parsedAccount.uiAmount !== undefined) {
+      return tokenAccount.parsedAccount.uiAmount;
     }
+    // Read the mint through the token program that owns the account (legacy or
+    // Token-2022). Guessing the decimals would report a wrong balance as if it were right.
+    const programId: PublicKey = tokenAccount.value.account.owner;
+    let mintInfo: Awaited<ReturnType<typeof getMint>>;
+    try {
+      mintInfo = await getMint(this.connection, new PublicKey(mintAddress), undefined, programId);
+    } catch (error) {
+      // A rate limit stays a 429, so the route reports it as one.
+      if ((error as any).statusCode === 429) throw error;
+      throw new Error(
+        `Failed to read mint ${mintAddress} through token program ${programId.toBase58()}: ${(error as Error).message}`,
+      );
+    }
+    return Number(tokenAccount.parsedAccount.amount) / Math.pow(10, mintInfo.decimals);
   }
 
   /**
@@ -1515,10 +1552,11 @@ export class Solana {
     if (simulationResult) {
       Solana.throwIfSimulationReturnedError(simulationResult);
       if (simulationResult.unitsConsumed) {
-        // Add 10% margin for safety
-        computeUnitsToUse = Math.ceil(simulationResult.unitsConsumed * 1.1);
+        // Add 10% margin for safety, plus what the compute-budget instructions cost
+        computeUnitsToUse = Math.ceil(simulationResult.unitsConsumed * 1.1) + COMPUTE_BUDGET_OVERHEAD_UNITS;
         logger.info(
-          `Simulation consumed ${simulationResult.unitsConsumed} units, using ${computeUnitsToUse} with 10% margin`,
+          `Simulation consumed ${simulationResult.unitsConsumed} units, using ${computeUnitsToUse} ` +
+            `with 10% margin and ${COMPUTE_BUDGET_OVERHEAD_UNITS} for the compute budget`,
         );
       } else {
         logger.warn('Simulation did not return units consumed, using default');
@@ -1667,7 +1705,7 @@ export class Solana {
     if (simulationResult) {
       Solana.throwIfSimulationReturnedError(simulationResult);
       computeUnitsToUse = simulationResult.unitsConsumed
-        ? Math.ceil(simulationResult.unitsConsumed * 1.1)
+        ? Math.ceil(simulationResult.unitsConsumed * 1.1) + COMPUTE_BUDGET_OVERHEAD_UNITS
         : this.config.defaultComputeUnits;
     }
 
@@ -2066,7 +2104,54 @@ export class Solana {
   }
 
   /**
-   * Send and confirm a raw transaction
+   * Send the same signed bytes again every REBROADCAST_INTERVAL_MS until the returned stop
+   * function is called or the block height passes lastValidBlockHeight. The bytes are not
+   * re-signed and keep their blockhash, so every send is the same transaction and it can
+   * land only once. Stopping does not wait for a resend already in flight; the loop
+   * catches its own errors, and it schedules nothing after it is stopped.
+   */
+  private _startRebroadcast(
+    serializedTx: Buffer | Uint8Array,
+    signature: string,
+    lastValidBlockHeight: number,
+  ): () => void {
+    let stopped = false;
+    let wake = () => {};
+    void (async () => {
+      let resends = 0;
+      while (!stopped) {
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, REBROADCAST_INTERVAL_MS);
+          wake = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+        });
+        if (stopped) return;
+        try {
+          const blockHeight = await this.connection.getBlockHeight('confirmed');
+          if (blockHeight > lastValidBlockHeight) {
+            logger.info(`Stopped rebroadcasting ${signature} after ${resends} resends: its blockhash expired`);
+            return;
+          }
+          if (stopped) return;
+          await this.connection.sendRawTransaction(serializedTx, SEND_OPTIONS);
+          resends++;
+        } catch (error: any) {
+          if (/already been processed/.test(error.message ?? '')) return;
+          logger.warn(`Rebroadcast of ${signature} failed: ${error.message}`);
+        }
+      }
+    })();
+    return () => {
+      stopped = true;
+      wake();
+    };
+  }
+
+  /**
+   * Send and confirm a raw transaction. The transaction is broadcast again while it waits
+   * to confirm (see _startRebroadcast).
    */
   private async _sendAndConfirmRawTransaction(
     serializedTx: Buffer | Uint8Array,
@@ -2077,22 +2162,42 @@ export class Solana {
 
     try {
       logger.info('Sending transaction via sendRawTransaction');
-      signature = await this.connection.sendRawTransaction(serializedTx, {
-        skipPreflight: true,
-        maxRetries: 0,
-      });
+      signature = await this.connection.sendRawTransaction(serializedTx, SEND_OPTIONS);
 
-      // Try WebSocket first, fall back to polling
-      const wsResult = await this._confirmViaWebSocket(signature);
-      if (wsResult !== null) {
-        return { ...wsResult, signature };
+      const stopRebroadcast = this._startRebroadcast(serializedTx, signature, lastValidBlockHeight);
+      try {
+        // Try WebSocket first, fall back to polling
+        const wsResult = await this._confirmViaWebSocket(signature);
+        if (wsResult !== null) {
+          return { ...wsResult, signature };
+        }
+
+        const pollingResult = await this._confirmViaPolling(signature, lastValidBlockHeight);
+        return { ...pollingResult, signature };
+      } finally {
+        stopRebroadcast();
       }
-
-      const pollingResult = await this._confirmViaPolling(signature, lastValidBlockHeight);
-      return { ...pollingResult, signature };
     } catch (sendError: any) {
       if (sendError.statusCode === 429) {
         throw sendError;
+      }
+      // The same signed bytes already landed (an identical transaction built on an
+      // unchanged blockhash): its signature is the first one in the wire format, so
+      // report that transaction as it stands on chain rather than a failure.
+      if (/already been processed/.test(sendError.message ?? '')) {
+        const landed = bs58.encode(Uint8Array.from(serializedTx).subarray(1, 65));
+        const txData = await this._fetchTransactionWithRetry(landed, 3, 500);
+        if (!txData) {
+          throw new Error(`RPC reports ${landed} already processed, but it cannot be found`);
+        }
+        logger.info(`Transaction ${landed} had already landed; reporting it`);
+        return { confirmed: txData.meta?.err == null, signature: landed, txData };
+      }
+      // The RPC refused the transaction in preflight: nothing was broadcast, so report
+      // why instead of an unconfirmed send.
+      if (signature === null && sendError instanceof SendTransactionError) {
+        const { message, logs } = sendError.transactionError;
+        Solana.throwIfSimulationReturnedError({ err: message, logs });
       }
       logger.error(`Failed to send transaction: ${sendError.message}`);
       return { confirmed: false, signature: signature || '', txData: null };
@@ -2109,11 +2214,7 @@ export class Solana {
     }
 
     try {
-      const signature = await this.connection.sendRawTransaction(rawTx, {
-        skipPreflight: true,
-        preflightCommitment: 'confirmed',
-        maxRetries: 0,
-      });
+      const signature = await this.connection.sendRawTransaction(rawTx, SEND_OPTIONS);
       return signature;
     } catch (error) {
       logger.error('Failed to send raw transaction:', error);
@@ -2216,8 +2317,8 @@ export class Solana {
     accountSol: number;
   }> {
     const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
-    const isBaseSol = baseTokenInfo.symbol === 'SOL' || baseTokenInfo.address === SOL_NATIVE_MINT;
-    const isQuoteSol = quoteTokenInfo.symbol === 'SOL' || quoteTokenInfo.address === SOL_NATIVE_MINT;
+    const isBaseSol = baseTokenInfo.address === SOL_NATIVE_MINT;
+    const isQuoteSol = quoteTokenInfo.address === SOL_NATIVE_MINT;
 
     // Build unique token list for extraction
     const tokensToExtract: string[] = [];
@@ -2526,7 +2627,7 @@ export class Solana {
     checkBalance: boolean = false,
   ): Promise<TransactionInstruction[]> {
     const instructions: TransactionInstruction[] = [];
-    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, false, tokenProgram);
+    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, true, tokenProgram);
 
     // Check if WSOL account exists
     const accountInfo = await this.connection.getAccountInfo(wsolAccount);
@@ -2574,7 +2675,7 @@ export class Solana {
    * @returns Instruction to close WSOL account and return SOL
    */
   public unwrapSOL(walletPubkey: PublicKey, tokenProgram: PublicKey = TOKEN_PROGRAM_ID): TransactionInstruction {
-    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, false, tokenProgram);
+    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, true, tokenProgram);
     return createCloseAccountInstruction(wsolAccount, walletPubkey, walletPubkey, [], tokenProgram);
   }
 

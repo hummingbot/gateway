@@ -1,4 +1,4 @@
-import { HttpClient, HttpClientError, createHttpClient, httpGet, httpPost } from '../../src/services/http-client';
+import { HttpClient, HttpClientError, httpGet, httpPost } from '../../src/services/http-client';
 
 // Mock the global fetch
 const mockFetch = jest.fn();
@@ -32,12 +32,6 @@ describe('HttpClient', () => {
         statusText: 'Not Found',
         data: { error: 'Resource not found' },
       });
-    });
-
-    it('should create error with code', () => {
-      const error = new HttpClientError('Timeout');
-      error.code = 'ECONNABORTED';
-      expect(error.code).toBe('ECONNABORTED');
     });
   });
 
@@ -172,22 +166,21 @@ describe('HttpClient', () => {
       expect(result.data).toBe('plain text response');
     });
 
-    it('should remove trailing slash from baseURL', () => {
+    it('should remove trailing slash from baseURL', async () => {
       const clientWithSlash = new HttpClient({
         baseURL: 'https://api.example.com/',
       });
-
-      // The trailing slash should be removed internally
-      expect(clientWithSlash).toBeDefined();
-    });
-  });
-
-  describe('createHttpClient', () => {
-    it('should create HttpClient instance', () => {
-      const client = createHttpClient({
-        baseURL: 'https://api.example.com',
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: new Headers({ 'content-type': 'application/json' }),
+        text: jest.fn().mockResolvedValue('{}'),
       });
-      expect(client).toBeInstanceOf(HttpClient);
+
+      await clientWithSlash.get('/test');
+
+      expect(mockFetch.mock.calls[0][0]).toBe('https://api.example.com/test');
     });
   });
 

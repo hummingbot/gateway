@@ -112,7 +112,7 @@ export async function openPosition(
   const positionTokenAccount = getAssociatedTokenAddressSync(
     positionMintKeypair.publicKey,
     walletPublicKey,
-    false,
+    true, // the owner may be a PDA
     TOKEN_2022_PROGRAM_ID,
   );
   const lowerTickArrayIndex = getTickArrayStartTickIndex(lowerTickIndex, whirlpool.data.tickSpacing);
@@ -160,7 +160,7 @@ export async function openPosition(
     const generatedTokenAccount = getAssociatedTokenAddressSync(
       new PublicKey(generated.positionMint),
       walletPublicKey,
-      false,
+      true, // the owner may be a PDA
       TOKEN_2022_PROGRAM_ID,
     );
     instructions = replaceOrcaInstructionAccounts(

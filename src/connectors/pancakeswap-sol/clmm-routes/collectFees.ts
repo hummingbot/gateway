@@ -2,7 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
 import { Solana } from '../../../chains/solana/solana';
-import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
+import { accountLifecycleSol, receivedWithoutAccounts } from '../../../chains/solana/solana.utils';
 import { CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -38,13 +38,8 @@ async function collectFees(
 
   logger.info(`Collecting fees from position ${positionAddress} via zero-liquidity decrease`);
 
-  const wallet = await solana.getWallet(walletAddress);
   const walletPubkey = new PublicKey(walletAddress);
   const positionNftMint = new PublicKey(positionAddress);
-
-  // Get priority fee
-  const priorityFeeInLamports = await solana.estimateGasPrice();
-  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
 
   // decrease_liquidity_v2 with liquidity = 0 transfers the owed fees (and rewards)
   // without removing any liquidity.
@@ -57,16 +52,15 @@ async function collectFees(
     new BN(0), // amount1Min
     [baseToken.address, quoteToken.address], // unwrap a native-side fee rather than leaving it WSOL
     600000, // Compute units
-    priorityFeePerCU,
   );
 
-  // Sign and send
-  transaction.sign([wallet]);
-  await solana.simulateWithErrorHandling(transaction);
+  // The wallet chokepoint simulates, sets the compute budget and priority fee, and signs
+  // for the wallet's type (local keypair or Ledger).
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  // Retrying re-fetch; throws the shared landed-but-failed error, so txData means confirmed.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-  if (confirmed && txData) {
+  if (txData) {
     const totalFee = txData.meta.fee;
 
     // No liquidity was removed, so the position tokens received are exactly the fees.
@@ -76,10 +70,11 @@ async function collectFees(
     ]);
 
     // Unwrapping closes the wrapped-SOL account, so its rent comes back in the same
-    // native balance change as the fee. Rent is not fee income.
-    const { closed } = accountLifecycleSol(txData);
-    const baseFeeCollected = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
-    const quoteFeeCollected = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
+    // native balance change as the fee, and a reward account the collection first creates
+    // costs rent out of it. Rent is neither fee income nor a fee paid.
+    const lifecycle = accountLifecycleSol(txData);
+    const baseFeeCollected = receivedWithoutAccounts(balanceChanges[0], new PublicKey(baseToken.address), lifecycle);
+    const quoteFeeCollected = receivedWithoutAccounts(balanceChanges[1], new PublicKey(quoteToken.address), lifecycle);
 
     logger.info(
       `Fees collected from position ${positionAddress}: ${baseFeeCollected.toFixed(6)} ${baseToken.symbol}, ` +
@@ -101,10 +96,7 @@ async function collectFees(
     };
   }
 
-  // A landed-but-failed transaction is terminal: fail loudly instead of returning
-  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
-  await solana.throwIfLandedWithError(signature, txData);
-
+  // Confirmed, but not yet visible to the re-fetch: report it pending.
   return {
     signature,
     status: 0, // PENDING

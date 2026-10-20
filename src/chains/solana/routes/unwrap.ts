@@ -28,7 +28,7 @@ export async function unwrapSolana(
     const walletPubkey = new PublicKey(address);
 
     // Get WSOL token account address
-    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, false, TOKEN_PROGRAM_ID);
+    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, true, TOKEN_PROGRAM_ID);
 
     // Check if WSOL account exists and get balance
     const accountInfo = await solana.connection.getAccountInfo(wsolAccount);

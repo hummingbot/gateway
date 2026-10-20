@@ -1,5 +1,11 @@
-import { getHeliusApiKey, PriorityFeeLevel, SolanaPriorityFees } from '../../../src/chains/solana/solana-priority-fees';
+import type { PriorityFeeLevel } from '../../../src/chains/solana/solana-priority-fees';
 import { SolanaNetworkConfig } from '../../../src/chains/solana/solana.config';
+
+type PriorityFeesModule = typeof import('../../../src/chains/solana/solana-priority-fees');
+
+// Each test loads the module afresh, so the fee cache it keeps starts empty.
+let getHeliusApiKey: PriorityFeesModule['getHeliusApiKey'];
+let SolanaPriorityFees: PriorityFeesModule['SolanaPriorityFees'];
 
 // Mock the config manager
 jest.mock('../../../src/services/config-manager-v2', () => ({
@@ -14,9 +20,10 @@ jest.mock('../../../src/services/config-manager-v2', () => ({
 global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
 
 describe('Solana Priority Fees', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
-    SolanaPriorityFees.clearCache();
+    jest.resetModules();
+    ({ getHeliusApiKey, SolanaPriorityFees } = await import('../../../src/chains/solana/solana-priority-fees'));
   });
 
   describe('getHeliusApiKey', () => {
@@ -282,49 +289,21 @@ describe('Solana Priority Fees', () => {
       expect(global.fetch).toHaveBeenCalledTimes(1); // Still only 1 call
     });
 
-    it('uses separate cache entries per network', async () => {
-      const { ConfigManagerV2 } = await import('../../../src/services/config-manager-v2');
-      const mockGet = jest.fn().mockReturnValue('');
-      (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
-
-      const result1 = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
-      const result2 = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'devnet');
-
-      // Both should return minimum fee (no Helius key)
-      expect(result1.feePerComputeUnit).toBe(0.1);
-      expect(result2.feePerComputeUnit).toBe(0.1);
-    });
-
-    it('clearCache removes all cached entries', async () => {
+    it('keeps a separate cache entry per network', async () => {
       const { ConfigManagerV2 } = await import('../../../src/services/config-manager-v2');
       const mockGet = jest.fn().mockReturnValue('test-api-key');
       (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
 
-      // First call
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          result: { priorityFeeEstimate: 500000 },
-        }),
-      });
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ result: { priorityFeeEstimate: 500000 } }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ result: { priorityFeeEstimate: 600000 } }) });
 
-      await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const mainnet = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
+      const devnet = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'devnet');
 
-      // Clear cache
-      SolanaPriorityFees.clearCache();
-
-      // Next call should fetch again
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          result: { priorityFeeEstimate: 600000 },
-        }),
-      });
-
-      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
       expect(global.fetch).toHaveBeenCalledTimes(2);
-      expect(result.feePerComputeUnit).toBe(0.6);
+      expect(mainnet.feePerComputeUnit).toBe(0.5);
+      expect(devnet.feePerComputeUnit).toBe(0.6);
     });
   });
 

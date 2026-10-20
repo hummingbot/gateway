@@ -222,3 +222,27 @@ export function transfersByProgramInstruction(parsedTx: any, programId: string, 
 export function liquidityWithoutRent(change: number, mint: PublicKey, accountSol: number): number {
   return mint.equals(NATIVE_MINT) ? Math.max(0, Math.abs(change) - accountSol) : Math.abs(change);
 }
+
+/**
+ * What a wallet received from a pool, out of its signed balance change, in a transaction
+ * that can also create accounts: a withdrawal or a fee collection that first opens a
+ * missing reward token account.
+ *
+ * A native side's change is the amount received, plus the rent of the accounts that closed,
+ * minus the rent of the accounts that opened. `liquidityWithoutRent` takes the sign off
+ * first, so it cannot do this. With a new account it would count the account's rent as
+ * money received. If the rent is larger than the amount received, the change is negative,
+ * and its magnitude would be reported as income.
+ *
+ * `change` must be signed (positive is money in), and `lifecycle` is in SOL, as
+ * `accountLifecycleSol` returns it. Clamps at zero for the same reason
+ * `liquidityWithoutRent` does. A non-native side carries no rent, so it passes through as
+ * a magnitude.
+ */
+export function receivedWithoutAccounts(
+  change: number,
+  mint: PublicKey,
+  lifecycle: Pick<AccountLifecycleSol, 'opened' | 'closed'>,
+): number {
+  return mint.equals(NATIVE_MINT) ? Math.max(0, change - lifecycle.closed + lifecycle.opened) : Math.abs(change);
+}

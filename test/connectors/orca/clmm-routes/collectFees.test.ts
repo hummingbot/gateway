@@ -105,35 +105,20 @@ describe('POST /collect-fees (orca)', () => {
       expect(mockHarvest).toHaveBeenCalled();
     });
 
-    it("falls back to the chain's default network when none is given", async () => {
+    // The network and wallet defaults are the unified schema's, shared by every Orca
+    // route; one route proves they reach the connector.
+    it("falls back to the chain's default network and configured wallet when neither is given", async () => {
       seedConnector();
 
       const response = await collect(app, {
         connector: 'orca',
-        walletAddress: WALLET,
         positionAddress: POSITION,
       });
 
       expect(response.statusCode).toBe(200);
-      // The schema default is solana-mainnet-beta, so the connector is built for it.
       expect(Orca.getInstance).toHaveBeenCalledWith('mainnet-beta');
-    });
-
-    it('falls back to the configured wallet when none is given', async () => {
-      seedConnector();
-
-      const response = await collect(app, {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'orca',
-        positionAddress: POSITION,
-      });
-
-      expect(response.statusCode).toBe(200);
-      // Whatever the default resolves to, the transaction is sent for it rather than
-      // for an empty address.
       const [, sentFor] = mockSendAndConfirm.mock.calls[0];
-      expect(typeof sentFor).toBe('string');
-      expect(sentFor.length).toBeGreaterThan(0);
+      expect(sentFor).toBe(WALLET);
     });
 
     it('reports zeros when the position has no fees to collect', async () => {

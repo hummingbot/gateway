@@ -266,7 +266,7 @@ describe('Solana Wallet Operations', () => {
       expect(mockWallets.solana.has(testAddress)).toBe(false);
     });
 
-    it('should fail when removing non-existent wallet', async () => {
+    it('succeeds when removing a wallet that does not exist', async () => {
       (mockFse.pathExists as jest.Mock).mockResolvedValue(false);
 
       const response = await gatewayApp.inject({
@@ -282,7 +282,7 @@ describe('Solana Wallet Operations', () => {
       expect(response.statusCode).toBe(200);
     });
 
-    it('should fail with invalid address format', async () => {
+    it('rejects a malformed address with 400', async () => {
       const response = await gatewayApp.inject({
         method: 'DELETE',
         url: '/wallet/remove',
@@ -292,8 +292,8 @@ describe('Solana Wallet Operations', () => {
         },
       });
 
-      // Address validation happens and throws 500 on invalid format
-      expect(response.statusCode).toBe(500);
+      expect(response.statusCode).toBe(400);
+      expect(response.json().message).toBe('Invalid Solana address format: invalid-address');
     });
   });
 
@@ -342,40 +342,6 @@ describe('Solana Wallet Operations', () => {
       const finalWallets: GetWalletResponse[] = JSON.parse(finalGetResponse.payload);
       const finalSolanaWallet = finalWallets.find((w) => w.chain === 'solana');
       expect(finalSolanaWallet?.walletAddresses).not.toContain(testAddress);
-    });
-  });
-
-  describe('Solana-specific Features', () => {
-    it('should handle base58 encoded private keys', async () => {
-      const response = await gatewayApp.inject({
-        method: 'POST',
-        url: '/wallet/add',
-        payload: {
-          privateKey: testPrivateKey,
-          chain: 'solana',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-    });
-
-    it('should reject malformed base58 private keys', async () => {
-      // Override the mock to simulate invalid key
-      patch(solana, 'getKeypairFromPrivateKey', () => {
-        throw new Error('Invalid base58 string');
-      });
-
-      const response = await gatewayApp.inject({
-        method: 'POST',
-        url: '/wallet/add',
-        payload: {
-          privateKey: '!!!invalid-base58!!!',
-          chain: 'solana',
-        },
-      });
-
-      // With sensible plugin, validation errors return 400 (bad request) instead of 500
-      expect(response.statusCode).toBe(400);
     });
   });
 });

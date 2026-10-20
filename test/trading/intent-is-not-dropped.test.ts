@@ -1,6 +1,6 @@
 import Fastify, { FastifyInstance } from 'fastify';
 
-import { ajvOptions, schemaErrorFormatter } from '../../src/services/schema-keywords';
+import { ajvOptions, enforceConnectorFields, schemaErrorFormatter } from '../../src/services/schema-keywords';
 import { tradingClmmRoutes, tradingAmmRoutes } from '../../src/trading/trading.routes';
 
 // Three ways a request used to be accepted and then acted on differently, all of them
@@ -12,27 +12,9 @@ jest.mock('../../src/chains/ethereum/ethereum');
 const buildApp = async (): Promise<FastifyInstance> => {
   const app = Fastify({ ajv: ajvOptions as any, schemaErrorFormatter });
   await app.register(require('@fastify/sensible'));
-  // The same hook app.ts installs. Kept here rather than booting the whole server so the
-  // test exercises the rule and not the RPC layer.
-  app.addHook('preValidation', async (request) => {
-    const schema = (request as any).routeOptions?.schema;
-    if (!schema) return;
-    for (const [part, sent] of [
-      [schema.body, request.body],
-      [schema.querystring, request.query],
-    ] as [any, any][]) {
-      if (!part?.properties || !sent || typeof sent !== 'object') continue;
-      const connector = sent.connector ?? part.properties.connector?.default;
-      if (!connector) continue;
-      for (const [field, spec] of Object.entries<any>(part.properties)) {
-        const connectors: string[] | undefined = spec?.['x-connectors'];
-        if (!connectors || sent[field] === undefined) continue;
-        if (!connectors.includes(connector)) {
-          throw app.httpErrors.badRequest(`${field} is not a ${connector} parameter`);
-        }
-      }
-    }
-  });
+  // The hook app.ts installs, without booting the whole server, so the test exercises
+  // the rule and not the RPC layer.
+  app.addHook('preValidation', enforceConnectorFields);
   await app.register(tradingClmmRoutes, { prefix: '/trading/clmm' });
   await app.register(tradingAmmRoutes, { prefix: '/trading/amm' });
   await app.ready();
@@ -80,9 +62,9 @@ describe('a key the route does not declare is rejected, not dropped', () => {
       },
     });
 
-    // Past validation: whatever happens next is the connector's business, not the
-    // schema's.
-    expect(response.statusCode).not.toBe(400);
+    // Past validation and into the handler; the unmocked-chain failure there is the
+    // connector's business, not the schema's.
+    expect(JSON.parse(response.body).message).toMatch(/^Failed to close position/);
   });
 });
 
@@ -125,7 +107,7 @@ describe('x-connectors is enforced, not decorative', () => {
       },
     });
 
-    expect(response.statusCode).not.toBe(400);
+    expect(JSON.parse(response.body).message).toMatch(/^Failed to create pool/);
   });
 });
 
@@ -155,6 +137,7 @@ describe('a write does not pick a venue for you', () => {
       query: { chainNetwork: 'solana-mainnet-beta', walletAddress: 'AabEVCB1sWgCPxbn6hFYM4Ukj7UubpBRbbYqRnqRXnZD' },
     });
 
-    expect(response.statusCode).not.toBe(400);
+    // No connector named, and still into the handler: the default connector took it.
+    expect(JSON.parse(response.body).message).toMatch(/^Failed to list CLMM positions owned/);
   });
 });

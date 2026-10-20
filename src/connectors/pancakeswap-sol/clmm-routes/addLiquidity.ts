@@ -29,7 +29,6 @@ export async function addLiquidity(
     throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
-  const wallet = await solana.getWallet(walletAddress);
   const walletPubkey = new PublicKey(walletAddress);
   const positionNftMint = new PublicKey(positionAddress);
 
@@ -78,10 +77,6 @@ export async function addLiquidity(
   logger.info(`  amount0Max: ${amount0Max.toString()} (${baseToken.symbol})`);
   logger.info(`  amount1Max: ${amount1Max.toString()} (${quoteToken.symbol})`);
 
-  // Get priority fee
-  const priorityFeeInLamports = await solana.estimateGasPrice();
-  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
-
   // Build transaction with actual liquidity (like your successful transaction)
   const transaction = await buildAddLiquidityTransaction(
     solana,
@@ -91,16 +86,15 @@ export async function addLiquidity(
     amount0Max,
     amount1Max,
     600000,
-    priorityFeePerCU,
   );
 
-  // Sign and send
-  transaction.sign([wallet]);
-  await solana.simulateWithErrorHandling(transaction);
+  // The wallet chokepoint simulates, sets the compute budget and priority fee, and signs
+  // for the wallet's type (local keypair or Ledger).
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  // Retrying re-fetch; throws the shared landed-but-failed error, so txData means confirmed.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-  if (confirmed && txData) {
+  if (txData) {
     const totalFee = txData.meta.fee;
 
     // Extract balance changes
@@ -136,10 +130,7 @@ export async function addLiquidity(
     };
   }
 
-  // A landed-but-failed transaction is terminal: fail loudly instead of returning
-  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
-  await solana.throwIfLandedWithError(signature, txData);
-
+  // Confirmed, but not yet visible to the re-fetch: report it pending.
   return {
     signature,
     status: 0, // PENDING

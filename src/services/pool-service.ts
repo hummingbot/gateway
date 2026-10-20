@@ -6,7 +6,6 @@ import { PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
 import * as fse from 'fs-extra';
 
-import { connectorsConfig } from '../config/routes/getConnectors';
 import { rootPath } from '../paths';
 import { Pool, PoolFileFormat, getSupportedConnectors, isSupportedConnector } from '../pools/types';
 import { SupportedChain } from '../tokens/types';
@@ -470,20 +469,5 @@ export class PoolService {
       logger.error(`Failed to get default pools: ${error.message}`);
       return {};
     }
-  }
-
-  /**
-   * Get chain for a connector by looking it up in the connectors configuration
-   */
-  public getChainForConnector(connector: string): string {
-    const connectorInfo = connectorsConfig.find((c) => c.name === connector);
-
-    if (!connectorInfo) {
-      throw new Error(
-        `Unknown connector: ${connector}. Available connectors: ${connectorsConfig.map((c) => c.name).join(', ')}`,
-      );
-    }
-
-    return connectorInfo.chain;
   }
 }

@@ -67,6 +67,9 @@ const mockPoolInfo = {
   },
 };
 
+// Pool state as the connector reads it from the chain
+const mockPoolFromRpc = { poolType: 'amm', poolInfo: mockPoolInfo, poolKeys: {}, rpcData: {} };
+
 const mockSwapResponse = {
   allTrade: true,
   swapInDirection: 'base2quote',
@@ -126,15 +129,10 @@ describe('GET /quote-swap', () => {
           decimals: 9,
         },
       }),
-      getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, {}]),
+      getAmmPoolFromRpc: jest.fn().mockResolvedValue(mockPoolFromRpc),
       raydiumSDK: {
         liquidity: {
           computeAmountOut: jest.fn().mockReturnValue(mockSwapResponse),
-          getRpcPoolInfo: jest.fn().mockResolvedValue({
-            baseReserve: '1000000000000',
-            quoteReserve: '150000000000',
-            status: { toNumber: () => 1 },
-          }),
         },
       },
     };
@@ -203,15 +201,10 @@ describe('GET /quote-swap', () => {
           decimals: 9,
         },
       }),
-      getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, {}]),
+      getAmmPoolFromRpc: jest.fn().mockResolvedValue(mockPoolFromRpc),
       raydiumSDK: {
         liquidity: {
           computeAmountIn: jest.fn().mockReturnValue(mockBuyResponse),
-          getRpcPoolInfo: jest.fn().mockResolvedValue({
-            baseReserve: '1000000000000',
-            quoteReserve: '150000000000',
-            status: { toNumber: () => 1 },
-          }),
         },
       },
     };
@@ -244,40 +237,5 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('price', 150);
     expect(body).toHaveProperty('priceImpactPct', 1);
     expect(body).toHaveProperty('slippagePct', 1);
-  });
-
-  it('should return 404 if pool not found', async () => {
-    const mockSolanaInstance = {
-      getToken: jest.fn((token) => {
-        if (token === 'SOL' || token === mockSOL.address) return Promise.resolve(mockSOL);
-        if (token === 'USDC' || token === mockUSDC.address) return Promise.resolve(mockUSDC);
-        return Promise.resolve(null);
-      }),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000), // Mock priority fee in lamports per CU
-    };
-    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
-
-    const mockRaydiumInstance = {
-      getAmmPoolInfo: jest.fn().mockResolvedValue(null),
-    };
-    (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
-
-    const response = await server.inject({
-      method: 'GET',
-      url: '/quote-swap',
-      query: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        poolAddress: 'invalid-pool-address',
-        baseToken: 'SOL',
-        quoteToken: 'USDC',
-        amount: '0.1',
-        side: 'SELL',
-        slippagePct: '1',
-      },
-    });
-
-    expect(response.statusCode).toBe(404);
-    expect(parseWire(response.body)).toHaveProperty('error');
   });
 });

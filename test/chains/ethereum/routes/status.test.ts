@@ -182,33 +182,6 @@ describe('Ethereum Status Route', () => {
       });
     });
 
-    it('should handle different networks with Infura provider', async () => {
-      getEthereumChainConfig.mockReturnValue({
-        defaultNetwork: 'polygon',
-        defaultWallet: 'test-wallet',
-        rpcProvider: 'infura',
-      });
-
-      mockEthereumInstance.rpcUrl = 'https://polygon-rpc.com';
-      mockEthereumInstance.getRpcProviderService.mockReturnValue(mockInfuraService);
-      mockInfuraService.getHttpUrl.mockReturnValue('https://polygon-mainnet.infura.io/v3/test-key');
-
-      const result = await getEthereumStatus('polygon');
-
-      expect(result).toEqual({
-        chain: 'ethereum',
-        network: 'polygon',
-        rpcUrl: 'https://polygon-mainnet.infura.io/v3/test-key',
-        rpcProvider: 'infura',
-        currentBlockNumber: 23329000,
-        nativeCurrency: 'ETH',
-        swapProvider: 'uniswap/router',
-      });
-
-      expect(mockInfuraService.getHttpUrl).toHaveBeenCalled();
-      expect(mockEthereumInstance.getRpcProviderService).toHaveBeenCalled();
-    });
-
     it('should handle getBlockNumber timeout and continue with block number 0', async () => {
       getEthereumChainConfig.mockReturnValue({
         defaultNetwork: 'mainnet',
@@ -283,20 +256,6 @@ describe('Ethereum Status Route', () => {
         nativeCurrency: 'ETH',
         swapProvider: 'uniswap/router',
       });
-    });
-
-    it('should handle missing network parameter (uses default)', async () => {
-      const response = await fastify.inject({
-        method: 'GET',
-        url: '/chains/ethereum/status',
-      });
-
-      expect(response.statusCode).toBe(200);
-
-      const responseBody = JSON.parse(response.body);
-      expect(responseBody).toHaveProperty('chain', 'ethereum');
-      expect(responseBody).toHaveProperty('rpcProvider');
-      expect(responseBody).toHaveProperty('rpcUrl');
     });
 
     // The per-chain route used to answer a failed status check with HTTP 500 AND a

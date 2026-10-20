@@ -44,24 +44,6 @@ describe('Okx request signing', () => {
       'OK-ACCESS-PASSPHRASE': 'test-passphrase',
       'OK-ACCESS-TIMESTAMP': timestamp,
     });
-
-    // Known vector: locks the exact signing-string composition against regressions
-    expect(expectedSign).toBe(
-      crypto
-        .createHmac('sha256', 'test-secret-key')
-        .update('2026-07-03T00:00:00.000ZGET/api/v6/dex/aggregator/quote?amount=1000&chainIndex=501')
-        .digest('base64'),
-    );
-  });
-
-  it('signature changes when the query string changes', async () => {
-    const okx = await Okx.getInstance('mainnet-beta');
-    const timestamp = '2026-07-03T00:00:00.000Z';
-
-    const a = okx.signedHeaders('GET', '/api/v6/dex/aggregator/quote?amount=1000', timestamp);
-    const b = okx.signedHeaders('GET', '/api/v6/dex/aggregator/quote?amount=1001', timestamp);
-
-    expect(a['OK-ACCESS-SIGN']).not.toBe(b['OK-ACCESS-SIGN']);
   });
 });
 

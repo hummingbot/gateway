@@ -90,11 +90,6 @@ export class Ethereum {
     return Ethereum.lastGasPriceEstimate[this.network];
   }
 
-  // For backward compatibility
-  public get chain(): string {
-    return this.network;
-  }
-
   private constructor(network: string) {
     const config = getEthereumNetworkConfig(network);
     this.chainId = config.chainID;

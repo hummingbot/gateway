@@ -1,5 +1,5 @@
 import { fetchPositionsForOwner, setNativeMintWrappingStrategy, type WhirlpoolDeployment } from '@orca-so/whirlpools';
-import { fetchWhirlpool, fetchPosition } from '@orca-so/whirlpools-client';
+import { fetchWhirlpool } from '@orca-so/whirlpools-client';
 import { address, createSolanaRpc, mainnet, devnet } from '@solana/kit';
 import { PublicKey } from '@solana/web3.js';
 
@@ -12,6 +12,9 @@ import { OrcaConfig } from './orca.config';
 import { getPositionDetails } from './orca.position';
 import { getOrcaDeployment } from './orca.sdk';
 import { OrcaPoolInfo } from './schemas';
+
+/** Deadline for an Orca API request, body included, so a stalled API cannot hold up a chain read. */
+export const ORCA_API_TIMEOUT_MS = 5000;
 
 export class Orca {
   private static _instances: { [name: string]: Orca };
@@ -55,68 +58,6 @@ export class Orca {
       logger.info('Orca connector initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize Orca:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Fetches pools from Orca API and maps them to OrcaPoolInfo format
-   * @param options Fetch options
-   * @returns Array of OrcaPoolInfo objects
-   */
-  async getPools(
-    options: {
-      limit?: number;
-      query?: string;
-      sortBy?: string;
-      sortDirection?: string;
-      verifiedOnly?: boolean;
-    } = {},
-  ): Promise<OrcaPoolInfo[]> {
-    const { limit = 50, query, sortBy = 'volume', sortDirection = 'desc', verifiedOnly = false } = options;
-
-    try {
-      let baseUrl: string;
-      if (this.solana.network === 'mainnet-beta') {
-        baseUrl = 'https://api.orca.so/v2/solana/pools/search';
-      } else {
-        baseUrl = 'https://api.devnet.orca.so/v2/solana/pools/search';
-      }
-
-      const params = new URLSearchParams();
-
-      if (query) {
-        params.append('q', query);
-      }
-      if (limit) {
-        params.append('size', limit.toString());
-      }
-      if (sortBy) {
-        params.append('sortBy', sortBy);
-      }
-      if (sortDirection) {
-        params.append('sortDirection', sortDirection);
-      }
-      if (verifiedOnly) {
-        params.append('verifiedOnly', 'true');
-      }
-
-      const url = `${baseUrl}?${params.toString()}`;
-      logger.info(`Fetching Orca pools from API: ${url}`);
-
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`Orca API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const pools = data.data || [];
-
-      // Map API response to OrcaPoolInfo format
-      return pools.map((pool: any) => this.mapApiPoolToPoolInfo(pool));
-    } catch (error) {
-      logger.error('Error fetching pools from Orca API:', error);
       throw error;
     }
   }
@@ -203,52 +144,42 @@ export class Orca {
       // Orca-specific fields
       liquidity: apiPool.liquidity,
       sqrtPrice: apiPool.sqrtPrice,
-      tvlUsdc: apiPool.tvlUsdc,
+      tvlUsdc: apiPool.tvlUsdc == null ? null : Number(apiPool.tvlUsdc),
       protocolFeeRate,
-      yieldOverTvl: Number(apiPool.yieldOverTvl),
+      yieldOverTvl: apiPool.yieldOverTvl == null ? null : Number(apiPool.yieldOverTvl),
     };
   }
 
   /**
    * Gets comprehensive pool information for a Whirlpool using Orca API v2
    * @param poolAddress The whirlpool address
-   * @returns OrcaPoolInfo or null if not found
+   * @returns OrcaPoolInfo, or null only when Orca has no such pool (a 404 or an empty
+   * search). A network error, any other status, a body that isn't a pool list, or a
+   * pool that doesn't decode throws with its cause. A request that takes longer than
+   * ORCA_API_TIMEOUT_MS, body included, throws.
    */
   async getPoolInfo(poolAddress: string): Promise<OrcaPoolInfo | null> {
-    try {
-      let baseUrl: string;
-      if (this.solana.network === 'mainnet-beta') {
-        baseUrl = 'https://api.orca.so/v2/solana/pools/search';
-      } else {
-        baseUrl = 'https://api.devnet.orca.so/v2/solana/pools/search';
-      }
-      const params = new URLSearchParams();
+    const baseUrl =
+      this.solana.network === 'mainnet-beta'
+        ? 'https://api.orca.so/v2/solana/pools/search'
+        : 'https://api.devnet.orca.so/v2/solana/pools/search';
+    const params = new URLSearchParams({ q: poolAddress, size: '1' });
 
-      // Search by pool address
-      params.append('q', poolAddress);
-      params.append('size', '1');
-
-      const url = `${baseUrl}?${params.toString()}`;
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`Orca API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const pools = data.data || [];
-
-      if (pools.length === 0) {
-        logger.error(`Pool not found: ${poolAddress}`);
-        return null;
-      }
-
-      // Map the first result to OrcaPoolInfo format
-      return this.mapApiPoolToPoolInfo(pools[0]);
-    } catch (error) {
-      logger.error(`Error getting pool info for ${poolAddress}:`, error);
-      return null;
+    const response = await fetch(`${baseUrl}?${params.toString()}`, {
+      signal: AbortSignal.timeout(ORCA_API_TIMEOUT_MS),
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`Orca API pool lookup for ${poolAddress} failed: ${response.status} ${response.statusText}`);
     }
+
+    const data = await response.json();
+    if (!Array.isArray(data?.data)) {
+      throw new Error(`Orca API pool lookup for ${poolAddress} returned no pool list`);
+    }
+    if (data.data.length === 0) return null;
+
+    return this.mapApiPoolToPoolInfo(data.data[0]);
   }
 
   /**
@@ -271,40 +202,6 @@ export class Orca {
     } catch (error) {
       logger.error(`Error fetching whirlpool ${poolAddress}:`, error);
       throw error;
-    }
-  }
-
-  /**
-   * Gets raw position data for a position address
-   * @param positionAddress The position PDA address
-   * @param _walletAddress The wallet that owns the position (not used in Orca, kept for API compatibility)
-   * @returns Position data with pool info
-   */
-  async getRawPosition(positionAddress: string, _walletAddress: PublicKey) {
-    try {
-      const rpc = this.solanaKitRpc;
-      // Fetch position account
-      const position = await fetchPosition(rpc, address(positionAddress));
-
-      if (!position.data) {
-        throw new Error(`Position not found: ${positionAddress}`);
-      }
-
-      const pos = position.data;
-      const poolAddress = pos.whirlpool.toString();
-
-      // Fetch the whirlpool data
-      const whirlpool = await this.getWhirlpool(poolAddress);
-
-      return {
-        position: pos,
-        poolAddress,
-        whirlpool,
-        publicKey: new PublicKey(poolAddress),
-      };
-    } catch (error) {
-      logger.error('Error getting raw position:', error);
-      return null;
     }
   }
 

@@ -3,6 +3,7 @@
  */
 
 import { CoinGeckoService, TopPoolInfo } from '../services/coingecko-service';
+import { httpErrors } from '../services/error-handler';
 import { logger } from '../services/logger';
 
 import { fetchPoolInfo, resolveTokenSymbols } from './pool-info-helpers';
@@ -39,7 +40,7 @@ export async function fetchDetailedPoolInfo(chainNetwork: string, address: strin
   const poolInfo = await fetchPoolInfo(poolData.connector, poolData.type as 'amm' | 'clmm', network, address);
 
   if (!poolInfo) {
-    throw new Error(`Unable to fetch pool-info from connector ${poolData.connector} (may not be supported)`);
+    throw httpErrors.notFound(`Pool ${address} not found in ${poolData.connector} ${poolData.type} on ${network}`);
   }
 
   // Resolve token symbols - handle missing tokens gracefully

@@ -1,17 +1,12 @@
-import {
-  ApiV3PoolInfoStandardItemCpmm,
-  ApiV3PoolInfoStandardItem,
-  Percent,
-  TokenAmount,
-} from '@raydium-io/raydium-sdk-v2';
+import { Percent, TokenAmount } from '@raydium-io/raydium-sdk-v2';
 import BN from 'bn.js';
+import Decimal from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
 import { QuoteLiquidityResponseType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
-import { Raydium } from '../raydium';
+import { Raydium, RaydiumAmmPool } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
-import { isValidAmm, isValidCpmm } from '../raydium.utils';
 
 interface AmmComputePairResult {
   anotherAmount: TokenAmount;
@@ -24,6 +19,26 @@ interface CpmmComputePairResult {
   maxAnotherAmount: { amount: BN };
   liquidity: BN;
   inputAmountFee: { amount: BN };
+}
+
+// cpmm.getPoolInfoFromRpc reports lpAmount in raw units, while computePairAmount reads
+// it in whole LP tokens (the API's unit); scale it the way the SDK's own addLiquidity does.
+function cpmmComputePoolInfo(pool: Extract<RaydiumAmmPool, { poolType: 'cpmm' }>) {
+  return {
+    ...pool.poolInfo,
+    lpAmount: new Decimal(pool.rpcData.lpAmount.toString()).div(10 ** pool.poolInfo.lpMint.decimals).toNumber(),
+  };
+}
+
+// liquidity.getPoolInfoFromRpc sets mintAmountA/B to the whole vault balances, which
+// still hold the PnL the pool owes out; the program prices deposits on the reserves net
+// of it, so computePairAmount is fed those.
+function ammComputePoolInfo(pool: Extract<RaydiumAmmPool, { poolType: 'amm' }>) {
+  return {
+    ...pool.poolInfo,
+    mintAmountA: new Decimal(pool.rpcData.baseReserve.toString()).div(10 ** pool.poolInfo.mintA.decimals).toNumber(),
+    mintAmountB: new Decimal(pool.rpcData.quoteReserve.toString()).div(10 ** pool.poolInfo.mintB.decimals).toNumber(),
+  };
 }
 
 // Add helper function to parse values
@@ -58,12 +73,8 @@ export async function quoteLiquidity(
     const solana = await Solana.getInstance(network);
     const raydium = await Raydium.getInstance(network);
 
-    const [poolInfo] = await raydium.getPoolfromAPI(poolAddress);
-    const programId = poolInfo.programId;
-
-    if (!isValidAmm(programId) && !isValidCpmm(programId)) {
-      throw new Error('Target pool is not AMM or CPMM pool');
-    }
+    const pool = await raydium.getAmmPoolFromRpc(poolAddress);
+    const { poolInfo } = pool;
 
     const baseToken = await solana.getToken(poolInfo.mintA.address);
     const quoteToken = await solana.getToken(poolInfo.mintB.address);
@@ -79,24 +90,21 @@ export async function quoteLiquidity(
     // Convert percentage to basis points (e.g., 1% = 100 basis points)
     const slippage = new Percent(Math.floor(slippagePct * 100), 10000);
 
-    const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
-
     let resBase: AmmComputePairResult | CpmmComputePairResult;
-    if (ammPoolInfo.poolType === 'amm') {
+    if (pool.poolType === 'amm') {
       resBase = raydium.raydiumSDK.liquidity.computePairAmount({
-        poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
+        poolInfo: ammComputePoolInfo(pool),
         amount: baseAmount,
         baseIn: true,
         slippage: slippage, // 1%
       });
       console.log('resBase parsed:', parseAmmResult(resBase as AmmComputePairResult));
-    } else if (ammPoolInfo.poolType === 'cpmm') {
-      const rawPool = await raydium.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress]);
+    } else {
       resBase = raydium.raydiumSDK.cpmm.computePairAmount({
-        poolInfo: poolInfo as ApiV3PoolInfoStandardItemCpmm,
+        poolInfo: cpmmComputePoolInfo(pool),
         amount: baseAmount,
-        baseReserve: new BN(rawPool[poolAddress].baseReserve),
-        quoteReserve: new BN(rawPool[poolAddress].quoteReserve),
+        baseReserve: pool.rpcData.baseReserve,
+        quoteReserve: pool.rpcData.quoteReserve,
         slippage: slippage,
         baseIn: true,
         epochInfo: epochInfo,
@@ -105,21 +113,20 @@ export async function quoteLiquidity(
     }
 
     let resQuote: AmmComputePairResult | CpmmComputePairResult;
-    if (ammPoolInfo.poolType === 'amm') {
+    if (pool.poolType === 'amm') {
       resQuote = raydium.raydiumSDK.liquidity.computePairAmount({
-        poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
+        poolInfo: ammComputePoolInfo(pool),
         amount: quoteAmount,
         baseIn: false,
         slippage: slippage, // 1%
       });
       console.log('resQuote parsed:', parseAmmResult(resQuote as AmmComputePairResult));
-    } else if (ammPoolInfo.poolType === 'cpmm') {
-      const rawPool = await raydium.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress]);
+    } else {
       resQuote = raydium.raydiumSDK.cpmm.computePairAmount({
-        poolInfo: poolInfo as ApiV3PoolInfoStandardItemCpmm,
+        poolInfo: cpmmComputePoolInfo(pool),
         amount: quoteAmount,
-        baseReserve: new BN(rawPool[poolAddress].baseReserve),
-        quoteReserve: new BN(rawPool[poolAddress].quoteReserve),
+        baseReserve: pool.rpcData.baseReserve,
+        quoteReserve: pool.rpcData.quoteReserve,
         slippage: slippage,
         baseIn: false,
         epochInfo: epochInfo,
@@ -128,7 +135,7 @@ export async function quoteLiquidity(
     }
 
     // Parse the result differently for AMM and CPMM
-    if (ammPoolInfo.poolType === 'amm') {
+    if (pool.poolType === 'amm') {
       // Handle AMM case separately
       const useBaseResult = resBase.liquidity.lte(resQuote.liquidity);
       const ammRes = useBaseResult ? (resBase as AmmComputePairResult) : (resQuote as AmmComputePairResult);
@@ -142,7 +149,7 @@ export async function quoteLiquidity(
         anotherAmountToken: ammRes.anotherAmount.token.symbol,
         maxAnotherAmountToken: ammRes.maxAnotherAmount.token.symbol,
         liquidity: ammRes.liquidity.toString(),
-        poolType: ammPoolInfo.poolType,
+        poolType: pool.poolType,
         baseIn: isBaseIn,
       };
 
@@ -165,7 +172,7 @@ export async function quoteLiquidity(
           quoteTokenAmountMax: quoteTokenAmount,
         };
       }
-    } else if (ammPoolInfo.poolType === 'cpmm') {
+    } else {
       // Handle CPMM case
       const useBaseResult = resBase.liquidity.lte(resQuote.liquidity);
       const cpmmRes = useBaseResult ? (resBase as CpmmComputePairResult) : (resQuote as CpmmComputePairResult);

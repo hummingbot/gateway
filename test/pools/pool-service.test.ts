@@ -133,20 +133,4 @@ describe('PoolService', () => {
       await expect(poolService.validatePool('invalid-chain', pool)).rejects.toThrow('Unsupported chain');
     });
   });
-
-  describe('getChainForConnector', () => {
-    it('should return correct chain for solana connector', () => {
-      expect(poolService.getChainForConnector('raydium')).toBe('solana');
-      expect(poolService.getChainForConnector('meteora')).toBe('solana');
-    });
-
-    it('should return correct chain for ethereum connector', () => {
-      expect(poolService.getChainForConnector('uniswap')).toBe('ethereum');
-      expect(poolService.getChainForConnector('pancakeswap')).toBe('ethereum');
-    });
-
-    it('should throw for unknown connector', () => {
-      expect(() => poolService.getChainForConnector('unknown')).toThrow('Unknown connector');
-    });
-  });
 });

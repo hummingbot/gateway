@@ -1,10 +1,7 @@
 import {
   parseSolanaError,
-  isSlippageError,
-  isInsufficientBalanceError,
   getUserFriendlyErrorMessage,
   extractProgramLogs,
-  PROGRAM_IDS,
 } from '../../../src/chains/solana/solana-error-parser';
 
 describe('Solana Error Parser', () => {
@@ -199,28 +196,15 @@ describe('Solana Error Parser', () => {
         expect(result.errorCode).toBe(6004);
       });
 
-      it('should handle error code 6029 via generic fallback', () => {
-        const errorMessage = `custom program error: 0x178d`;
-        const result = parseSolanaError(errorMessage);
+      it.each([
+        ['0x178d', 6029],
+        ['0x178e', 6030],
+        ['0x178f', 6031],
+      ])('should handle error code %s (%i) via generic fallback', (hex, code) => {
+        const result = parseSolanaError(`custom program error: ${hex}`);
 
         expect(result.type).toBe('SLIPPAGE_EXCEEDED');
-        expect(result.errorCode).toBe(6029);
-      });
-
-      it('should handle error code 6030 via generic fallback', () => {
-        const errorMessage = `custom program error: 0x178e`;
-        const result = parseSolanaError(errorMessage);
-
-        expect(result.type).toBe('SLIPPAGE_EXCEEDED');
-        expect(result.errorCode).toBe(6030);
-      });
-
-      it('should handle error code 6031 via generic fallback', () => {
-        const errorMessage = `custom program error: 0x178f`;
-        const result = parseSolanaError(errorMessage);
-
-        expect(result.type).toBe('SLIPPAGE_EXCEEDED');
-        expect(result.errorCode).toBe(6031);
+        expect(result.errorCode).toBe(code);
       });
     });
 
@@ -385,46 +369,6 @@ describe('Solana Error Parser', () => {
     });
   });
 
-  describe('isSlippageError', () => {
-    it('should return true for Jupiter slippage errors', () => {
-      expect(
-        isSlippageError(`Program JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 failed: custom program error: 0x1771`),
-      ).toBe(true);
-    });
-
-    it('should return true for Meteora slippage errors', () => {
-      expect(
-        isSlippageError(`Program LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo failed: custom program error: 0x1774`),
-      ).toBe(true);
-    });
-
-    it('should return true for Raydium CLMM slippage errors', () => {
-      expect(
-        isSlippageError(`Program CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK failed: custom program error: 0x178e`),
-      ).toBe(true);
-    });
-
-    it('should return true for Orca slippage errors', () => {
-      expect(
-        isSlippageError(`Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc failed: custom program error: 0x178e`),
-      ).toBe(true);
-    });
-
-    it('should return false for non-slippage errors', () => {
-      expect(isSlippageError(`InsufficientFunds`)).toBe(false);
-    });
-  });
-
-  describe('isInsufficientBalanceError', () => {
-    it('should return true for insufficient balance errors', () => {
-      expect(isInsufficientBalanceError(`Transaction failed: InsufficientFunds`)).toBe(true);
-    });
-
-    it('should return false for slippage errors', () => {
-      expect(isInsufficientBalanceError(`custom program error: 0x1771`)).toBe(false);
-    });
-  });
-
   describe('getUserFriendlyErrorMessage', () => {
     it('should return user-friendly message for slippage errors', () => {
       const message = getUserFriendlyErrorMessage(`custom program error: 0x1771`);
@@ -449,16 +393,6 @@ describe('Solana Error Parser', () => {
     it('should return generic message for unknown errors', () => {
       const message = getUserFriendlyErrorMessage(`Unknown error occurred`);
       expect(message).toContain('Transaction failed');
-    });
-  });
-
-  describe('PROGRAM_IDS', () => {
-    it('should have all expected program IDs defined', () => {
-      expect(PROGRAM_IDS.JUPITER).toBe('JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4');
-      expect(PROGRAM_IDS.METEORA_DLMM).toBe('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
-      expect(PROGRAM_IDS.RAYDIUM_CLMM).toBe('CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK');
-      expect(PROGRAM_IDS.RAYDIUM_AMM).toBe('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
-      expect(PROGRAM_IDS.ORCA_WHIRLPOOL).toBe('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc');
     });
   });
 });

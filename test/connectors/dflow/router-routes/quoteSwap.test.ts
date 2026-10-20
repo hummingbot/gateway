@@ -89,11 +89,10 @@ describe('GET /quote-swap (dflow)', () => {
     expect(Number(body.amountIn)).toBe(0.1);
     expect(body).toHaveProperty('amountOut', 15);
     expect(body).toHaveProperty('price', 150);
+    // DFlow's priceImpactPct is a fraction; the unified field is a percentage (0-100).
+    expect(body.priceImpactPct).toBeCloseTo(0.1, 10);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    // The connector's raw provider payload (quoteResponse / routerResult) is not part
-    // of the unified router response schema, which serializes the shared quote fields
-    // plus quoteId. Assertions on it moved out with the per-connector route.
     expect(body.approximation).toBeUndefined();
 
     // ExactIn with the base amount in raw units

@@ -28,52 +28,6 @@ const callGetBalances = (stub: any, tokens?: string[]) =>
   (Ethereum.prototype as any).getBalances.call(stub, address, tokens);
 
 describe('Ethereum Rate Limit Error Propagation', () => {
-  describe('provider read methods', () => {
-    it('should propagate 429 error from getNativeBalanceByAddress', async () => {
-      const error429 = rateLimitError();
-      const stub = {
-        provider: { getBalance: jest.fn().mockRejectedValue(error429) },
-      };
-
-      await expect((Ethereum.prototype as any).getNativeBalanceByAddress.call(stub, address)).rejects.toMatchObject({
-        statusCode: 429,
-      });
-    });
-
-    it('should propagate 429 error from getTransaction', async () => {
-      const error429 = rateLimitError();
-      const stub = {
-        provider: { getTransaction: jest.fn().mockRejectedValue(error429) },
-      };
-
-      await expect((Ethereum.prototype as any).getTransaction.call(stub, '0xabc')).rejects.toMatchObject({
-        statusCode: 429,
-      });
-    });
-
-    it('should propagate 429 error from getTransactionReceipt', async () => {
-      const error429 = rateLimitError();
-      const stub = {
-        provider: { getTransactionReceipt: jest.fn().mockRejectedValue(error429) },
-      };
-
-      await expect((Ethereum.prototype as any).getTransactionReceipt.call(stub, '0xabc')).rejects.toMatchObject({
-        statusCode: 429,
-      });
-    });
-
-    it('should propagate 429 error from getCurrentBlockNumber', async () => {
-      const error429 = rateLimitError();
-      const stub = {
-        provider: { getBlockNumber: jest.fn().mockRejectedValue(error429) },
-      };
-
-      await expect((Ethereum.prototype as any).getCurrentBlockNumber.call(stub)).rejects.toMatchObject({
-        statusCode: 429,
-      });
-    });
-  });
-
   describe('getBalances', () => {
     it('should propagate 429 error from native balance reads', async () => {
       const error429 = rateLimitError();

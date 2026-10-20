@@ -1,3 +1,5 @@
+import { httpErrors } from './error-handler';
+
 /**
  * Schema vocabulary the route schemas use beyond plain JSON Schema, declared to AJV.
  *
@@ -69,4 +71,42 @@ export const schemaErrorFormatter = (errors: any[], dataVar: string): Error => {
     return `${dataVar}${error.instancePath} ${error.message}`;
   });
   return new Error(rendered.join(', '));
+};
+
+/**
+ * Enforces `x-connectors`: a field marked for particular venues is a 400 when the request
+ * names a different connector.
+ *
+ * It was documentation only: passing the wrong field (`configAddress` is meteora's,
+ * `ammConfigIndex` is raydium's) created a pool with the connector's defaults instead of
+ * erroring, because Gateway destructures the keys it knows and ignores the rest.
+ *
+ * Install it as a preValidation hook, deliberately: it runs on the body as the caller sent
+ * it, before AJV fills defaults. Checking afterwards would reject every 0x quote, since
+ * `approximateIfNoExactOut` defaults to true and is marked for the Solana routers.
+ */
+export const enforceConnectorFields = async (request: any): Promise<void> => {
+  const schema = request.routeOptions?.schema;
+  if (!schema) return;
+
+  for (const [part, sent] of [
+    [schema.body, request.body],
+    [schema.querystring, request.query],
+  ] as [any, any][]) {
+    if (!part?.properties || !sent || typeof sent !== 'object') continue;
+
+    const connector = sent.connector ?? part.properties.connector?.default;
+    if (!connector) continue;
+
+    for (const [field, spec] of Object.entries<any>(part.properties)) {
+      const connectors: string[] | undefined = spec?.['x-connectors'];
+      if (!connectors || sent[field] === undefined) continue;
+      if (!connectors.includes(connector)) {
+        throw httpErrors.badRequest(
+          `${field} is not a ${connector} parameter — it applies to ${connectors.join(', ')}. ` +
+            'Remove it, or name a connector that takes it.',
+        );
+      }
+    }
+  }
 };

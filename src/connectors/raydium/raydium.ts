@@ -1,8 +1,11 @@
 import {
   Raydium as RaydiumSDK,
   ApiV3PoolInfoConcentratedItem,
-  ApiV3PoolInfoStandardItem,
   ApiV3PoolInfoStandardItemCpmm,
+  AmmRpcData,
+  ComputeAmountOutParam,
+  CpmmKeys,
+  CpmmRpcData,
   PositionInfoLayout,
   CLMM_PROGRAM_ID,
   DEVNET_PROGRAM_ID,
@@ -27,6 +30,21 @@ import { logger } from '../../services/logger';
 
 import { RaydiumConfig } from './raydium.config';
 import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils';
+
+// Chain-read state of a Raydium AMM v4 or CPMM pool, as the SDK's builders take it.
+export type RaydiumAmmPool =
+  | {
+      poolType: 'amm';
+      poolInfo: ComputeAmountOutParam['poolInfo'];
+      poolKeys: AmmV4Keys | AmmV5Keys;
+      rpcData: AmmRpcData;
+    }
+  | {
+      poolType: 'cpmm';
+      poolInfo: ApiV3PoolInfoStandardItemCpmm;
+      poolKeys: CpmmKeys;
+      rpcData: CpmmRpcData;
+    };
 
 // Internal type that includes poolType for internal use
 interface InternalAmmPoolInfo extends AmmPoolInfo {
@@ -173,45 +191,50 @@ export class Raydium {
   }
 
   async getClmmPoolInfo(poolAddress: string): Promise<ClmmPoolInfo | null> {
+    let rawPool: ClmmRpcData;
+    let vaultABalance: number | null;
+    let vaultBBalance: number | null;
     try {
-      const rawPool = await this.getClmmPoolfromRPC(poolAddress);
-
-      // Fetch AMM config account data
-      let ammConfigData;
-      if (rawPool.ammConfig) {
-        try {
-          const configAccount = await this.solana.connection.getAccountInfo(rawPool.ammConfig);
-          if (configAccount) {
-            const dataBuffer = configAccount.data;
-            ammConfigData = {
-              // 47 is the offset for tradeFeeRate in the dataBuffer
-              tradeFeeRate: dataBuffer.readUInt32LE(47) / 10000,
-            };
-          }
-        } catch (e) {
-          logger.error(`Error fetching CLMM pool info for ${poolAddress}: ${e}`);
-        }
-      }
-
-      const vaultABalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultA)).value.uiAmount;
-      const vaultBBalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultB)).value.uiAmount;
-
-      const poolInfo: ClmmPoolInfo = {
-        address: poolAddress,
-        baseTokenAddress: rawPool.mintA.toString(),
-        quoteTokenAddress: rawPool.mintB.toString(),
-        binStep: Number(rawPool.tickSpacing),
-        feePct: ammConfigData?.tradeFeeRate,
-        price: Number(rawPool.currentPrice),
-        baseTokenAmount: Number(vaultABalance),
-        quoteTokenAmount: Number(vaultBBalance),
-        activeBinId: Number(rawPool.tickCurrent),
-      };
-      return poolInfo;
+      // PancakeSwap's Solana CLMM is a fork with Raydium's account layout, so a
+      // pool decodes here whichever program owns it; only Raydium's are Raydium's.
+      const account = await this.solana.connection.getAccountInfo(new PublicKey(poolAddress));
+      if (!account || !isValidClmm(account.owner.toBase58())) return null;
+      rawPool = await this.getClmmPoolfromRPC(poolAddress);
+      vaultABalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultA)).value.uiAmount;
+      vaultBBalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultB)).value.uiAmount;
     } catch (error) {
       logger.debug(`Could not decode ${poolAddress} as Raydium CLMM pool: ${error}`);
       return null;
     }
+
+    // The pool is Raydium's; a fee it cannot read is an error, not a missing field.
+    const feePct = await this.readClmmTradeFeePct(rawPool.ammConfig, poolAddress);
+
+    return {
+      address: poolAddress,
+      baseTokenAddress: rawPool.mintA.toString(),
+      quoteTokenAddress: rawPool.mintB.toString(),
+      binStep: Number(rawPool.tickSpacing),
+      feePct,
+      price: Number(rawPool.currentPrice),
+      baseTokenAmount: Number(vaultABalance),
+      quoteTokenAmount: Number(vaultBBalance),
+      activeBinId: Number(rawPool.tickCurrent),
+    };
+  }
+
+  /** The trade fee, as a percent, from a CLMM AMM config account (millionths at offset 47). */
+  private async readClmmTradeFeePct(ammConfig: PublicKey, poolAddress: string): Promise<number> {
+    let configAccount;
+    try {
+      configAccount = await this.solana.connection.getAccountInfo(ammConfig);
+    } catch (e) {
+      throw new Error(`could not read Raydium CLMM config ${ammConfig} for pool ${poolAddress}: ${e?.message ?? e}`);
+    }
+    if (!configAccount) {
+      throw new Error(`could not read Raydium CLMM config ${ammConfig} for pool ${poolAddress}: account not found`);
+    }
+    return configAccount.data.readUInt32LE(47) / 10000;
   }
 
   /**
@@ -378,153 +401,72 @@ export class Raydium {
     return positions;
   }
 
-  // General Pool Methods
-  async getPoolfromAPI(
-    poolAddress: string,
-  ): Promise<[ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm, AmmV4Keys | AmmV5Keys] | null> {
-    try {
-      let poolInfo: ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm;
-      let poolKeys: AmmV4Keys | AmmV5Keys;
-
-      if (this.solana.network === 'mainnet-beta') {
-        const data = await this.raydiumSDK.api.fetchPoolById({
-          ids: poolAddress,
-        });
-        poolInfo = data[0] as ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm;
-      } else {
-        const data = await this.raydiumSDK.liquidity.getPoolInfoFromRpc({
-          poolId: poolAddress,
-        });
-        poolInfo = data.poolInfo as ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm;
-        poolKeys = data.poolKeys as AmmV4Keys | AmmV5Keys;
-      }
-
-      if (!poolInfo) {
-        logger.error('Pool not found for address: ' + poolAddress);
-        return null;
-      }
-
-      return [poolInfo, poolKeys];
-    } catch (error) {
-      logger.debug(`Could not fetch Raydium AMM pool info from API for ${poolAddress}: ${error}`);
-      return null;
+  /**
+   * Which Raydium program owns an AMM pool, read from the pool account's owner on-chain.
+   * Throws for a missing account or one owned by any program other than AMM v4 / CPMM.
+   */
+  async getAmmPoolType(poolAddress: string): Promise<'amm' | 'cpmm'> {
+    const account = await this.solana.connection.getAccountInfo(new PublicKey(poolAddress));
+    if (!account) {
+      throw httpErrors.notFound(`Pool account not found: ${poolAddress}`);
     }
+    const owner = account.owner.toBase58();
+    if (isValidAmm(owner)) return 'amm';
+    if (isValidCpmm(owner)) return 'cpmm';
+    throw httpErrors.badRequest(
+      `Pool ${poolAddress} is owned by program ${owner}, which is neither Raydium AMM v4 nor Raydium CPMM`,
+    );
   }
 
-  async getPoolType(poolAddress: string): Promise<string> {
-    const [poolInfo] = await this.getPoolfromAPI(poolAddress);
-    if (isValidClmm(poolInfo.programId)) {
-      return 'clmm';
-    } else if (isValidAmm(poolInfo.programId)) {
-      return 'amm';
-    } else if (isValidCpmm(poolInfo.programId)) {
-      return 'cpmm';
+  /**
+   * Pool state for quoting and building, read from the chain — never Raydium's HTTP API,
+   * which lags the chain and knows nothing of a forked cluster's state.
+   */
+  async getAmmPoolFromRpc(poolAddress: string): Promise<RaydiumAmmPool> {
+    const poolType = await this.getAmmPoolType(poolAddress);
+    if (poolType === 'amm') {
+      const { poolInfo, poolKeys, poolRpcData } = await this.raydiumSDK.liquidity.getPoolInfoFromRpc({
+        poolId: poolAddress,
+      });
+      return { poolType, poolInfo, poolKeys, rpcData: poolRpcData };
     }
-    return null;
+    const { poolInfo, poolKeys, rpcData } = await this.raydiumSDK.cpmm.getPoolInfoFromRpc(poolAddress);
+    return { poolType, poolInfo, poolKeys, rpcData };
   }
 
   // AMM Pool Methods
-  async getAmmPoolInfo(poolAddress: string): Promise<InternalAmmPoolInfo | null> {
-    try {
-      const poolType = await this.getPoolType(poolAddress);
-      let poolInfo: InternalAmmPoolInfo;
-      if (poolType === 'amm') {
-        const rawPool = await this.raydiumSDK.liquidity.getRpcPoolInfos([poolAddress]);
-
-        poolInfo = {
-          address: poolAddress,
-          baseTokenAddress: rawPool[poolAddress].baseMint.toString(),
-          quoteTokenAddress: rawPool[poolAddress].quoteMint.toString(),
-          // feePct is a PERCENT on every other surface (getClmmPoolInfo above, Meteora,
-          // Orca), so the numerator/denominator ratio — a fraction — is scaled to match.
-          // Unscaled this reported 0.0025 for a pool charging 0.25%, and consumers render
-          // the field literally.
-          feePct:
-            (Number(rawPool[poolAddress].tradeFeeNumerator) / Number(rawPool[poolAddress].tradeFeeDenominator)) * 100,
-          price: Number(rawPool[poolAddress].poolPrice),
-          baseTokenAmount: Number(rawPool[poolAddress].mintAAmount) / 10 ** Number(rawPool[poolAddress].baseDecimal),
-          quoteTokenAmount: Number(rawPool[poolAddress].mintBAmount) / 10 ** Number(rawPool[poolAddress].quoteDecimal),
-          poolType: poolType,
-        };
-        return poolInfo;
-      } else if (poolType === 'cpmm') {
-        const rawPool = await this.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress]);
-
-        poolInfo = {
-          address: poolAddress,
-          baseTokenAddress: rawPool[poolAddress].mintA.toString(),
-          quoteTokenAddress: rawPool[poolAddress].mintB.toString(),
-          // CPMM's tradeFeeRate is in millionths (2500 = 0.25%); /10000 yields the percent,
-          // the same conversion getClmmPoolInfo applies to the CLMM config's rate.
-          feePct: Number(rawPool[poolAddress].configInfo?.tradeFeeRate || 0) / 10000,
-          price: Number(rawPool[poolAddress].poolPrice),
-          baseTokenAmount: Number(rawPool[poolAddress].baseReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalA),
-          quoteTokenAmount: Number(rawPool[poolAddress].quoteReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalB),
-          poolType: poolType,
-        };
-        return poolInfo;
-      }
-    } catch (error) {
-      logger.debug(`Could not decode ${poolAddress} as Raydium AMM pool: ${error}`);
-      return null;
+  async getAmmPoolInfo(poolAddress: string): Promise<InternalAmmPoolInfo> {
+    const poolType = await this.getAmmPoolType(poolAddress);
+    if (poolType === 'amm') {
+      const rawPool = (await this.raydiumSDK.liquidity.getRpcPoolInfos([poolAddress]))[poolAddress];
+      return {
+        address: poolAddress,
+        baseTokenAddress: rawPool.baseMint.toString(),
+        quoteTokenAddress: rawPool.quoteMint.toString(),
+        // feePct is a PERCENT on every other surface (getClmmPoolInfo above, Meteora,
+        // Orca), so the numerator/denominator ratio — a fraction — is scaled to match.
+        // Unscaled this reported 0.0025 for a pool charging 0.25%, and consumers render
+        // the field literally.
+        feePct: (Number(rawPool.tradeFeeNumerator) / Number(rawPool.tradeFeeDenominator)) * 100,
+        price: Number(rawPool.poolPrice),
+        baseTokenAmount: Number(rawPool.mintAAmount) / 10 ** Number(rawPool.baseDecimal),
+        quoteTokenAmount: Number(rawPool.mintBAmount) / 10 ** Number(rawPool.quoteDecimal),
+        poolType,
+      };
     }
-  }
 
-  private getPairKey(baseToken: string, quoteToken: string): string {
-    return `${baseToken}-${quoteToken}`;
-  }
-
-  /**
-   * Execute a transaction using the SDK V2 execute pattern
-   * This provides a unified way to handle transaction execution
-   *
-   * @param executeFunc The execute function returned by SDK methods
-   * @returns Transaction ID
-   */
-  async executeTransaction(executeFunc: () => Promise<{ txId: string }>): Promise<string> {
-    try {
-      const result = await executeFunc();
-      logger.info(`Transaction executed successfully: ${result.txId}`);
-      return result.txId;
-    } catch (error: any) {
-      logger.error('Transaction execution failed:', error);
-
-      // Handle common Solana errors
-      if (error.message?.includes('insufficient funds')) {
-        throw new Error('Insufficient SOL balance for transaction fees');
-      }
-      if (error.message?.includes('slippage')) {
-        throw new Error('Transaction failed due to slippage. Try increasing slippage tolerance.');
-      }
-      if (error.message?.includes('blockhash')) {
-        throw new Error('Transaction expired. Please try again.');
-      }
-
-      throw error;
-    }
-  }
-
-  async findDefaultPool(_baseToken: string, _quoteToken: string, _routeType: 'amm' | 'clmm'): Promise<string | null> {
-    // Pools are now managed separately, return null for dynamic pool discovery
-    return null;
-  }
-
-  /**
-   * Helper function to prepare wallet for transaction operations
-   * Returns the wallet/public key and whether it's a hardware wallet
-   */
-  public async prepareWallet(walletAddress: string): Promise<{
-    wallet: Keypair | PublicKey;
-    isHardwareWallet: boolean;
-  }> {
-    const isHardwareWallet = await this.solana.isHardwareWallet(walletAddress);
-    const wallet = isHardwareWallet
-      ? await this.solana.getPublicKey(walletAddress)
-      : await this.solana.getWallet(walletAddress);
-
-    // Set the owner for SDK operations
-    await this.setOwner(wallet);
-
-    return { wallet, isHardwareWallet };
+    const rawPool = (await this.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress], true))[poolAddress];
+    return {
+      address: poolAddress,
+      baseTokenAddress: rawPool.mintA.toString(),
+      quoteTokenAddress: rawPool.mintB.toString(),
+      // CPMM's tradeFeeRate is in millionths (2500 = 0.25%); /10000 yields the percent,
+      // the same conversion getClmmPoolInfo applies to the CLMM config's rate.
+      feePct: Number(rawPool.configInfo.tradeFeeRate) / 10000,
+      price: Number(rawPool.poolPrice),
+      baseTokenAmount: Number(rawPool.baseReserve) / 10 ** Number(rawPool.mintDecimalA),
+      quoteTokenAmount: Number(rawPool.quoteReserve) / 10 ** Number(rawPool.mintDecimalB),
+      poolType,
+    };
   }
 }

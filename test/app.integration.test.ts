@@ -9,8 +9,8 @@ import { AMM_CONNECTORS, CLMM_CONNECTORS, ROUTER_CONNECTORS } from '../src/tradi
 // The route table is now unified: the trading type is a path segment and the
 // connector is a parameter, so there is one set of routes rather than one set per
 // connector. These tests guard that shape — that every connector Gateway advertises
-// is reachable through the surface for its trading type, that each unified route is
-// registered, and that the per-connector paths they replaced are gone.
+// is reachable through the surface for its trading type, and that each unified route
+// is registered.
 
 describe('App Integration - Route Registration', () => {
   let fastify: FastifyInstance;
@@ -26,7 +26,13 @@ describe('App Integration - Route Registration', () => {
 
   const connectors = async () => {
     const response = await fastify.inject({ method: 'GET', url: '/config/connectors' });
-    return JSON.parse(response.body).connectors as Array<{ name: string; trading_types: string[] }>;
+    expect(response.statusCode).toBe(200);
+    return JSON.parse(response.body).connectors as Array<{
+      name: string;
+      trading_types: string[];
+      chain: string;
+      networks: string[];
+    }>;
   };
 
   describe('Connector coverage', () => {
@@ -44,8 +50,15 @@ describe('App Integration - Route Registration', () => {
       }
     });
 
-    it('advertises only valid, non-duplicated trading types', async () => {
-      for (const connector of await connectors()) {
+    it('advertises each connector with a chain, its networks and valid, non-duplicated trading types', async () => {
+      const all = await connectors();
+      expect(all.map((c) => c.name)).toEqual(expect.arrayContaining(['jupiter', 'uniswap']));
+
+      for (const connector of all) {
+        expect(['ethereum', 'solana']).toContain(connector.chain);
+        expect(Array.isArray(connector.networks)).toBe(true);
+        expect(connector.networks.length).toBeGreaterThan(0);
+
         expect(Array.isArray(connector.trading_types)).toBe(true);
         expect(connector.trading_types.length).toBeGreaterThan(0);
         connector.trading_types.forEach((type) => expect(['router', 'amm', 'clmm']).toContain(type));
@@ -125,19 +138,6 @@ describe('App Integration - Route Registration', () => {
       const response = await fastify.inject({ method: 'GET', url: '/chains/dogecoin/status' });
       expect(response.statusCode).toBe(400);
       expect(response.json().message).toContain('must be equal to one of the allowed values');
-    });
-  });
-
-  describe('Replaced routes are gone', () => {
-    it.each([
-      '/connectors/jupiter/router/quote-swap',
-      '/connectors/meteora/clmm/pool-info',
-      '/connectors/raydium/amm/pool-info',
-      '/connectors/orca/clmm/fetch-pools',
-      '/trading/swap/quote',
-    ])('404s on %s', async (url) => {
-      const response = await fastify.inject({ method: 'GET', url });
-      expect(response.statusCode).toBe(404);
     });
   });
 });

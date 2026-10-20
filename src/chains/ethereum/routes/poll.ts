@@ -58,7 +58,7 @@ export async function pollEthereumTransaction(
         // decode logs
         if (connector) {
           try {
-            const connectorInstance: any = await getConnector('ethereum', network, connector);
+            const connectorInstance: any = await getConnector(network, connector);
 
             txReceipt.logs = connectorInstance.abiDecoder?.decodeLogs(txReceipt.logs);
           } catch (e) {

@@ -16,28 +16,13 @@ export async function quotePosition(
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
   slippagePct: number = RaydiumConfig.config.slippagePct,
-  baseTokenSymbol?: string,
-  quoteTokenSymbol?: string,
 ): Promise<QuotePositionResponseType> {
   try {
     const solana = await Solana.getInstance(network);
     const raydium = await Raydium.getInstance(network);
 
-    // If no pool address provided, find default pool using base and quote tokens
-    let poolAddressToUse = poolAddress;
-    if (!poolAddressToUse) {
-      if (!baseTokenSymbol || !quoteTokenSymbol) {
-        throw new Error('Either poolAddress or both baseToken and quoteToken must be provided');
-      }
-
-      poolAddressToUse = await raydium.findDefaultPool(baseTokenSymbol, quoteTokenSymbol, 'clmm');
-      if (!poolAddressToUse) {
-        throw new Error(`No CLMM pool found for pair ${baseTokenSymbol}-${quoteTokenSymbol}`);
-      }
-    }
-
-    const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddressToUse);
-    const rpcData = await raydium.getClmmPoolfromRPC(poolAddressToUse);
+    const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
+    const rpcData = await raydium.getClmmPoolfromRPC(poolAddress);
     poolInfo.price = rpcData.currentPrice;
 
     const { tick: lowerTick } = TickUtils.getPriceAndTick({

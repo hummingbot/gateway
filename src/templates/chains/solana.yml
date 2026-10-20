@@ -6,5 +6,5 @@ defaultWallet: '<solana-wallet-address>'
 defaultNetworks:
   - mainnet-beta
 
-# RPC provider: 'url' uses nodeURL from network config, or specify a provider name (e.g., 'helius')
+# RPC provider: 'url' uses nodeURL from network config, or specify a provider name ('helius', 'infura', 'chainstack')
 rpcProvider: url
