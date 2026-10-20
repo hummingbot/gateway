@@ -29,7 +29,7 @@ jest.mock('@solana/kit', () => ({
 import { fetchPositionsForOwner, setNativeMintWrappingStrategy } from '@orca-so/whirlpools';
 
 import { Solana } from '../../../src/chains/solana/solana';
-import { Orca } from '../../../src/connectors/orca/orca';
+import { Orca, ORCA_API_TIMEOUT_MS } from '../../../src/connectors/orca/orca';
 import { OrcaConfig } from '../../../src/connectors/orca/orca.config';
 import { getPositionDetails } from '../../../src/connectors/orca/orca.position';
 import { logger } from '../../../src/services/logger';
@@ -106,7 +106,7 @@ describe('Orca', () => {
         protocolFeeRate: 0.01,
       }),
     );
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('q=pool1'));
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('q=pool1'), expect.anything());
   });
 
   it.each([
@@ -196,6 +196,25 @@ describe('Orca', () => {
       await expect(orca.getPoolInfo('pool1')).rejects.toThrow(
         'Orca API pool lookup for pool1 failed: 503 Service Unavailable',
       );
+    });
+
+    it('throws when the API stalls past its deadline, body included', async () => {
+      const deadline = new AbortController();
+      const timeout = jest.spyOn(AbortSignal, 'timeout').mockReturnValue(deadline.signal);
+      const stalled = (signal: AbortSignal) =>
+        new Promise((_, reject) => {
+          if (signal.aborted) reject(signal.reason);
+          signal.addEventListener('abort', () => reject(signal.reason));
+        });
+      global.fetch = jest.fn((_url: string, init: RequestInit) =>
+        Promise.resolve({ ok: true, json: () => stalled(init.signal) } as any),
+      ) as any;
+      const orca = await Orca.getInstance('mainnet-beta');
+      const lookup = orca.getPoolInfo('pool1');
+      deadline.abort(new Error('The operation was aborted due to timeout'));
+      await expect(lookup).rejects.toThrow('aborted due to timeout');
+      expect(timeout).toHaveBeenCalledWith(ORCA_API_TIMEOUT_MS);
+      timeout.mockRestore();
     });
 
     it('throws on a network error, with its cause', async () => {

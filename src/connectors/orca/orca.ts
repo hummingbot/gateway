@@ -13,6 +13,9 @@ import { getPositionDetails } from './orca.position';
 import { getOrcaDeployment } from './orca.sdk';
 import { OrcaPoolInfo } from './schemas';
 
+/** Deadline for an Orca API request, body included, so a stalled API cannot hold up a chain read. */
+export const ORCA_API_TIMEOUT_MS = 5000;
+
 export class Orca {
   private static _instances: { [name: string]: Orca };
   private solana: Solana;
@@ -152,7 +155,8 @@ export class Orca {
    * @param poolAddress The whirlpool address
    * @returns OrcaPoolInfo, or null only when Orca has no such pool (a 404 or an empty
    * search). A network error, any other status, a body that isn't a pool list, or a
-   * pool that doesn't decode throws with its cause.
+   * pool that doesn't decode throws with its cause. A request that takes longer than
+   * ORCA_API_TIMEOUT_MS, body included, throws.
    */
   async getPoolInfo(poolAddress: string): Promise<OrcaPoolInfo | null> {
     const baseUrl =
@@ -161,7 +165,9 @@ export class Orca {
         : 'https://api.devnet.orca.so/v2/solana/pools/search';
     const params = new URLSearchParams({ q: poolAddress, size: '1' });
 
-    const response = await fetch(`${baseUrl}?${params.toString()}`);
+    const response = await fetch(`${baseUrl}?${params.toString()}`, {
+      signal: AbortSignal.timeout(ORCA_API_TIMEOUT_MS),
+    });
     if (response.status === 404) return null;
     if (!response.ok) {
       throw new Error(`Orca API pool lookup for ${poolAddress} failed: ${response.status} ${response.statusText}`);
