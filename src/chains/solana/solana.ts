@@ -900,7 +900,12 @@ export class Solana {
    * @returns Map of token symbol to balance (only includes tokens in network's token list)
    */
   private async getBalancesFromRPC(address: string, tokens?: string[]): Promise<Record<string, number>> {
-    const publicKey = new PublicKey(address);
+    let publicKey: PublicKey;
+    try {
+      publicKey = new PublicKey(address);
+    } catch {
+      throw httpErrors.badRequest(`Invalid Solana address: ${address}`);
+    }
     const balances: Record<string, number> = {};
 
     // Treat empty array as if no tokens were specified
