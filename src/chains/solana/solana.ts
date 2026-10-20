@@ -927,10 +927,9 @@ export class Solana {
     }
 
     // Fetch all token accounts
+    // A wallet with no token accounts goes through the same steps, so a requested token
+    // is reported under the same key whether or not the wallet holds it.
     const tokenAccounts = await this.fetchTokenAccounts(publicKey);
-    if (tokenAccounts.size === 0) {
-      return this.handleEmptyTokenAccounts(balances, effectiveSymbols);
-    }
 
     // Process tokens based on request type
     if (effectiveSymbols) {
@@ -1111,25 +1110,6 @@ export class Solana {
   }
 
   /**
-   * Handle case when no token accounts are found
-   */
-  private handleEmptyTokenAccounts(
-    balances: Record<string, number>,
-    effectiveSymbols?: string[],
-  ): Record<string, number> {
-    const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
-    if (effectiveSymbols) {
-      // Set all requested tokens to 0
-      for (const symbol of effectiveSymbols) {
-        if (symbol.toUpperCase() !== 'SOL' && symbol !== SOL_NATIVE_MINT) {
-          balances[symbol] = 0;
-        }
-      }
-    }
-    return balances;
-  }
-
-  /**
    * Process specific tokens requested by the user
    */
   private async processSpecificTokens(
@@ -1143,11 +1123,19 @@ export class Solana {
     for (const symbol of symbols) {
       if (symbol.toUpperCase() === 'SOL' || symbol === SOL_NATIVE_MINT) continue;
 
-      // Try to find token by symbol
-      const tokenInfo = tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase());
+      // A listed token, asked for by symbol or by mint, is reported under its symbol so
+      // the caller can name and price it.
+      const tokenInfo = tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase() || t.address === symbol);
 
       if (tokenInfo) {
-        // Token found in list
+        // 'SOL' is the native balance's key. A listed token of another mint under that
+        // symbol would overwrite it, so the list is refused instead.
+        if (tokenInfo.symbol.toUpperCase() === 'SOL') {
+          throw new Error(
+            `Token list entry ${tokenInfo.address} has the symbol ${tokenInfo.symbol}, which names native SOL ` +
+              `(${SOL_NATIVE_MINT}); give it another symbol`,
+          );
+        }
         const balance = this.getTokenBalance(tokenAccounts.get(tokenInfo.address), tokenInfo.decimals);
         balances[tokenInfo.symbol] = balance;
       } else if (this.isValidSolanaAddress(symbol)) {
