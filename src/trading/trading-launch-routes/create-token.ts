@@ -100,6 +100,16 @@ export const UnifiedCreateTokenRequest = Type.Object(
         'x-connectors': ['raydium'],
       } as any),
     ),
+    lookupTableAddress: Type.Optional(
+      Type.String({
+        description:
+          'pump: the address lookup table a create with devBuyAmount compiles against, instead of the ' +
+          "connector's pump.lookupTableAddress. With neither, the build is two transactions: the first makes a " +
+          "lookup table (the wallet its authority) holding the create's accounts, the second is the create and " +
+          'the dev buy, atomic, in followingTransactions — submit it after the first confirms.',
+        'x-connectors': ['pump'],
+      } as any),
+    ),
     configAddress: Type.Optional(
       Type.String({
         description:
@@ -170,6 +180,9 @@ async function dispatchPrepareCreateToken(connector: string, network: string, pa
   if (connector !== 'meteora' && params.configAddress !== undefined) {
     throw httpErrors.badRequest('configAddress is for meteora launches');
   }
+  if (connector !== 'pump' && params.lookupTableAddress !== undefined) {
+    throw httpErrors.badRequest('lookupTableAddress is for pump launches');
+  }
   switch (connector) {
     case 'raydium':
       return await raydiumPrepareCreateToken(params);
@@ -216,7 +229,8 @@ export const createTokenRoute: FastifyPluginAsync = async (fastify) => {
         description:
           'Build the unsigned transaction that /create-token would sign and send, for the caller to sign ' +
           'with its own wallet and broadcast via /chains/{chain}/submit. The mint keypair has already ' +
-          'partial-signed (see extraSigners); Gateway discards it after the build.',
+          'partial-signed (see extraSigners); Gateway discards it after the build. A pump launch with a dev ' +
+          'buy and no lookup table is two transactions (see lookupTableAddress).',
         tags: ['/trading/launch'],
         body: BuildCreateTokenRequest,
         response: { 200: BuildCreateTokenResponse },
