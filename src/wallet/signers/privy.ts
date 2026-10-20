@@ -10,7 +10,7 @@
  * signed transaction and checks sender and fields before broadcasting.
  */
 import { VersionedMessage, VersionedTransaction } from '@solana/web3.js';
-import { BigNumber, BigNumberish } from 'ethers';
+import { BigNumber, BigNumberish, utils } from 'ethers';
 
 import {
   PrivyError,
@@ -30,7 +30,7 @@ import type {
 } from './types';
 
 function hexQuantity(value: BigNumberish): string {
-  return BigNumber.from(value).toHexString();
+  return utils.hexValue(BigNumber.from(value));
 }
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {

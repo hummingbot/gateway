@@ -142,13 +142,13 @@ describe('privy signer', () => {
         from: privyKey.address,
         to: '0x000000000000000000000000000000000000dEaD',
         chain_id: '0x89',
-        nonce: '0x03',
+        nonce: '0x3',
         data: '0x1234',
-        value: '0x05',
+        value: '0x5',
         gas_limit: '0x5208',
         type: 2,
         max_fee_per_gas: '0x64',
-        max_priority_fee_per_gas: '0x02',
+        max_priority_fee_per_gas: '0x2',
       });
       const parsed = utils.parseTransaction((result as { value: string }).value);
       expect(parsed.from).toBe(privyKey.address);
