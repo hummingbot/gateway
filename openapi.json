@@ -982,6 +982,163 @@
           "quoteId"
         ]
       },
+      "TransactionsResponse": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "signature": {
+                  "type": "string"
+                },
+                "slot": {
+                  "type": "number"
+                },
+                "blockTime": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "description": "close_position | remove_liquidity | collect_fees | add_liquidity | open_position | swap | withdraw | deposit | other — the most significant of what the transaction did",
+                  "type": "string"
+                },
+                "protocol": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "actions": {
+                  "description": "every venue instruction recognised, outer and inner",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string"
+                      },
+                      "protocol": {
+                        "description": "connector-style name: meteora/clmm, raydium/amm, jupiter/router …",
+                        "type": "string"
+                      },
+                      "program": {
+                        "type": "string"
+                      },
+                      "instruction": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "protocol",
+                      "program",
+                      "instruction"
+                    ]
+                  }
+                },
+                "changes": {
+                  "description": "what the wallet's own balances did, fee excluded",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "mint": {
+                        "description": "a mint, or 'SOL' for the chain's own money",
+                        "type": "string"
+                      },
+                      "symbol": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "decimals": {
+                        "type": "number"
+                      },
+                      "amount": {
+                        "description": "signed, whole units",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "mint",
+                      "symbol",
+                      "decimals",
+                      "amount"
+                    ]
+                  }
+                },
+                "feeLamports": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "signature",
+                "slot",
+                "blockTime",
+                "ok",
+                "kind",
+                "protocol",
+                "actions",
+                "changes",
+                "feeLamports"
+              ]
+            }
+          },
+          "scanned": {
+            "type": "number"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "network",
+          "address",
+          "transactions",
+          "scanned",
+          "cursor"
+        ]
+      },
       "PoolListItem": {
         "type": "object",
         "properties": {
@@ -8581,6 +8738,129 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EstimateGasResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chains/{chain}/transactions": {
+      "get": {
+        "operationId": "getWalletTransactions",
+        "tags": [
+          "/chains"
+        ],
+        "description": "A wallet's recent transactions, newest first, each named as what it did — swap, open_position, add_liquidity, remove_liquidity, collect_fees, close_position, deposit, withdraw — with what the wallet's own balances did. Page with `before` = the last page's cursor. Solana mainnet-beta only. Reads the wallet address's own signature history, so a transfer into an existing token account that does not name the wallet is not listed.",
+        "parameters": [
+          {
+            "schema": {
+              "enum": [
+                "devnet",
+                "mainnet-beta",
+                "arbitrum",
+                "avalanche",
+                "base",
+                "bsc",
+                "celo",
+                "mainnet",
+                "optimism",
+                "polygon",
+                "robinhoodchain-testnet",
+                "robinhoodchain",
+                "sepolia",
+                "unichain"
+              ],
+              "type": "string"
+            },
+            "example": "mainnet-beta",
+            "in": "query",
+            "name": "network",
+            "required": false,
+            "description": "Network to use. Defaults to the chain's configured default network."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "address",
+            "required": true,
+            "description": "the wallet whose activity to read"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "signatures to inspect, newest first"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "description": "a signature; the page ends before it (the previous page's cursor)"
+          },
+          {
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            },
+            "in": "query",
+            "name": "includeOther",
+            "required": false,
+            "description": "also return transactions that are neither a known venue call nor a balance change"
+          },
+          {
+            "schema": {
+              "enum": [
+                "solana",
+                "ethereum"
+              ],
+              "default": "solana",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "chain",
+            "required": true,
+            "description": "Chain to operate on"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionsResponse"
                 }
               }
             }
