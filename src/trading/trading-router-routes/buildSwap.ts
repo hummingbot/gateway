@@ -5,8 +5,10 @@ import { Solana } from '../../chains/solana/solana';
 import { RouterQuoteSwapResponseSchema } from '../../schemas/chain-schema';
 import { logger } from '../../services/logger';
 import {
+  assertBuildFields,
   BuildTransactionResponse,
   buildUnsigned,
+  EvmBuildTransactionResponse,
   buildShapeFields,
   extraInstructionsField,
   priorityField,
@@ -39,14 +41,15 @@ type RouterBuildSwapRequest = Static<typeof RouterBuildSwapRequestSchema>;
  * exact quote the transaction was built from, so the signer can enforce its own price
  * and slippage checks before signing.
  */
-export const RouterBuildSwapResponseSchema = Type.Composite(
+export const RouterBuildSwapResponseSchema = Type.Union(
   [
-    BuildTransactionResponse,
-    Type.Object({
-      quote: RouterQuoteSwapResponseSchema,
-    }),
+    Type.Composite([BuildTransactionResponse, Type.Object({ quote: RouterQuoteSwapResponseSchema })]),
+    Type.Composite([EvmBuildTransactionResponse, Type.Object({ quote: RouterQuoteSwapResponseSchema })]),
   ],
-  { $id: 'RouterBuildSwapResponse' },
+  {
+    $id: 'RouterBuildSwapResponse',
+    description: 'The build (Solana or EVM shape, by chain) plus the quote its transaction embeds.',
+  },
 );
 type RouterBuildSwapResponse = Static<typeof RouterBuildSwapResponseSchema>;
 
@@ -86,6 +89,7 @@ export const buildSwapRoute: FastifyPluginAsync = async (fastify) => {
 
       try {
         const { chain, network } = parseChainNetwork(chainNetwork);
+        assertBuildFields(chain, { extraInstructions, feePayer, format, memo, references, priority, platformFee });
         const name = resolveSwapConnector(chain, network, 'router', connector);
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
 

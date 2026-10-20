@@ -5,6 +5,7 @@ import { TransactionStatus } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
+import { rethrowIfCaptured } from '../evm-build-mode';
 
 // Gas limit for wrap operations. Plain WETH9 deposit() costs ~27k, but networks
 // fronting WETH with a proxy (e.g. robinhoodchain) need appreciably more.
@@ -69,23 +70,15 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
   const amountInWei = utils.parseEther(amount);
 
   try {
-    // Build the wrap transaction data
-    const iface = new utils.Interface(WETH9ABI);
-    const data = iface.encodeFunctionData('deposit');
-
-    // Get gas options using estimateGasPrice
-    const gasOptions = await ethereum.prepareGasOptions(undefined, WRAP_GAS_LIMIT);
-
-    // Signed through the signer seam: local key, Ledger, or refused for an external wallet.
-    const txResponse = await ethereum.sendTransactionForWallet(address, {
+    const transaction = await ethereum.sendTransactionForWallet(address, {
       to: wrappedInfo.address,
-      data: data,
-      value: amountInWei,
-      ...gasOptions, // Include gas parameters from prepareGasOptions
+      data: new utils.Interface(WETH9ABI).encodeFunctionData('deposit'),
+      value: amountInWei.toString(),
+      gasLimit: WRAP_GAS_LIMIT,
+      description: `wrap of ${amount} ${wrappedInfo.nativeSymbol}`,
     });
-
-    // Wait for confirmation with timeout
-    const outcome = await ethereum.handleTransactionConfirmation(txResponse);
+    const nonce = transaction.nonce;
+    const outcome = await ethereum.handleTransactionConfirmation(transaction);
 
     // A revert threw out of the confirmation helper as a 400 TRANSACTION_FAILED — it is never
     // reported as PENDING (receipt.status 0 and TransactionStatus.PENDING are the same number).
@@ -100,7 +93,7 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       signature: outcome.signature,
       status: TransactionStatus.CONFIRMED,
       data: {
-        nonce: txResponse.nonce,
+        nonce: nonce,
         fee: feeInEth,
         amount: bigNumberWithDecimalToStr(amountInWei, 18),
         wrappedAddress: wrappedInfo.address,
@@ -109,23 +102,9 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       },
     };
   } catch (error) {
-    logger.error(`Error wrapping ${wrappedInfo.nativeSymbol} to ${wrappedInfo.symbol}: ${error.message}`);
-
-    // Handle specific error cases
-    if (error.message && error.message.includes('insufficient funds')) {
-      throw fastify.httpErrors.badRequest(
-        `Insufficient funds for transaction. Please ensure you have enough ${wrappedInfo.nativeSymbol} to wrap.`,
-      );
-    } else if (error.message && error.message.includes('timeout')) {
-      throw fastify.httpErrors.requestTimeout(
-        `Transaction timeout. The transaction may still be pending. Hash: ${error.transactionHash || 'unknown'}`,
-      );
-    }
-    // HTTP errors (the seam's refusal of an external wallet, a Ledger rejection) as they are.
-    if (error.statusCode) {
-      throw error;
-    }
-
+    rethrowIfCaptured(error);
+    if (error.statusCode) throw error;
+    logger.error(`Error in wrap: ${error.message}`);
     throw fastify.httpErrors.internalServerError(
       `Failed to wrap ${wrappedInfo.nativeSymbol} to ${wrappedInfo.symbol}: ${error.message}`,
     );

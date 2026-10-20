@@ -264,7 +264,7 @@ export const creatorFeesRoute: FastifyPluginAsync = async (fastify) => {
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
         assertLaunchConnectorOnChain(connector, chain);
         return await buildUnsigned(
-          chain,
+          'solana', // launchpads are Solana-only: the launch registry refused any other chain above
           connector,
           { extraInstructions, feePayer, format, memo, references },
           () => dispatchClaim(connector, network, walletAddress, baseMint),
@@ -307,7 +307,7 @@ export const creatorFeesRoute: FastifyPluginAsync = async (fastify) => {
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
         assertLaunchConnectorOnChain(connector, chain);
         return await buildUnsigned(
-          chain,
+          'solana', // launchpads are Solana-only: the launch registry refused any other chain above
           connector,
           { extraInstructions, feePayer, format, memo, references },
           () => dispatchMigrate(connector, network, walletAddress, baseMint),

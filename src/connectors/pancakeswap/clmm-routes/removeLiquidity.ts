@@ -1,7 +1,6 @@
 import { Contract } from '@ethersproject/contracts';
 import { Percent, CurrencyAmount } from '@pancakeswap/sdk';
 import { NonfungiblePositionManager, Position, computePoolAddress } from '@pancakeswap/v3-sdk';
-import { BigNumber } from 'ethers';
 import JSBI from 'jsbi';
 import { Address } from 'viem';
 
@@ -9,6 +8,7 @@ import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
+import { positionManagerCall } from '../../clmm-v3-utils';
 import { slippageBasisPoints } from '../../evm-slippage';
 import { Pancakeswap } from '../pancakeswap';
 import { PancakeswapConfig } from '../pancakeswap.config';
@@ -39,11 +39,6 @@ export async function removeLiquidity(
 
   const pancakeswap = await Pancakeswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
-  const wallet = await ethereum.getWallet(walletAddress);
-  if (!wallet) {
-    throw httpErrors.badRequest('Wallet not found');
-  }
-
   const positionManagerAddress = getPancakeswapV3NftManagerAddress(network);
 
   try {
@@ -130,23 +125,16 @@ export async function removeLiquidity(
 
   const { calldata, value } = NonfungiblePositionManager.removeCallParameters(positionSDK, removeParams);
 
-  const positionManagerWithSigner = new Contract(
-    positionManagerAddress,
-    [
-      {
-        inputs: [{ internalType: 'bytes[]', name: 'data', type: 'bytes[]' }],
-        name: 'multicall',
-        outputs: [{ internalType: 'bytes[]', name: 'results', type: 'bytes[]' }],
-        stateMutability: 'payable',
-        type: 'function',
-      },
-    ],
-    wallet,
+  const tx = await ethereum.sendTransactionForWallet(
+    walletAddress,
+    positionManagerCall(
+      positionManagerAddress,
+      calldata,
+      value,
+      CLMM_REMOVE_LIQUIDITY_GAS_LIMIT,
+      `remove liquidity from position ${positionAddress}`,
+    ),
   );
-
-  const txParams = await ethereum.prepareGasOptions(undefined, CLMM_REMOVE_LIQUIDITY_GAS_LIMIT);
-  txParams.value = BigNumber.from(value.toString());
-  const tx = await positionManagerWithSigner.multicall([calldata], txParams);
   const outcome = await ethereum.handleTransactionConfirmation(tx);
   if (!outcome.confirmed) {
     // Still pending — the amounts below were computed before sending and have not moved.

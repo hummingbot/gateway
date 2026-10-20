@@ -1,7 +1,8 @@
 import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk';
 import { BigNumber, utils } from 'ethers';
 
-import { Ethereum, EthereumTransactionOutcome } from '../../../chains/ethereum/ethereum';
+import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { rethrowIfCaptured } from '../../../chains/ethereum/evm-build-mode';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { SwapExecuteResponseType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
@@ -9,7 +10,6 @@ import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
 import { PancakeswapConfig } from '../pancakeswap.config';
 import { getPancakeswapV3SwapRouter02Address, ISwapRouter02ABI } from '../pancakeswap.contracts';
-import { formatTokenAmount } from '../pancakeswap.utils';
 
 import { getPancakeswapClmmQuote, resolveCounterToken } from './quoteSwap';
 
@@ -55,37 +55,14 @@ export async function executeClmmSwap(
   logger.info(`Side: ${side}`);
   logger.info(`Fee tier: ${quote.feeTier}`);
 
-  // Check allowance for input token
+  // Check allowance for input token (SwapRouter02 is the spender "pancakeswap/clmm/swap", not "pancakeswap/clmm")
   const amountNeeded = side === 'SELL' ? quote.rawAmountIn : quote.rawMaxAmountIn;
-
-  // Use provider for both hardware and regular wallets to check allowance
-  const tokenContract = ethereum.getContract(quote.inputToken.address, ethereum.provider);
-  const allowance = await tokenContract.allowance(walletAddress, routerAddress);
-  const currentAllowance = BigNumber.from(allowance);
-
-  logger.info(
-    `Current allowance: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
-  );
-  logger.info(
-    `Amount needed: ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
-  );
-
-  // Check if allowance is sufficient
-  if (currentAllowance.lt(amountNeeded)) {
-    logger.error(`Insufficient allowance for ${quote.inputToken.symbol}`);
-    const requiredFormatted = formatTokenAmount(amountNeeded, quote.inputToken.decimals);
-    const currentFormatted = formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals);
-    throw httpErrors.badRequest(
-      `Insufficient allowance for ${quote.inputToken.symbol}. ` +
-        `Current: ${currentFormatted} ${quote.inputToken.symbol}, Required: ${requiredFormatted} ${quote.inputToken.symbol}. ` +
-        `To swap with PancakeSwap CLMM, you need to approve the spender "pancakeswap/clmm/swap" instead of "pancakeswap/clmm". ` +
-        `This will approve the SwapRouter02 address (${routerAddress}), which is used for routing swaps to CLMM pools. ` +
-        `The "pancakeswap/clmm" spender is only for adding liquidity to pools.`,
-    );
-  }
-
-  logger.info(
-    `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
+  await ethereum.requireAllowance(
+    walletAddress,
+    quote.inputToken,
+    routerAddress,
+    BigNumber.from(amountNeeded),
+    'pancakeswap/clmm/swap',
   );
 
   // Build swap parameters
@@ -104,69 +81,40 @@ export async function executeClmmSwap(
     ).toString(),
   };
 
-  let outcome: EthereumTransactionOutcome;
+  const iface = new utils.Interface(ISwapRouter02ABI);
+  const data =
+    side === 'SELL'
+      ? iface.encodeFunctionData('exactInputSingle', [
+          {
+            tokenIn: swapParams.tokenIn,
+            tokenOut: swapParams.tokenOut,
+            fee: swapParams.fee,
+            recipient: swapParams.recipient,
+            amountIn: quote.rawAmountIn,
+            amountOutMinimum: quote.rawMinAmountOut,
+            sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
+          },
+        ])
+      : iface.encodeFunctionData('exactOutputSingle', [
+          {
+            tokenIn: swapParams.tokenIn,
+            tokenOut: swapParams.tokenOut,
+            fee: swapParams.fee,
+            recipient: swapParams.recipient,
+            amountOut: quote.rawAmountOut,
+            amountInMaximum: quote.rawMaxAmountIn,
+            sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
+          },
+        ]);
 
   try {
-    // Build the swap transaction data
-    const iface = new utils.Interface(ISwapRouter02ABI);
-    let data;
-
-    if (side === 'SELL') {
-      // exactInputSingle - we know the exact input amount
-      swapParams.amountIn = quote.rawAmountIn;
-      swapParams.amountOutMinimum = quote.rawMinAmountOut;
-
-      logger.info(`ExactInputSingle params:`);
-      logger.info(`  amountIn: ${swapParams.amountIn}`);
-      logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum}`);
-
-      const exactInputParams = {
-        tokenIn: swapParams.tokenIn,
-        tokenOut: swapParams.tokenOut,
-        fee: swapParams.fee,
-        recipient: swapParams.recipient,
-        amountIn: swapParams.amountIn,
-        amountOutMinimum: swapParams.amountOutMinimum,
-        sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
-      };
-
-      data = iface.encodeFunctionData('exactInputSingle', [exactInputParams]);
-    } else {
-      // exactOutputSingle - we know the exact output amount
-      swapParams.amountOut = quote.rawAmountOut;
-      swapParams.amountInMaximum = quote.rawMaxAmountIn;
-
-      logger.info(`ExactOutputSingle params:`);
-      logger.info(`  amountOut: ${swapParams.amountOut}`);
-      logger.info(`  amountInMaximum: ${swapParams.amountInMaximum}`);
-
-      const exactOutputParams = {
-        tokenIn: swapParams.tokenIn,
-        tokenOut: swapParams.tokenOut,
-        fee: swapParams.fee,
-        recipient: swapParams.recipient,
-        amountOut: swapParams.amountOut,
-        amountInMaximum: swapParams.amountInMaximum,
-        sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
-      };
-
-      data = iface.encodeFunctionData('exactOutputSingle', [exactOutputParams]);
-    }
-
-    // Get gas options using estimateGasPrice
-    const gasOptions = await ethereum.prepareGasOptions(undefined, CLMM_SWAP_GAS_LIMIT);
-
-    // Signed through the signer seam: local key, Ledger, or refused for an external wallet.
-    const txResponse = await ethereum.sendTransactionForWallet(walletAddress, {
+    const tx = await ethereum.sendTransactionForWallet(walletAddress, {
       to: routerAddress,
-      data: data,
-      ...gasOptions, // Include gas parameters from prepareGasOptions
+      data,
+      gasLimit: CLMM_SWAP_GAS_LIMIT,
+      description: `PancakeSwap CLMM ${side} swap of ${quote.inputToken.symbol} -> ${quote.outputToken.symbol}`,
     });
-
-    logger.info(`Transaction sent: ${txResponse.hash}`);
-
-    // Wait for confirmation with timeout
-    outcome = await ethereum.handleTransactionConfirmation(txResponse);
+    const outcome = await ethereum.handleTransactionConfirmation(tx);
 
     // A revert threw out of the confirmation helper as a 400 TRANSACTION_FAILED. What is left
     // is a transaction that is still pending after the extended poll: report it as PENDING
@@ -205,6 +153,7 @@ export async function executeClmmSwap(
       },
     };
   } catch (error) {
+    rethrowIfCaptured(error);
     logger.error(`Swap execution error: ${error.message}`);
     if (error.transaction) {
       logger.debug(`Transaction details: ${JSON.stringify(error.transaction)}`);
@@ -218,6 +167,12 @@ export async function executeClmmSwap(
       throw httpErrors.badRequest(
         'Insufficient funds for transaction. Please ensure you have enough ETH to cover gas costs.',
       );
+    } else if (error.message.includes('rejected on Ledger')) {
+      throw httpErrors.badRequest('Transaction rejected on Ledger device');
+    } else if (error.message.includes('Ledger device is locked')) {
+      throw httpErrors.badRequest(error.message);
+    } else if (error.message.includes('Wrong app is open')) {
+      throw httpErrors.badRequest(error.message);
     }
 
     // Re-throw if already a fastify error

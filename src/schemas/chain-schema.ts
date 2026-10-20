@@ -206,7 +206,9 @@ export const SubmitRequestSchema = Type.Object(
   {
     network: networkField(),
     signedTransaction: Type.String({
-      description: 'The base64-serialized transaction from a build-* route, signed by the wallet',
+      description:
+        'The transaction from a build-* route, signed by the wallet. Solana: base64-serialized. ' +
+        'Ethereum: the signed raw transaction, 0x-hex.',
     }),
     extraSigners: Type.Optional(
       Type.Array(
@@ -216,8 +218,8 @@ export const SubmitRequestSchema = Type.Object(
         }),
         {
           description:
-            'The extraSigners array from the build response, passed back verbatim. Re-merged into the ' +
-            'transaction before broadcast, restoring any ephemeral signature the signing wallet dropped.',
+            'Solana only: the extraSigners array from the build response, passed back verbatim. Re-merged into ' +
+            'the transaction before broadcast, restoring any ephemeral signature the signing wallet dropped.',
         },
       ),
     ),

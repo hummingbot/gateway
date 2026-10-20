@@ -1,7 +1,33 @@
 import { Contract } from '@ethersproject/contracts';
-import { BigNumberish } from 'ethers';
+import { BigNumber, BigNumberish, utils } from 'ethers';
 
+import { EvmCall } from '../chains/ethereum/evm-build-mode';
 import { BinLiquidity } from '../schemas/clmm-schema';
+
+const POSITION_MANAGER_MULTICALL = new utils.Interface([
+  'function multicall(bytes[] data) payable returns (bytes[] results)',
+]);
+
+/**
+ * The call a V3 position-manager operation sends: the SDK's calldata for one operation,
+ * wrapped in the position manager's multicall. Shared by Uniswap and PancakeSwap, whose
+ * position managers have the same multicall.
+ */
+export function positionManagerCall(
+  positionManager: string,
+  calldata: string,
+  value: BigNumberish,
+  gasLimit: number,
+  description: string,
+): EvmCall {
+  return {
+    to: positionManager,
+    data: POSITION_MANAGER_MULTICALL.encodeFunctionData('multicall', [[calldata]]),
+    value: BigNumber.from(value.toString()).toString(),
+    gasLimit,
+    description,
+  };
+}
 
 /**
  * Per-bin liquidity distribution around the current tick for a Uniswap-V3-style

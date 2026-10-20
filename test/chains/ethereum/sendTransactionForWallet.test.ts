@@ -22,24 +22,23 @@ const walletSigner = (wallet: Wallet) => ({
   signTransaction: jest.fn(async (tx: any) => ({ kind: 'signed', value: await wallet.signTransaction(tx) })),
 });
 
-const ethereumThis = () => ({
-  chainId: 8453,
-  populateForWallet: Ethereum.prototype.populateForWallet,
-  prepareGasOptions: jest.fn(),
-  provider: {
-    getTransactionCount: jest.fn(async () => 7),
-    sendTransaction: jest.fn(async (raw: string) => ({ hash: utils.keccak256(raw) })),
-  },
-});
+const ethereumThis = () =>
+  Object.assign(Object.create(Ethereum.prototype), {
+    chainId: 8453,
+    prepareGasOptions: jest.fn(async (_gasPrice: unknown, gasLimit: number) => ({
+      gasLimit,
+      type: 2,
+      maxFeePerGas: utils.parseUnits('2', 'gwei'),
+      maxPriorityFeePerGas: utils.parseUnits('1', 'gwei'),
+    })),
+    provider: {
+      getTransactionCount: jest.fn(async () => 7),
+      estimateGas: jest.fn(async () => BigNumber.from(250000)),
+      sendTransaction: jest.fn(async (raw: string) => ({ hash: utils.keccak256(raw) })),
+    },
+  });
 
-const request = {
-  to: ROUTER,
-  data: '0xdeadbeef',
-  value: 5,
-  gasLimit: 300000,
-  maxFeePerGas: utils.parseUnits('2', 'gwei'),
-  maxPriorityFeePerGas: utils.parseUnits('1', 'gwei'),
-};
+const request = { to: ROUTER, data: '0xdeadbeef', value: '5', gasLimit: 300000, description: 'test call' };
 
 describe('Ethereum.sendTransactionForWallet (the signer seam)', () => {
   const wallet = Wallet.createRandom();

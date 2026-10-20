@@ -8,34 +8,71 @@
  */
 import { Type } from '@sinclair/typebox';
 
+import { captureEvmTransaction } from '../chains/ethereum/evm-build-mode';
 import {
   BuildShape,
+  BuiltUnsignedTransaction,
   captureUnsignedTransaction,
   MAX_MEMO_BYTES,
   MAX_REFERENCES,
   PlatformInstructions,
 } from '../chains/solana/solana-build-mode';
 import { TransactionPriority } from '../chains/solana/solana-priority-fees';
-import { BuildInstruction } from '../schemas/build-schema';
+import { BuildInstruction, ChainBuildTransactionResponseType } from '../schemas/build-schema';
 import { httpErrors } from '../services/error-handler';
 
 /**
- * Reject build requests the capture machinery cannot serve. Build is Solana-only for
- * now: EVM connectors sign inside their execute routes rather than at a chain-level
- * chokepoint, so their build support is a separate seam conversion (#682 phase 1, EVM half).
+ * Reject build requests the capture machinery cannot serve: a chain without a build
+ * path, or a connector that signs outside its chain's chokepoint.
  */
 export function assertBuildSupported(connector: string, chain: string): void {
-  if (chain !== 'solana') {
+  if (chain !== 'solana' && chain !== 'ethereum') {
+    throw httpErrors.badRequest(`Build endpoints do not support ${chain}; '${connector}' runs on it.`);
+  }
+}
+
+/**
+ * The build fields that shape a Solana transaction. An EVM transaction has no
+ * instructions, fee-payer slot, memo program, references or compute-unit price, and no
+ * EVM connector takes a platform fee, so an EVM build refuses each one by name rather
+ * than ignoring it.
+ */
+export interface SolanaBuildFields {
+  extraInstructions?: unknown;
+  feePayer?: unknown;
+  format?: unknown;
+  memo?: unknown;
+  references?: unknown;
+  priority?: unknown;
+  platformFee?: unknown;
+}
+
+/** Refuse the Solana-only build fields on an EVM build. Call before any fee or chain work. */
+export function assertBuildFields(chain: string, fields: SolanaBuildFields): void {
+  if (chain === 'solana') return;
+  const given = Object.entries(fields)
+    .filter(([, value]) => value !== undefined)
+    .map(([name]) => name);
+  if (given.length > 0) {
     throw httpErrors.badRequest(
-      `Build endpoints currently support Solana connectors only; '${connector}' runs on ${chain}.`,
+      `${given.join(', ')} ${given.length === 1 ? 'applies' : 'apply'} to Solana builds only; ` +
+        `a ${chain} build takes none of them.`,
     );
   }
 }
 
 /**
  * Run a connector's operation in build mode: assert the connector is buildable, then
- * capture the transaction it would have signed.
+ * capture the transaction it would have signed, at its chain's signing chokepoint.
  */
+export async function buildUnsigned(
+  chain: 'solana',
+  connector: string,
+  shape: BuildShape,
+  run: () => Promise<unknown>,
+  priority?: TransactionPriority,
+  platform?: PlatformInstructions,
+): Promise<BuiltUnsignedTransaction>;
 export async function buildUnsigned(
   chain: string,
   connector: string,
@@ -43,8 +80,20 @@ export async function buildUnsigned(
   run: () => Promise<unknown>,
   priority?: TransactionPriority,
   platform?: PlatformInstructions,
-) {
+): Promise<ChainBuildTransactionResponseType>;
+export async function buildUnsigned(
+  chain: string,
+  connector: string,
+  shape: BuildShape,
+  run: () => Promise<unknown>,
+  priority?: TransactionPriority,
+  platform?: PlatformInstructions,
+): Promise<ChainBuildTransactionResponseType> {
   assertBuildSupported(connector, chain);
+  if (chain === 'ethereum') {
+    assertBuildFields(chain, { ...shape, priority, platformFee: platform });
+    return captureEvmTransaction(run);
+  }
   return captureUnsignedTransaction(shape, run, undefined, priority, undefined, platform);
 }
 
@@ -119,4 +168,10 @@ export const extraInstructionsField = () =>
 
 // The response shape lives in schemas/build-schema (it is shared with
 // /chains/{chain}/build-transaction); re-exported here for the build-* route files.
-export { BuildTransactionResponse, BuildTransactionResponseType } from '../schemas/build-schema';
+export {
+  BuildTransactionResponse,
+  BuildTransactionResponseType,
+  ChainBuildTransactionResponse,
+  ChainBuildTransactionResponseType,
+  EvmBuildTransactionResponse,
+} from '../schemas/build-schema';

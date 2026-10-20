@@ -156,3 +156,77 @@ export const BuildTransactionResponse = Type.Object(
   { $id: 'BuildTransactionResponse' },
 );
 export type BuildTransactionResponseType = Static<typeof BuildTransactionResponse>;
+
+/**
+ * One complete unsigned EVM transaction. Sign it as-is (eth-account, ethers, viem: any
+ * signer that takes these fields) and pass the signed raw transaction to
+ * /chains/ethereum/submit. All amounts are decimal strings in wei.
+ */
+export const EvmUnsignedTransaction = Type.Object(
+  {
+    chainId: Type.Integer({ description: 'EIP-155 chain id the transaction is signed for' }),
+    from: Type.String({ description: 'The wallet that must sign it' }),
+    to: Type.String(),
+    data: Type.String({ description: 'Calldata, 0x-hex' }),
+    value: Type.String({ description: 'Native value, in wei' }),
+    nonce: Type.Integer({
+      description:
+        "The wallet's nonce. Gateway assigns it at build time from the pending count, so sign and submit " +
+        "one build at a time per wallet; a transaction sent from the wallet in between makes this one's nonce stale.",
+    }),
+    gasLimit: Type.String(),
+    type: Type.Integer({ description: '2 = EIP-1559 (maxFeePerGas, maxPriorityFeePerGas), 0 = legacy (gasPrice)' }),
+    maxFeePerGas: Type.Optional(Type.String({ description: 'Type 2: wei per gas' })),
+    maxPriorityFeePerGas: Type.Optional(Type.String({ description: 'Type 2: wei per gas' })),
+    gasPrice: Type.Optional(Type.String({ description: 'Type 0: wei per gas' })),
+  },
+  { $id: 'EvmUnsignedTransaction' },
+);
+
+export const EvmApproval = Type.Object(
+  {
+    token: Type.String({ description: 'The token the approval is for' }),
+    symbol: Type.String(),
+    spender: Type.String({ description: 'Who the approval is for: a router, a position manager, or Permit2' }),
+    amount: Type.String({ description: 'The allowance the operation needs, in token units' }),
+    currentAllowance: Type.String({ description: 'The allowance the wallet has now, in token units' }),
+    transaction: EvmUnsignedTransaction,
+  },
+  { $id: 'EvmApproval' },
+);
+
+/**
+ * What an EVM build route returns. The flow, mirrored by /chains/ethereum/submit:
+ *
+ * 1. Sign each of `approvals[].transaction`, in order, then `unsignedTransaction`. Their
+ *    nonces are consecutive: the approvals first, the operation last.
+ * 2. Submit them to /chains/ethereum/submit in the same order, each after the previous
+ *    one confirms.
+ * 3. A transaction sent from the wallet between build and submit takes a nonce this build
+ *    assigned; build again.
+ */
+export const EvmBuildTransactionResponse = Type.Object(
+  {
+    unsignedTransaction: EvmUnsignedTransaction,
+    approvals: Type.Array(EvmApproval, {
+      description:
+        'Approvals the operation needs that the wallet has not granted, as transactions to sign and submit ' +
+        'before unsignedTransaction, in order. Empty when every allowance is in place.',
+    }),
+    simulated: Type.Boolean({
+      description:
+        'true: the gas limit came from eth_estimateGas against the current state, so the transaction would ' +
+        'not revert now. false: an approval it needs has not landed, so it could not be simulated and ' +
+        "carries the connector's fixed gas limit.",
+    }),
+  },
+  { $id: 'EvmBuildTransactionResponse' },
+);
+export type EvmBuildTransactionResponseType = Static<typeof EvmBuildTransactionResponse>;
+
+/** A build route that serves both chains answers with either shape. */
+export const ChainBuildTransactionResponse = Type.Union([BuildTransactionResponse, EvmBuildTransactionResponse], {
+  $id: 'ChainBuildTransactionResponse',
+  description: 'Solana: BuildTransactionResponse. Ethereum and other EVM chains: EvmBuildTransactionResponse.',
+});
+export type ChainBuildTransactionResponseType = Static<typeof ChainBuildTransactionResponse>;

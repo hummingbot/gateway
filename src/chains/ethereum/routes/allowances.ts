@@ -6,6 +6,7 @@ import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
 import { tokenValueToString } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum, TokenInfo } from '../ethereum';
+import { PERMIT2_ADDRESS } from '../permit2';
 import {
   AllowancesRequestSchema,
   AllowancesResponseSchema,
@@ -14,7 +15,6 @@ import {
 } from '../schemas';
 
 // Permit2 address is constant across all chains
-const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 
 export async function getEthereumAllowances(
   fastify: FastifyInstance,

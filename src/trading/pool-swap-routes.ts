@@ -16,8 +16,9 @@ import { DecimalNumber } from '../schemas/decimal-field';
 import { logger } from '../services/logger';
 
 import {
+  assertBuildFields,
   assertBuildSupported,
-  BuildTransactionResponse,
+  ChainBuildTransactionResponse,
   buildUnsigned,
   buildShapeFields,
   extraInstructionsField,
@@ -206,7 +207,7 @@ export const makeBuildSwapRoute = (type: PoolType): FastifyPluginAsync => {
             'the caller to sign with its own wallet and broadcast via /chains/{chain}/submit.',
           tags: [`/trading/${type}`],
           body: schema,
-          response: { 200: BuildTransactionResponse },
+          response: { 200: ChainBuildTransactionResponse },
         },
       },
       async (request) => {
@@ -231,6 +232,7 @@ export const makeBuildSwapRoute = (type: PoolType): FastifyPluginAsync => {
 
         try {
           const { chain, network } = parseChainNetwork(chainNetwork);
+          assertBuildFields(chain, { extraInstructions, feePayer, format, memo, references, priority, platformFee });
           const name = resolveSwapConnector(chain, network, type, connector);
           assertConnectorOnChain(name, chain, type);
           const walletAddress = resolveWalletAddress(chain, requestedWallet);

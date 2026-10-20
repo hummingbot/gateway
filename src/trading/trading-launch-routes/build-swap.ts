@@ -115,7 +115,8 @@ export const buildSwapRoute: FastifyPluginAsync = async (fastify) => {
           : undefined;
 
         const built = await buildUnsigned(
-          chain,
+          'solana', // launchpads are Solana-only: the launch registry refused any other chain above
+
           connector,
           { extraInstructions, feePayer, format, memo, references },
           () => ops.executeQuote(walletAddress, network, quote.quoteId),

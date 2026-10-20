@@ -4,7 +4,8 @@ import { FastifyPluginAsync } from 'fastify';
 import { Solana } from '../../chains/solana/solana';
 import { logger } from '../../services/logger';
 import {
-  BuildTransactionResponse,
+  assertBuildFields,
+  ChainBuildTransactionResponse,
   buildUnsigned,
   buildShapeFields,
   extraInstructionsField,
@@ -62,7 +63,7 @@ export const buildQuoteRoute: FastifyPluginAsync = async (fastify) => {
           'the caller to sign with its own wallet and broadcast via /chains/{chain}/submit.',
         tags: ['/trading/router'],
         body: RouterBuildQuoteRequestSchema,
-        response: { 200: BuildTransactionResponse },
+        response: { 200: ChainBuildTransactionResponse },
       },
     },
     async (request) => {
@@ -82,6 +83,7 @@ export const buildQuoteRoute: FastifyPluginAsync = async (fastify) => {
 
       try {
         const { chain, network } = parseChainNetwork(chainNetwork);
+        assertBuildFields(chain, { extraInstructions, feePayer, format, memo, references, priority, platformFee });
         const name = resolveSwapConnector(chain, network, 'router', connector);
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
 

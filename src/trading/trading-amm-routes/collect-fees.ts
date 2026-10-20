@@ -5,8 +5,8 @@ import { collectFees as meteoraCollectFees } from '../../connectors/meteora/amm-
 import { AmmCollectFeesResponse, AmmCollectFeesResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
 import {
-  BuildTransactionResponse,
-  BuildTransactionResponseType,
+  ChainBuildTransactionResponse,
+  ChainBuildTransactionResponseType,
   buildUnsigned,
   buildShapeFields,
   extraInstructionsField,
@@ -73,7 +73,7 @@ async function dispatchAmmCollectFees(
 export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Body: Static<typeof BuildAmmCollectFeesRequest>;
-    Reply: BuildTransactionResponseType;
+    Reply: ChainBuildTransactionResponseType;
   }>(
     '/build-collect-fees',
     {
@@ -83,7 +83,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           'with its own wallet and broadcast via /chains/{chain}/submit.',
         tags: ['/trading/amm'],
         body: BuildAmmCollectFeesRequest,
-        response: { 200: BuildTransactionResponse },
+        response: { 200: ChainBuildTransactionResponse },
       },
     },
     async (request) => {
@@ -104,7 +104,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'amm');
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
         return await buildUnsigned(
-          chain,
+          'solana', // AMM collect-fees is Meteora-only, so the chain resolved above is Solana
           connector,
           { extraInstructions, feePayer, format, memo, references },
           () => dispatchAmmCollectFees(connector, network, walletAddress, poolAddress, positionAddress),

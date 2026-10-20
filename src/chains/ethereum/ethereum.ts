@@ -11,13 +11,20 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { httpErrors, transactionFailed } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import { loadEthereumWallet } from '../../wallet/signers/local';
 import { externalWalletRefusal, getEthereumSigner } from '../../wallet/signers/registry';
 import { UnsignedEvmTransaction } from '../../wallet/signers/types';
-import { getWalletRecord, listWalletRecords } from '../../wallet/signers/wallet-store';
+import { listWalletRecords } from '../../wallet/signers/wallet-store';
 
 import { getEthereumNetworkConfig, getEthereumChainConfig } from './ethereum.config';
 import { EtherscanService } from './etherscan-service';
+import {
+  EvmApproval,
+  EvmCall,
+  EvmTransactionCaptured,
+  EvmUnsignedTransaction,
+  getEvmBuildContext,
+} from './evm-build-mode';
+import { ERC20_APPROVE_ABI, MAX_UINT48, PERMIT2_ABI, PERMIT2_ADDRESS } from './permit2';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -26,21 +33,6 @@ export interface TokenInfo {
   name: string;
   symbol: string;
   decimals: number;
-}
-
-/**
- * What a route hands the signer seam: the call and, optionally, its gas options and
- * nonce. The seam fills in what is missing (see Ethereum.populateForWallet).
- */
-export interface EvmTransactionRequest {
-  to: string;
-  data?: string;
-  value?: ethers.BigNumberish;
-  nonce?: number;
-  gasLimit?: ethers.BigNumberish;
-  gasPrice?: ethers.BigNumberish;
-  maxFeePerGas?: ethers.BigNumberish;
-  maxPriorityFeePerGas?: ethers.BigNumberish;
 }
 
 export type NewBlockHandler = (bn: number) => void;
@@ -66,6 +58,44 @@ export const EIP1559_NETWORKS = [
   'robinhoodchain-testnet',
   'unichain',
 ];
+
+/** A simulated transaction's gas limit: eth_estimateGas plus 20%. */
+const GAS_LIMIT_MARGIN_PCT = 120;
+
+/** The fixed gas limit of an approve that is built before it can be simulated. */
+const APPROVE_GAS_LIMIT = 100000;
+
+const ERC20_ALLOWANCE_ABI = ['function allowance(address owner, address spender) view returns (uint256)'];
+
+/** The most specific reason ethers gives for a failed eth_estimateGas. */
+function simulationFailureReason(e: any): string {
+  return e.error?.error?.message ?? e.error?.message ?? e.reason ?? e.message ?? String(e);
+}
+
+/** The ethers request for an unsigned transaction (BigNumber fields, no `from`). */
+export function toTransactionRequest(tx: EvmUnsignedTransaction): providers.TransactionRequest {
+  return {
+    chainId: tx.chainId,
+    to: tx.to,
+    data: tx.data,
+    value: BigNumber.from(tx.value),
+    nonce: tx.nonce,
+    gasLimit: BigNumber.from(tx.gasLimit),
+    type: tx.type,
+    ...(tx.type === 2
+      ? {
+          maxFeePerGas: BigNumber.from(tx.maxFeePerGas),
+          maxPriorityFeePerGas: BigNumber.from(tx.maxPriorityFeePerGas),
+        }
+      : { gasPrice: BigNumber.from(tx.gasPrice) }),
+  };
+}
+
+/** The seam's view of a built transaction: what a signer signs (no `from`; BigNumber amounts). */
+function toSeamTransaction(tx: EvmUnsignedTransaction): UnsignedEvmTransaction {
+  const request = toTransactionRequest(tx);
+  return { ...request, type: tx.type as 0 | 2 } as UnsignedEvmTransaction;
+}
 
 export class Ethereum {
   private static _instances: { [name: string]: Ethereum };
@@ -702,77 +732,6 @@ export class Ethereum {
     }
   }
 
-  /**
-   * The ethers wallet of a LOCAL wallet, connected to this network's provider.
-   *
-   * Only the routes that still pass a wallet to a contract call use this; they are
-   * listed as build gaps in src/wallet/signers/transaction-routes.ts and move to
-   * sendTransactionForWallet with their build twins. A wallet with any other signer
-   * is refused here, naming its signer.
-   */
-  public async getWallet(address: string): Promise<Wallet> {
-    const validatedAddress = Ethereum.validateAddress(address);
-    const record = await getWalletRecord('ethereum', validatedAddress);
-    if (record.signer !== 'local') {
-      throw httpErrors.badRequest(
-        `Wallet ${validatedAddress} is a ${record.signer} wallet, and this route still signs with a key ` +
-          'stored in Gateway, so it serves local wallets only. Use a local wallet for this operation.',
-      );
-    }
-    return (await loadEthereumWallet(validatedAddress)).connect(this.provider);
-  }
-
-  /**
-   * Sign and send a transaction for a wallet through the signer seam (#673): the one
-   * place an Ethereum transaction is signed.
-   *
-   * The route gives the call (`to`, `data`, `value`) and its gas options; this sets the
-   * chain id and nonce, has the wallet's signer sign it, checks that what was signed is
-   * what was built, and broadcasts it.
-   */
-  public async sendTransactionForWallet(
-    address: string,
-    request: EvmTransactionRequest,
-  ): Promise<providers.TransactionResponse> {
-    const validatedAddress = Ethereum.validateAddress(address);
-    const signer = await getEthereumSigner(validatedAddress);
-    if (signer.kind === 'external') {
-      throw externalWalletRefusal('ethereum', validatedAddress, 'Gateway holds no key for an external wallet');
-    }
-
-    const unsigned = await this.populateForWallet(validatedAddress, request);
-    const result = await signer.signTransaction(unsigned);
-    if (result.kind === 'unsigned') {
-      throw externalWalletRefusal('ethereum', validatedAddress, result.reason);
-    }
-    Ethereum.assertSignedAsBuilt(result.value, unsigned, validatedAddress, signer.kind);
-    return this.provider.sendTransaction(result.value);
-  }
-
-  /** The fully populated transaction a signer signs: chain id, nonce, gas limit and fee fields set. */
-  public async populateForWallet(address: string, request: EvmTransactionRequest): Promise<UnsignedEvmTransaction> {
-    const gas =
-      request.maxFeePerGas !== undefined || request.gasPrice !== undefined
-        ? request
-        : { ...(await this.prepareGasOptions(undefined, request.gasLimit ? Number(request.gasLimit) : undefined)) };
-    if (gas.gasLimit === undefined) {
-      throw httpErrors.internalServerError('A transaction reached the signer seam without a gas limit');
-    }
-    const eip1559 = gas.maxFeePerGas !== undefined;
-    return {
-      chainId: this.chainId,
-      to: request.to,
-      data: request.data ?? '0x',
-      value: BigNumber.from(request.value ?? 0),
-      nonce: request.nonce ?? (await this.provider.getTransactionCount(address, 'latest')),
-      gasLimit: BigNumber.from(request.gasLimit ?? gas.gasLimit),
-      type: eip1559 ? 2 : 0,
-      ...(eip1559
-        ? { maxFeePerGas: gas.maxFeePerGas, maxPriorityFeePerGas: gas.maxPriorityFeePerGas }
-        : { gasPrice: gas.gasPrice }),
-    };
-  }
-
   /** A signer may not change what it was given: check the signed transaction against it. */
   public static assertSignedAsBuilt(
     signed: string,
@@ -895,6 +854,230 @@ export class Ethereum {
    */
   public async getTransactionReceipt(txHash: string): Promise<providers.TransactionReceipt | null> {
     return this.provider.getTransactionReceipt(txHash);
+  }
+
+  /**
+   * The single chokepoint every EVM operation sends its transaction through (#673, #682).
+   *
+   * Builds the complete unsigned transaction (nonce, gas limit from eth_estimateGas, fee
+   * fields), then has the wallet's signer (the seam) sign it, checks that what was signed
+   * is what was built, and broadcasts it. Inside a build
+   * route (`captureEvmTransaction`) it stops after the build and throws the captured
+   * transaction instead: nothing is signed or sent, and no key is loaded.
+   */
+  public async sendTransactionForWallet(walletAddress: string, call: EvmCall): Promise<TransactionResponse> {
+    const from = Ethereum.validateAddress(walletAddress);
+    const build = getEvmBuildContext();
+
+    if (build) {
+      // Build mode looks up no signer: the address need not be a wallet Gateway knows.
+      const firstNonce = await this.provider.getTransactionCount(from, 'pending');
+      const approvals: EvmApproval[] = [];
+      for (const [i, pending] of build.approvals.entries()) {
+        approvals.push({
+          token: pending.token,
+          symbol: pending.symbol,
+          spender: pending.spender,
+          amount: utils.formatUnits(pending.required, pending.decimals),
+          currentAllowance: utils.formatUnits(pending.current, pending.decimals),
+          transaction: await this.buildUnsignedTransaction(from, pending.call, firstNonce + i, true),
+        });
+      }
+      // An operation whose approvals have not landed would revert in simulation.
+      const simulated = approvals.length === 0;
+      const unsignedTransaction = await this.buildUnsignedTransaction(
+        from,
+        call,
+        firstNonce + approvals.length,
+        simulated,
+      );
+      logger.info(
+        `Built unsigned ${call.description} for ${from} (nonce ${unsignedTransaction.nonce}, ` +
+          `${approvals.length} approval(s) first, simulated: ${simulated})`,
+      );
+      throw new EvmTransactionCaptured({ unsignedTransaction, approvals, simulated });
+    }
+
+    // Execute: the wallet's signer (the seam, #673) signs exactly what build would return.
+    const signer = await getEthereumSigner(from);
+    if (signer.kind === 'external') {
+      throw externalWalletRefusal('ethereum', from, 'Gateway holds no key for an external wallet');
+    }
+    const firstNonce = await this.provider.getTransactionCount(from, 'pending');
+    const unsigned = toSeamTransaction(await this.buildUnsignedTransaction(from, call, firstNonce, true));
+    const result = await signer.signTransaction(unsigned);
+    if (result.kind === 'unsigned') {
+      throw externalWalletRefusal('ethereum', from, result.reason);
+    }
+    Ethereum.assertSignedAsBuilt(result.value, unsigned, from, signer.kind);
+    const response = await this.broadcastSignedTransaction(result.value);
+    logger.info(`Sent ${call.description}: ${response.hash} (nonce ${unsigned.nonce})`);
+    return response;
+  }
+
+  /**
+   * The unsigned transaction for `call` at `nonce`. Simulated: the gas limit is
+   * eth_estimateGas plus a margin, and a call that would revert is refused with the
+   * revert reason. Unsimulated: the call's own fixed gas limit.
+   */
+  public async buildUnsignedTransaction(
+    from: string,
+    call: EvmCall,
+    nonce: number,
+    simulate: boolean,
+  ): Promise<EvmUnsignedTransaction> {
+    const value = BigNumber.from(call.value ?? 0);
+    let gasLimit = BigNumber.from(call.gasLimit);
+    if (simulate) {
+      let estimate: BigNumber;
+      try {
+        estimate = await this.provider.estimateGas({ from, to: call.to, data: call.data, value });
+      } catch (e: any) {
+        throw httpErrors.badRequest(
+          `Simulation of the ${call.description} transaction failed, so it would revert on-chain: ` +
+            `${simulationFailureReason(e)}`,
+        );
+      }
+      gasLimit = estimate.mul(GAS_LIMIT_MARGIN_PCT).div(100);
+    }
+    const gas = await this.prepareGasOptions(undefined, gasLimit.toNumber());
+    const tx: EvmUnsignedTransaction = {
+      chainId: this.chainId,
+      from,
+      to: getAddress(call.to),
+      data: call.data,
+      value: value.toString(),
+      nonce,
+      gasLimit: gasLimit.toString(),
+      type: gas.type,
+    };
+    if (gas.type === 2) {
+      tx.maxFeePerGas = BigNumber.from(gas.maxFeePerGas).toString();
+      tx.maxPriorityFeePerGas = BigNumber.from(gas.maxPriorityFeePerGas).toString();
+    } else {
+      tx.gasPrice = BigNumber.from(gas.gasPrice).toString();
+    }
+    return tx;
+  }
+
+  /** Broadcast a signed raw transaction, mapping node rejections to clear 400s. */
+  public async broadcastSignedTransaction(signed: string): Promise<TransactionResponse> {
+    try {
+      return await this.provider.sendTransaction(signed);
+    } catch (e: any) {
+      const reason = e.error?.message ?? e.reason ?? e.message;
+      if (e.code === 'INSUFFICIENT_FUNDS' || /insufficient funds/i.test(reason)) {
+        throw httpErrors.badRequest(
+          `Insufficient ${this.nativeTokenSymbol} to pay for the transaction's gas and value: ${reason}`,
+        );
+      }
+      if (e.code === 'NONCE_EXPIRED' || /nonce too low|already known|replacement/i.test(reason)) {
+        throw httpErrors.badRequest(
+          `The node refused the transaction's nonce (${reason}). Another transaction from this wallet used it; ` +
+            'build the transaction again.',
+        );
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Require an ERC-20 allowance before an operation that spends it.
+   *
+   * Execute refuses a short allowance with a 400 that says what to approve. Build records
+   * the approve transaction instead, for the caller to send before the operation.
+   */
+  public async requireAllowance(
+    owner: string,
+    token: { address: string; symbol: string; decimals: number },
+    spender: string,
+    required: BigNumber,
+    approveHint: string,
+  ): Promise<void> {
+    if (required.isZero()) return;
+    const contract = new Contract(token.address, ERC20_ALLOWANCE_ABI, this.provider);
+    const current: BigNumber = await contract.allowance(owner, spender);
+    if (current.gte(required)) return;
+
+    const build = getEvmBuildContext();
+    if (!build) {
+      throw httpErrors.badRequest(
+        `Insufficient ${token.symbol} allowance for ${spender}: required ` +
+          `${utils.formatUnits(required, token.decimals)}, current ${utils.formatUnits(current, token.decimals)}. ` +
+          `Approve ${token.symbol} with POST /chains/ethereum/approve (spender: "${approveHint}").`,
+      );
+    }
+    build.approvals.push({
+      token: token.address,
+      symbol: token.symbol,
+      decimals: token.decimals,
+      spender,
+      required: required.toString(),
+      current: current.toString(),
+      call: {
+        to: token.address,
+        data: new utils.Interface(ERC20_APPROVE_ABI).encodeFunctionData('approve', [spender, required]),
+        gasLimit: APPROVE_GAS_LIMIT,
+        description: `${token.symbol} approve for ${spender}`,
+      },
+    });
+  }
+
+  /**
+   * Require the two allowances a Universal Router swap spends through: the token's
+   * ERC-20 allowance to Permit2, and Permit2's unexpired allowance to the router.
+   * Execute refuses either one short; build records the approvals instead.
+   */
+  public async requirePermit2Allowance(
+    owner: string,
+    token: { address: string; symbol: string; decimals: number },
+    router: string,
+    required: BigNumber,
+    approveHint: string,
+  ): Promise<void> {
+    await this.requireAllowance(owner, token, PERMIT2_ADDRESS, required, approveHint);
+
+    const permit2 = new Contract(PERMIT2_ADDRESS, PERMIT2_ABI, this.provider);
+    const [amount, expiration] = await permit2.allowance(owner, token.address, router);
+    const expirationSeconds = Number(expiration);
+    const expired = expirationSeconds > 0 && expirationSeconds < Math.floor(Date.now() / 1000);
+    const current = expired ? BigNumber.from(0) : BigNumber.from(amount);
+    if (current.gte(required)) return;
+
+    const build = getEvmBuildContext();
+    if (!build) {
+      if (expired) {
+        throw httpErrors.badRequest(
+          `Permit2 allowance for ${token.symbol} to the router ${router} expired at ` +
+            `${new Date(expirationSeconds * 1000).toISOString()}. ` +
+            `Approve ${token.symbol} again with POST /chains/ethereum/approve (spender: "${approveHint}").`,
+        );
+      }
+      throw httpErrors.badRequest(
+        `Insufficient Permit2 allowance for ${token.symbol} to the router ${router}: required ` +
+          `${utils.formatUnits(required, token.decimals)}, current ${utils.formatUnits(current, token.decimals)}. ` +
+          `Approve ${token.symbol} with POST /chains/ethereum/approve (spender: "${approveHint}").`,
+      );
+    }
+    build.approvals.push({
+      token: token.address,
+      symbol: token.symbol,
+      decimals: token.decimals,
+      spender: router,
+      required: required.toString(),
+      current: current.toString(),
+      call: {
+        to: PERMIT2_ADDRESS,
+        data: new utils.Interface(PERMIT2_ABI).encodeFunctionData('approve', [
+          token.address,
+          router,
+          required,
+          MAX_UINT48,
+        ]),
+        gasLimit: APPROVE_GAS_LIMIT,
+        description: `Permit2 approve of ${token.symbol} for ${router}`,
+      },
+    });
   }
 
   /**

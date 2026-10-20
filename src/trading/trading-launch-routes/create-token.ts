@@ -256,7 +256,8 @@ export const createTokenRoute: FastifyPluginAsync = async (fastify) => {
 
         const prepared = await dispatchPrepareCreateToken(connector, network, params);
         const built = await buildUnsigned(
-          chain,
+          'solana', // launchpads are Solana-only: the launch registry refused any other chain above
+
           connector,
           { extraInstructions, feePayer, format, memo, references },
           () => dispatchCreateToken(connector, network, walletAddress, params, prepared),

@@ -1,6 +1,7 @@
 import { BigNumber, utils } from 'ethers';
 
-import { Ethereum, EthereumTransactionOutcome } from '../../../chains/ethereum/ethereum';
+import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { rethrowIfCaptured } from '../../../chains/ethereum/evm-build-mode';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { SwapExecuteResponseType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
@@ -8,7 +9,6 @@ import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV2RouterAddress, IUniswapV2Router02ABI } from '../uniswap.contracts';
-import { formatTokenAmount } from '../uniswap.utils';
 
 import { resolveSwapPair } from './poolTokens';
 import { getUniswapAmmQuote } from './quoteSwap';
@@ -52,85 +52,43 @@ export async function executeAmmSwap(
 
   // Check allowance for input token
   const amountNeeded = side === 'SELL' ? quote.rawAmountIn : quote.rawMaxAmountIn;
-
-  // Use provider for both hardware and regular wallets to check allowance
-  const tokenContract = ethereum.getContract(quote.inputToken.address, ethereum.provider);
-  const allowance = await tokenContract.allowance(walletAddress, routerAddress);
-  const currentAllowance = BigNumber.from(allowance);
-
-  logger.info(
-    `Current allowance: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
-  );
-  logger.info(
-    `Amount needed: ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
-  );
-
-  // Check if allowance is sufficient
-  if (currentAllowance.lt(amountNeeded)) {
-    logger.error(`Insufficient allowance for ${quote.inputToken.symbol}`);
-    throw httpErrors.badRequest(
-      `Insufficient allowance for ${quote.inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol} for the Uniswap router (${routerAddress})`,
-    );
-  }
-
-  logger.info(
-    `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
+  await ethereum.requireAllowance(
+    walletAddress,
+    quote.inputToken,
+    routerAddress,
+    BigNumber.from(amountNeeded),
+    'uniswap/amm',
   );
 
   // Prepare transaction parameters
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
-  let outcome: EthereumTransactionOutcome;
+  const iface = new utils.Interface(IUniswapV2Router02ABI.abi);
+  const data =
+    side === 'SELL'
+      ? iface.encodeFunctionData('swapExactTokensForTokens', [
+          quote.rawAmountIn,
+          quote.rawMinAmountOut,
+          quote.pathAddresses,
+          walletAddress,
+          deadline,
+        ])
+      : iface.encodeFunctionData('swapTokensForExactTokens', [
+          quote.rawAmountOut,
+          quote.rawMaxAmountIn,
+          quote.pathAddresses,
+          walletAddress,
+          deadline,
+        ]);
 
   try {
-    // Build the swap transaction data
-    const iface = new utils.Interface(IUniswapV2Router02ABI.abi);
-    let data;
-
-    if (side === 'SELL') {
-      logger.info(`ExactTokensForTokens params:`);
-      logger.info(`  amountIn: ${quote.rawAmountIn}`);
-      logger.info(`  amountOutMin: ${quote.rawMinAmountOut}`);
-      logger.info(`  path: ${quote.pathAddresses}`);
-      logger.info(`  deadline: ${deadline}`);
-
-      data = iface.encodeFunctionData('swapExactTokensForTokens', [
-        quote.rawAmountIn,
-        quote.rawMinAmountOut,
-        quote.pathAddresses,
-        walletAddress,
-        deadline,
-      ]);
-    } else {
-      logger.info(`TokensForExactTokens params:`);
-      logger.info(`  amountOut: ${quote.rawAmountOut}`);
-      logger.info(`  amountInMax: ${quote.rawMaxAmountIn}`);
-      logger.info(`  path: ${quote.pathAddresses}`);
-      logger.info(`  deadline: ${deadline}`);
-
-      data = iface.encodeFunctionData('swapTokensForExactTokens', [
-        quote.rawAmountOut,
-        quote.rawMaxAmountIn,
-        quote.pathAddresses,
-        walletAddress,
-        deadline,
-      ]);
-    }
-
-    // Get gas options using estimateGasPrice
-    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_SWAP_GAS_LIMIT);
-
-    // Signed through the signer seam: local key, Ledger, or refused for an external wallet.
-    const txResponse = await ethereum.sendTransactionForWallet(walletAddress, {
+    const tx = await ethereum.sendTransactionForWallet(walletAddress, {
       to: routerAddress,
-      data: data,
-      ...gasOptions, // Include gas parameters from prepareGasOptions
+      data,
+      gasLimit: AMM_SWAP_GAS_LIMIT,
+      description: `Uniswap AMM ${side} swap of ${quote.inputToken.symbol} -> ${quote.outputToken.symbol}`,
     });
-
-    logger.info(`Transaction sent: ${txResponse.hash}`);
-
-    // Wait for confirmation with timeout
-    outcome = await ethereum.handleTransactionConfirmation(txResponse);
+    const outcome = await ethereum.handleTransactionConfirmation(tx);
 
     // A revert threw out of the confirmation helper as a 400 TRANSACTION_FAILED. What is left
     // is a transaction that is still pending after the extended poll: report it as PENDING
@@ -169,14 +127,8 @@ export async function executeAmmSwap(
       },
     };
   } catch (error) {
+    rethrowIfCaptured(error);
     logger.error(`Swap execution error: ${error.message}`);
-
-    // Handle specific error cases
-    if (error.message && error.message.includes('insufficient funds')) {
-      throw httpErrors.badRequest(
-        'Insufficient funds for transaction. Please ensure you have enough ETH to cover gas costs.',
-      );
-    }
 
     // Re-throw if already an http error
     if (error.statusCode) {

@@ -10,9 +10,10 @@ import { addLiquidity as uniswapAddLiquidity } from '../../connectors/uniswap/am
 import { AddLiquidityResponse, AddLiquidityResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
 import {
+  assertBuildFields,
   assertBuildSupported,
-  BuildTransactionResponse,
-  BuildTransactionResponseType,
+  ChainBuildTransactionResponse,
+  ChainBuildTransactionResponseType,
   buildUnsigned,
   buildShapeFields,
   extraInstructionsField,
@@ -142,7 +143,7 @@ async function dispatchAmmAddLiquidity(connector: string, p: AmmAddLiquidityPara
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Body: Static<typeof BuildAmmAddLiquidityRequest>;
-    Reply: BuildTransactionResponseType;
+    Reply: ChainBuildTransactionResponseType;
   }>(
     '/build-add',
     {
@@ -153,7 +154,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         tags: ['/trading/amm'],
         body: BuildAmmAddLiquidityRequest,
         response: {
-          200: BuildTransactionResponse,
+          200: ChainBuildTransactionResponse,
         },
       },
     },
@@ -172,6 +173,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           ...params
         } = request.body;
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        assertBuildFields(chain, { extraInstructions, feePayer, format, memo, references, priority, platformFee });
         const walletAddress = resolveWalletAddress(chain, params.walletAddress);
         let fee;
         if (platformFee) {

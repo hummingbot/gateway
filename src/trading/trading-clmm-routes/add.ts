@@ -11,9 +11,10 @@ import { addLiquidity as uniswapAddLiquidity } from '../../connectors/uniswap/cl
 import { AddLiquidityResponseType, AddLiquidityResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import {
+  assertBuildFields,
   assertBuildSupported,
-  BuildTransactionResponse,
-  BuildTransactionResponseType,
+  ChainBuildTransactionResponse,
+  ChainBuildTransactionResponseType,
   buildUnsigned,
   buildShapeFields,
   extraInstructionsField,
@@ -183,7 +184,7 @@ function normalizeAddAmounts(baseTokenAmount?: number, quoteTokenAmount?: number
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Body: Static<typeof BuildAddLiquidityRequest>;
-    Reply: BuildTransactionResponseType;
+    Reply: ChainBuildTransactionResponseType;
   }>(
     '/build-add',
     {
@@ -195,7 +196,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         tags: ['/trading/clmm'],
         body: BuildAddLiquidityRequest,
         response: {
-          200: BuildTransactionResponse,
+          200: ChainBuildTransactionResponse,
         },
       },
     },
@@ -219,6 +220,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           platformFee,
         } = request.body;
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        assertBuildFields(chain, { extraInstructions, feePayer, format, memo, references, priority, platformFee });
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
         const { base, quote } = normalizeAddAmounts(baseTokenAmount, quoteTokenAmount);
         let fee;

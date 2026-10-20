@@ -10,8 +10,9 @@ import { removeLiquidity as uniswapRemoveLiquidity } from '../../connectors/unis
 import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import {
-  BuildTransactionResponse,
-  BuildTransactionResponseType,
+  assertBuildFields,
+  ChainBuildTransactionResponse,
+  ChainBuildTransactionResponseType,
   buildUnsigned,
   buildShapeFields,
   extraInstructionsField,
@@ -103,7 +104,7 @@ async function dispatchRemoveLiquidity(
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Body: Static<typeof BuildRemoveLiquidityRequest>;
-    Reply: BuildTransactionResponseType;
+    Reply: ChainBuildTransactionResponseType;
   }>(
     '/build-remove',
     {
@@ -115,7 +116,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         tags: ['/trading/clmm'],
         body: BuildRemoveLiquidityRequest,
         response: {
-          200: BuildTransactionResponse,
+          200: ChainBuildTransactionResponse,
         },
       },
     },
@@ -136,6 +137,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           priority,
         } = request.body;
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        assertBuildFields(chain, { extraInstructions, feePayer, format, memo, references, priority });
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
         return await buildUnsigned(
           chain,

@@ -11,9 +11,10 @@ import { openPosition as uniswapOpenPosition } from '../../connectors/uniswap/cl
 import { OpenPositionResponseType, OpenPositionResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import {
+  assertBuildFields,
   assertBuildSupported,
-  BuildTransactionResponse,
-  BuildTransactionResponseType,
+  ChainBuildTransactionResponse,
+  ChainBuildTransactionResponseType,
   buildUnsigned,
   buildShapeFields,
   extraInstructionsField,
@@ -205,7 +206,7 @@ async function dispatchOpenPosition(connector: string, p: OpenPositionParams): P
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Body: Static<typeof BuildOpenPositionRequest>;
-    Reply: BuildTransactionResponseType;
+    Reply: ChainBuildTransactionResponseType;
   }>(
     '/build-open',
     {
@@ -219,7 +220,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         tags: ['/trading/clmm'],
         body: BuildOpenPositionRequest,
         response: {
-          200: BuildTransactionResponse,
+          200: ChainBuildTransactionResponse,
         },
       },
     },
@@ -238,6 +239,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           ...params
         } = request.body;
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        assertBuildFields(chain, { extraInstructions, feePayer, format, memo, references, priority, platformFee });
         assertOpenAmounts(params);
         const walletAddress = resolveWalletAddress(chain, params.walletAddress);
         let fee;

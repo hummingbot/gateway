@@ -91,9 +91,11 @@ const SENSITIVE_TRADING =
 // the native balance. The read-only chain routes (status, estimate-gas, balances, poll,
 // allowances) stay public, as the read-only trading routes do: nothing signs, and gating
 // them would break a co-located bot's polling for no security gain.
-// build-transaction is gated with the /trading build-* routes for the same reason: a
-// write-shaped surface that prepares and partially describes fund movement.
-const SENSITIVE_CHAINS = /^\/chains\/[^/]+\/(approve|wrap|unwrap|build-transaction)(\/|$)/i;
+// build-transaction, build-approve, build-wrap and build-unwrap are gated with the /trading
+// build-* routes for the same reason: a write-shaped surface that prepares and partially
+// describes fund movement.
+const SENSITIVE_CHAINS =
+  /^\/chains\/[^/]+\/(approve|wrap|unwrap|build-transaction|build-approve|build-wrap|build-unwrap)(\/|$)/i;
 
 export function isSensitivePath(url: string): boolean {
   const pathOnly = url.split('?')[0];

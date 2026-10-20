@@ -3,21 +3,17 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { getSpender as pancakeswapSpender } from '../../../connectors/pancakeswap/pancakeswap.contracts';
 import { getSpender as uniswapSpender } from '../../../connectors/uniswap/uniswap.contracts';
+import { EvmBuildTransactionResponse, EvmBuildTransactionResponseType } from '../../../schemas/build-schema';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
+import { captureEvmTransaction, EvmCall, getEvmBuildContext, rethrowIfCaptured } from '../evm-build-mode';
+import { ERC20_APPROVE_ABI, MAX_UINT160, MAX_UINT48, PERMIT2_ABI, PERMIT2_ADDRESS } from '../permit2';
 import { ApproveRequestSchema, ApproveResponseSchema, ApproveRequestType, ApproveResponseType } from '../schemas';
 
 // Default gas limit for approve operations
 const APPROVE_GAS_LIMIT = 100000;
-
-// Permit2 address is constant across all chains
-const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
-
-// Permit2 expirations are uint48 timestamps. Max uint48 means "never expires",
-// so bots approve once, matching plain ERC20 approvals on other connectors.
-export const MAX_UINT48 = 281474976710655;
 
 export async function approveEthereumToken(
   fastify: FastifyInstance,
@@ -81,198 +77,107 @@ export async function approveEthereumToken(
     logger.info(`Approving ${amount} ${fullToken.symbol} (${amountBigNumber.toString()} in wei)`);
   }
 
-  try {
-    let approval;
+  // The ERC-20 approval, to the spender (or to Permit2 for the Universal Router).
+  const erc20Call: EvmCall = {
+    to: fullToken.address,
+    data: new utils.Interface(ERC20_APPROVE_ABI).encodeFunctionData('approve', [spenderAddress, amountBigNumber]),
+    gasLimit: APPROVE_GAS_LIMIT,
+    description: `${fullToken.symbol} approve for ${spenderAddress}`,
+  };
+  const calls: EvmCall[] = [erc20Call];
 
-    // For Universal Router, check if we already have sufficient allowances
-    let skipERC20Approval = false;
-    let skipPermit2Approval = false;
+  if (isUniversalRouter && universalRouterAddress) {
+    // A Universal Router approval is two transactions: token -> Permit2, then Permit2 -> router.
+    // Either one the wallet already has is skipped.
+    const tokenContract = ethereum.getContract(fullToken.address);
+    const erc20Allowance = await tokenContract.allowance(address, PERMIT2_ADDRESS);
+    const needErc20 = erc20Allowance.lt(amountBigNumber);
 
-    if (isUniversalRouter && universalRouterAddress) {
-      logger.info(`Checking existing allowances for Universal Router flow`);
+    const permit2Contract = new ethers.Contract(PERMIT2_ADDRESS, PERMIT2_ABI, ethereum.provider);
+    const allowanceData = await permit2Contract.allowance(address, fullToken.address, universalRouterAddress);
+    const needPermit2 =
+      allowanceData.amount.lt(amountBigNumber) || Number(allowanceData.expiration) <= Math.floor(Date.now() / 1000);
+    logger.info(
+      `Universal Router approval of ${fullToken.symbol}: token->Permit2 ${needErc20 ? 'needed' : 'present'}, ` +
+        `Permit2->router ${needPermit2 ? 'needed' : 'present'}`,
+    );
 
-      // Step 1: Check ERC20 allowance (Token → Permit2)
-      const tokenContract = ethereum.getContract(fullToken.address);
-      const erc20Allowance = await tokenContract.allowance(address, PERMIT2_ADDRESS);
-      logger.info(`ERC20 allowance (${fullToken.symbol} → Permit2): ${erc20Allowance.toString()}`);
-
-      if (erc20Allowance.gte(amountBigNumber)) {
-        logger.info(`Sufficient ERC20 allowance exists, skipping step 1`);
-        skipERC20Approval = true;
-
-        // Step 2: Check Permit2 allowance (Permit2 → Universal Router)
-        const permit2Contract = new ethers.Contract(
-          PERMIT2_ADDRESS,
-          [
-            'function allowance(address owner, address token, address spender) view returns (uint160 amount, uint48 expiration, uint48 nonce)',
-          ],
-          ethereum.provider,
+    if (!needErc20 && !needPermit2) {
+      if (getEvmBuildContext()) {
+        throw fastify.httpErrors.badRequest(
+          `${fullToken.symbol} is already approved for the Universal Router (${universalRouterAddress}); there is nothing to sign.`,
         );
-
-        const allowanceData = await permit2Contract.allowance(address, fullToken.address, universalRouterAddress);
-        const permit2Allowance = allowanceData.amount;
-        const expiration = allowanceData.expiration;
-        const currentTime = Math.floor(Date.now() / 1000);
-
-        logger.info(
-          `Permit2 allowance: ${permit2Allowance.toString()}, expiration: ${expiration}, current time: ${currentTime}`,
-        );
-
-        if (permit2Allowance.gte(amountBigNumber) && expiration > currentTime) {
-          logger.info(`Sufficient Permit2 allowance exists, skipping step 2 as well`);
-          skipPermit2Approval = true;
-        }
       }
-
-      // If both allowances are sufficient, return immediately
-      if (skipERC20Approval && skipPermit2Approval) {
-        logger.info(`Both allowances are sufficient, no approval needed`);
-        return {
-          signature: '0x0000000000000000000000000000000000000000000000000000000000000000',
-          status: 1,
-          data: {
-            tokenAddress: fullToken.address,
-            spender: universalRouterAddress,
-            amount: bigNumberWithDecimalToStr(amountBigNumber, fullToken.decimals),
-            nonce: 0,
-            fee: '0',
-          },
-        };
-      }
-    }
-
-    // Only do ERC20 approval if we haven't skipped it
-    if (!skipERC20Approval) {
-      // Build the approve transaction data
-      const iface = new utils.Interface(['function approve(address spender, uint256 amount)']);
-      const data = iface.encodeFunctionData('approve', [spenderAddress, amountBigNumber]);
-
-      // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions(undefined, APPROVE_GAS_LIMIT);
-
-      // Signed through the signer seam: local key, Ledger, or refused for an external wallet.
-      const txResponse = await ethereum.sendTransactionForWallet(address, {
-        to: fullToken.address,
-        data: data,
-        ...gasOptions, // Include gas parameters from prepareGasOptions
-      });
-
-      // Wait for confirmation with timeout
-      // A revert throws 400 TRANSACTION_FAILED out of the helper; only a still-pending
-      // transaction comes back unconfirmed, and an approval cannot be reported without a
-      // confirmed allowance.
-      const outcome = await ethereum.handleTransactionConfirmation(txResponse);
-
-      if (!outcome.confirmed) {
-        throw new Error('Transaction timed out or failed to get receipt');
-      }
-
-      approval = {
-        hash: outcome.signature,
-        nonce: txResponse.nonce,
-        gasUsed: outcome.receipt.gasUsed,
-        effectiveGasPrice: outcome.receipt.effectiveGasPrice,
-      };
-    } else {
-      // Skipped ERC20 approval, set dummy values
-      logger.info(`Skipped ERC20 approval, using dummy values`);
-      approval = {
-        hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-        nonce: 0,
-        gasUsed: ethers.BigNumber.from('0'),
-        effectiveGasPrice: ethers.BigNumber.from('0'),
+      return {
+        signature: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        status: TransactionStatus.CONFIRMED,
+        data: {
+          tokenAddress: fullToken.address,
+          spender: universalRouterAddress,
+          amount: bigNumberWithDecimalToStr(amountBigNumber, fullToken.decimals),
+          nonce: 0,
+          fee: '0',
+        },
       };
     }
 
-    // Calculate the actual fee in ETH for first approval
-    let feeInEth = '0';
-    if (approval.gasUsed && approval.effectiveGasPrice) {
-      const feeInWei = approval.gasUsed.mul(approval.effectiveGasPrice);
-      feeInEth = utils.formatEther(feeInWei);
-    }
-
-    // If this is a Universal Router approval, we need to do a second step (unless we can skip it)
-    if (isUniversalRouter && universalRouterAddress && !skipPermit2Approval) {
-      logger.info(`Step 2: Calling Permit2.approve() to grant Universal Router permission`);
-
-      // Permit2 approve function ABI
-      const permit2ApproveABI = [
-        'function approve(address token, address spender, uint160 amount, uint48 expiration) external',
-      ];
-
-      const expiration = MAX_UINT48;
-
-      // Convert amount to uint160 (Permit2 uses uint160 for amounts)
-      // Max uint160 is 2^160 - 1, which is smaller than uint256
-      const maxUint160 = ethers.BigNumber.from('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
-      const permit2Amount = amountBigNumber.gt(maxUint160) ? maxUint160 : amountBigNumber;
-
-      // Build the Permit2 approve transaction data
-      const iface = new utils.Interface(permit2ApproveABI);
-      const data = iface.encodeFunctionData('approve', [
+    calls.length = 0;
+    const maxUint160 = ethers.BigNumber.from(MAX_UINT160);
+    const permit2Amount = amountBigNumber.gt(maxUint160) ? maxUint160 : amountBigNumber;
+    const permit2Call: EvmCall = {
+      to: PERMIT2_ADDRESS,
+      data: new utils.Interface(PERMIT2_ABI).encodeFunctionData('approve', [
         fullToken.address,
         universalRouterAddress,
         permit2Amount,
-        expiration,
-      ]);
+        MAX_UINT48,
+      ]),
+      gasLimit: APPROVE_GAS_LIMIT,
+      description: `Permit2 approve of ${fullToken.symbol} for ${universalRouterAddress}`,
+    };
 
-      // Get gas options
-      const gasOptions = await ethereum.prepareGasOptions(undefined, APPROVE_GAS_LIMIT);
+    if (needErc20 && needPermit2 && getEvmBuildContext()) {
+      // Build returns one operation plus the approvals to send before it: the token ->
+      // Permit2 approval is recorded as that prerequisite, the Permit2 approval is the operation.
+      await ethereum.requireAllowance(address, fullToken, PERMIT2_ADDRESS, amountBigNumber, spender);
+      calls.push(permit2Call);
+    } else {
+      if (needErc20) calls.push(erc20Call);
+      if (needPermit2) calls.push(permit2Call);
+    }
+  }
 
-      // Signed through the signer seam: local key, Ledger, or refused for an external wallet.
-      const txResponse = await ethereum.sendTransactionForWallet(address, {
-        to: PERMIT2_ADDRESS,
-        data: data,
-        ...gasOptions,
-      });
-
-      // Wait for confirmation with extended timeout
-      const permit2Outcome = await ethereum.handleTransactionConfirmation(txResponse);
-
-      if (!permit2Outcome.confirmed) {
-        throw new Error('Permit2 transaction timed out or failed to get receipt');
+  try {
+    let last: { signature: string; nonce: number } | undefined;
+    let feeInWei = ethers.BigNumber.from(0);
+    for (const call of calls) {
+      const tx = await ethereum.sendTransactionForWallet(address, call);
+      // A revert throws 400 TRANSACTION_FAILED out of the helper; only a still-pending
+      // transaction comes back unconfirmed, and an approval cannot be reported without a
+      // confirmed allowance.
+      const outcome = await ethereum.handleTransactionConfirmation(tx);
+      if (!outcome.confirmed) {
+        throw new Error(`${call.description} transaction ${outcome.signature} timed out before confirming`);
       }
-
-      logger.info(`Permit2 approval transaction confirmed: ${permit2Outcome.signature}`);
-
-      // Update fee to include both transactions
-      const permit2FeeInWei = permit2Outcome.receipt.gasUsed.mul(permit2Outcome.receipt.effectiveGasPrice);
-      const totalFeeInWei = approval.gasUsed.mul(approval.effectiveGasPrice).add(permit2FeeInWei);
-      feeInEth = utils.formatEther(totalFeeInWei);
-
-      logger.info(
-        `Universal Router V2 approval complete: Token approved to Permit2 and Permit2 approved to Universal Router`,
-      );
+      feeInWei = feeInWei.add(outcome.receipt.gasUsed.mul(outcome.receipt.effectiveGasPrice));
+      last = { signature: outcome.signature, nonce: tx.nonce };
     }
 
     return {
-      signature: approval.hash,
-      // Every path that reaches here confirmed: the helper throws on a revert and the
-      // branches above bail out while a transaction is still pending. `approval.status ?? -1`
-      // used to report a confirmed Ledger approval (which never carried a status) as FAILED.
+      signature: last!.signature,
       status: TransactionStatus.CONFIRMED,
       data: {
         tokenAddress: fullToken.address,
         spender: isUniversalRouter ? universalRouterAddress || spenderAddress : spenderAddress,
         amount: bigNumberWithDecimalToStr(amountBigNumber, fullToken.decimals),
-        nonce: approval.nonce,
-        fee: feeInEth,
+        nonce: last!.nonce,
+        fee: utils.formatEther(feeInWei),
       },
     };
   } catch (error) {
+    rethrowIfCaptured(error);
+    if (error.statusCode) throw error;
     logger.error(`Error approving token: ${error.message}`);
-
-    // Handle specific error cases
-    if (error.message && error.message.includes('insufficient funds')) {
-      throw fastify.httpErrors.badRequest(
-        'Insufficient funds for transaction. Please ensure you have enough ETH to cover gas costs.',
-      );
-    }
-    // HTTP errors (the seam's refusal of an external wallet, a Ledger rejection) as they are.
-    if (error.statusCode) {
-      throw error;
-    }
-
     throw fastify.httpErrors.internalServerError(`Failed to approve token: ${error.message}`);
   }
 }
@@ -297,6 +202,31 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
       const { network, address, spender, token, amount } = request.body;
 
       return await approveEthereumToken(fastify, network, address, spender, token, amount);
+    },
+  );
+
+  fastify.post<{
+    Body: ApproveRequestType;
+    Reply: EvmBuildTransactionResponseType;
+  }>(
+    '/build-approve',
+    {
+      schema: {
+        description:
+          'Build the unsigned approval /approve would sign and send, for the caller to sign with its own wallet ' +
+          'and broadcast via /chains/ethereum/submit. A Universal Router approval ("uniswap/router") that needs ' +
+          'both steps returns the token -> Permit2 approval in approvals and the Permit2 -> router approval as ' +
+          'unsignedTransaction.',
+        tags: ['/chains'],
+        body: ApproveRequestSchema,
+        response: {
+          200: EvmBuildTransactionResponse,
+        },
+      },
+    },
+    async (request) => {
+      const { network, address, spender, token, amount } = request.body;
+      return await captureEvmTransaction(() => approveEthereumToken(fastify, network, address, spender, token, amount));
     },
   );
 };

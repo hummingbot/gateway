@@ -58,8 +58,11 @@ export const OPERATION_IDS: Record<string, string> = {
   'POST /chains/{chain}/submit': 'submitTransaction',
   'POST /chains/{chain}/wrap': 'wrapNativeToken',
   'POST /chains/{chain}/unwrap': 'unwrapNativeToken',
+  'POST /chains/{chain}/build-wrap': 'buildWrapNativeToken',
+  'POST /chains/{chain}/build-unwrap': 'buildUnwrapNativeToken',
   'POST /chains/ethereum/allowances': 'getAllowances',
   'POST /chains/ethereum/approve': 'approveToken',
+  'POST /chains/ethereum/build-approve': 'buildApproveToken',
 
   // Router swaps
   'GET /trading/router/quote-swap': 'quoteRouterSwap',

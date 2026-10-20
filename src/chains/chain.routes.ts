@@ -16,7 +16,7 @@ import sensible from '@fastify/sensible';
 import { Type } from '@sinclair/typebox';
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
-import { BuildTransactionResponse } from '../schemas/build-schema';
+import { BuildTransactionResponse, ChainBuildTransactionResponse } from '../schemas/build-schema';
 import {
   BalanceRequestSchema,
   BalanceRequestType,
@@ -49,12 +49,14 @@ import {
   getEthereumNetworkConfig,
   networks as ethereumNetworks,
 } from './ethereum/ethereum.config';
+import { captureEvmTransaction } from './ethereum/evm-build-mode';
 import { allowancesRoute } from './ethereum/routes/allowances';
 import { approveRoute } from './ethereum/routes/approve';
 import { getEthereumBalances } from './ethereum/routes/balances';
 import { estimateGasEthereum } from './ethereum/routes/estimate-gas';
 import { pollEthereumTransaction } from './ethereum/routes/poll';
 import { getEthereumStatus } from './ethereum/routes/status';
+import { submitEthereumTransaction } from './ethereum/routes/submit';
 import { unwrapEthereum } from './ethereum/routes/unwrap';
 import { wrapEthereum } from './ethereum/routes/wrap';
 import { getSolanaBalances } from './solana/routes/balances';
@@ -100,6 +102,11 @@ interface ChainOps {
   ) => Promise<any>;
   wrap: (fastify: FastifyInstance, network: string, address: string, amount: string) => Promise<any>;
   unwrap: (fastify: FastifyInstance, network: string, address: string, amount?: string) => Promise<any>;
+  /**
+   * Run an operation (wrap, unwrap) in build mode and return the transaction it would have
+   * sent, unsigned. Optional: a chain whose wrap signs outside its build chokepoint has none.
+   */
+  captureBuild?: (run: () => Promise<unknown>) => Promise<any>;
   /** EVM chains require an explicit unwrap amount; Solana unwraps the full balance. */
   unwrapRequiresAmount: boolean;
 }
@@ -129,6 +136,9 @@ const CHAINS: Record<string, ChainOps> = {
     poll: (fastify, network, signature) => pollEthereumTransaction(fastify, network, signature),
     wrap: (fastify, network, address, amount) => wrapEthereum(fastify, network, address, amount),
     unwrap: (fastify, network, address, amount) => unwrapEthereum(fastify, network, address, amount!),
+    submit: (fastify, network, signedTransaction, extraSigners) =>
+      submitEthereumTransaction(fastify, network, signedTransaction, extraSigners),
+    captureBuild: (run) => captureEvmTransaction(run),
     unwrapRequiresAmount: true,
   },
 };
@@ -295,9 +305,11 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         description:
           'Broadcast a transaction signed by the caller (the submit half of the build/sign/submit flow: ' +
-          'see the /trading build-* routes). Re-merges the ephemeral signatures from the build response ' +
-          'and verifies every signature locally before broadcasting, so a mutated message fails here ' +
-          'with a clear error rather than being dropped silently by the network.',
+          'see the build-* routes), then wait for its confirmation as execute does. Solana: re-merges the ' +
+          'ephemeral signatures from the build response and verifies every signature locally before ' +
+          'broadcasting, so a mutated message fails here with a clear error rather than being dropped ' +
+          'silently by the network. Ethereum: takes the signed raw transaction (0x-hex), refuses one signed ' +
+          'for another chain id, and reports a revert as TRANSACTION_FAILED.',
         tags: ['/chains'],
         params: ChainParamsSchema,
         body: SubmitRequestSchema,
@@ -353,6 +365,40 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
       return ops.unwrap(fastify, network, request.body.address, request.body.amount);
     },
   );
+
+  const buildWrapRoute = (verb: 'wrap' | 'unwrap') =>
+    fastify.post<{ Params: ChainParams; Body: WrapRequestType & UnwrapRequestType }>(
+      `/:chain/build-${verb}`,
+      {
+        schema: {
+          description:
+            `Build the unsigned transaction /chains/{chain}/${verb} would sign and send, for the caller to ` +
+            'sign with its own wallet and broadcast via /chains/{chain}/submit. Ethereum only for now.',
+          tags: ['/chains'],
+          params: ChainParamsSchema,
+          body: verb === 'wrap' ? WrapRequestSchema : UnwrapRequestSchema,
+          response: { 200: ChainBuildTransactionResponse },
+        },
+      },
+      async (request) => {
+        const { chain } = request.params;
+        const { ops, network } = resolveChain(chain, request.body.network);
+        if (!ops.captureBuild) {
+          throw httpErrors.badRequest(`build-${verb} is not supported for ${chain} yet; use /chains/${chain}/${verb}.`);
+        }
+        const { address, amount } = request.body;
+        if (verb === 'unwrap' && ops.unwrapRequiresAmount && !amount) {
+          throw httpErrors.badRequest(`amount is required to unwrap on ${chain}`);
+        }
+        return ops.captureBuild(() =>
+          verb === 'wrap'
+            ? ops.wrap(fastify, network, address, amount!)
+            : ops.unwrap(fastify, network, address, amount),
+        );
+      },
+    );
+  buildWrapRoute('wrap');
+  buildWrapRoute('unwrap');
 
   // EVM-only operations keep their chain-specific paths.
   fastify.register(

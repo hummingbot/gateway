@@ -23,7 +23,6 @@ export interface TransactionRoute {
   gaps?: Partial<Record<WalletChain, string>>;
 }
 
-const EVM_BUILD = 'INV-438';
 const SOLANA_BUILD = 'INV-435';
 
 export const TRANSACTION_ROUTES: TransactionRoute[] = [
@@ -32,75 +31,63 @@ export const TRANSACTION_ROUTES: TransactionRoute[] = [
     url: '/trading/router/execute-swap',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/router/build-swap',
-    gaps: { ethereum: EVM_BUILD },
   },
   {
     url: '/trading/router/execute-quote',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/router/build-quote',
-    gaps: { ethereum: EVM_BUILD },
   },
   // CLMM
   {
     url: '/trading/clmm/execute-swap',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/clmm/build-swap',
-    gaps: { ethereum: EVM_BUILD },
   },
   {
     url: '/trading/clmm/open',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/clmm/build-open',
-    gaps: { ethereum: EVM_BUILD },
   },
   {
     url: '/trading/clmm/add',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/clmm/build-add',
-    gaps: { ethereum: EVM_BUILD },
   },
   {
     url: '/trading/clmm/remove',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/clmm/build-remove',
-    gaps: { ethereum: EVM_BUILD },
   },
   {
     url: '/trading/clmm/collect-fees',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/clmm/build-collect-fees',
-    gaps: { ethereum: EVM_BUILD },
   },
   {
     url: '/trading/clmm/close',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/clmm/build-close',
-    gaps: { ethereum: EVM_BUILD },
   },
   {
     url: '/trading/clmm/create-pool',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/clmm/build-create-pool',
-    gaps: { ethereum: EVM_BUILD },
   },
   // AMM
   {
     url: '/trading/amm/execute-swap',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/amm/build-swap',
-    gaps: { ethereum: EVM_BUILD },
   },
   {
     url: '/trading/amm/add',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/amm/build-add',
-    gaps: { ethereum: EVM_BUILD },
   },
   {
     url: '/trading/amm/remove',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/amm/build-remove',
-    gaps: { ethereum: EVM_BUILD },
   },
   // Meteora DAMM v2 only.
   { url: '/trading/amm/collect-fees', chains: ['solana'], buildTwin: '/trading/amm/build-collect-fees' },
@@ -108,7 +95,6 @@ export const TRANSACTION_ROUTES: TransactionRoute[] = [
     url: '/trading/amm/create-pool',
     chains: ['solana', 'ethereum'],
     buildTwin: '/trading/amm/build-create-pool',
-    gaps: { ethereum: EVM_BUILD },
   },
   // Launch (Solana only)
   { url: '/trading/launch/execute-swap', chains: ['solana'], buildTwin: '/trading/launch/build-swap' },
@@ -124,14 +110,16 @@ export const TRANSACTION_ROUTES: TransactionRoute[] = [
   {
     url: '/chains/:chain/wrap',
     chains: ['solana', 'ethereum'],
-    gaps: { solana: SOLANA_BUILD, ethereum: EVM_BUILD },
+    buildTwin: '/chains/:chain/build-wrap',
+    gaps: { solana: SOLANA_BUILD },
   },
   {
     url: '/chains/:chain/unwrap',
     chains: ['solana', 'ethereum'],
-    gaps: { solana: SOLANA_BUILD, ethereum: EVM_BUILD },
+    buildTwin: '/chains/:chain/build-unwrap',
+    gaps: { solana: SOLANA_BUILD },
   },
-  { url: '/chains/ethereum/approve', chains: ['ethereum'], gaps: { ethereum: EVM_BUILD } },
+  { url: '/chains/ethereum/approve', chains: ['ethereum'], buildTwin: '/chains/ethereum/build-approve' },
 ];
 
 /**
@@ -141,6 +129,9 @@ export const TRANSACTION_ROUTES: TransactionRoute[] = [
 export const NON_SENDING_ROUTES: string[] = [
   'POST /chains/:chain/submit',
   'POST /chains/:chain/build-transaction',
+  'POST /chains/:chain/build-wrap',
+  'POST /chains/:chain/build-unwrap',
+  'POST /chains/ethereum/build-approve',
   'POST /chains/:chain/balances',
   'POST /chains/:chain/poll',
   'POST /chains/ethereum/allowances',

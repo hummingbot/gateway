@@ -9,8 +9,9 @@ import { removeLiquidity as uniswapRemoveLiquidity } from '../../connectors/unis
 import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
 import {
-  BuildTransactionResponse,
-  BuildTransactionResponseType,
+  assertBuildFields,
+  ChainBuildTransactionResponse,
+  ChainBuildTransactionResponseType,
   buildUnsigned,
   buildShapeFields,
   extraInstructionsField,
@@ -108,7 +109,7 @@ async function dispatchAmmRemoveLiquidity(
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Body: Static<typeof BuildAmmRemoveLiquidityRequest>;
-    Reply: BuildTransactionResponseType;
+    Reply: ChainBuildTransactionResponseType;
   }>(
     '/build-remove',
     {
@@ -120,7 +121,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           "back); a fungible-LP pool takes all the wallet's LP tokens.",
         tags: ['/trading/amm'],
         body: BuildAmmRemoveLiquidityRequest,
-        response: { 200: BuildTransactionResponse },
+        response: { 200: ChainBuildTransactionResponse },
       },
     },
     async (request) => {
@@ -141,6 +142,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           priority,
         } = request.body;
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        assertBuildFields(chain, { extraInstructions, feePayer, format, memo, references, priority });
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
         return await buildUnsigned(
           chain,

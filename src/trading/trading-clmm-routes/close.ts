@@ -10,8 +10,9 @@ import { closePosition as uniswapClosePosition } from '../../connectors/uniswap/
 import { ClosePositionResponseType, ClosePositionResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import {
-  BuildTransactionResponse,
-  BuildTransactionResponseType,
+  assertBuildFields,
+  ChainBuildTransactionResponse,
+  ChainBuildTransactionResponseType,
   buildUnsigned,
   buildShapeFields,
   extraInstructionsField,
@@ -94,7 +95,7 @@ async function dispatchClosePosition(
 export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Body: Static<typeof BuildClosePositionRequest>;
-    Reply: BuildTransactionResponseType;
+    Reply: ChainBuildTransactionResponseType;
   }>(
     '/build-close',
     {
@@ -106,7 +107,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         tags: ['/trading/clmm'],
         body: BuildClosePositionRequest,
         response: {
-          200: BuildTransactionResponse,
+          200: ChainBuildTransactionResponse,
         },
       },
     },
@@ -126,6 +127,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           priority,
         } = request.body;
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        assertBuildFields(chain, { extraInstructions, feePayer, format, memo, references, priority });
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
         return await buildUnsigned(
           chain,

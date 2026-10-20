@@ -5,6 +5,7 @@ import { TransactionStatus } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
+import { rethrowIfCaptured } from '../evm-build-mode';
 
 // Default gas limit for unwrap operations
 const UNWRAP_GAS_LIMIT = 50000;
@@ -77,22 +78,14 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       );
     }
 
-    // Build the unwrap transaction data
-    const iface = new utils.Interface(WETH9ABI);
-    const data = iface.encodeFunctionData('withdraw', [amountInWei]);
-
-    // Get gas options using estimateGasPrice
-    const gasOptions = await ethereum.prepareGasOptions(undefined, UNWRAP_GAS_LIMIT);
-
-    // Signed through the signer seam: local key, Ledger, or refused for an external wallet.
-    const txResponse = await ethereum.sendTransactionForWallet(address, {
+    const transaction = await ethereum.sendTransactionForWallet(address, {
       to: wrappedInfo.address,
-      data: data,
-      ...gasOptions, // Include gas parameters from prepareGasOptions
+      data: new utils.Interface(WETH9ABI).encodeFunctionData('withdraw', [amountInWei]),
+      gasLimit: UNWRAP_GAS_LIMIT,
+      description: `unwrap of ${amount} ${wrappedInfo.symbol}`,
     });
-
-    // Wait for confirmation with timeout
-    const outcome = await ethereum.handleTransactionConfirmation(txResponse);
+    const nonce = transaction.nonce;
+    const outcome = await ethereum.handleTransactionConfirmation(transaction);
 
     // A revert threw out of the confirmation helper as a 400 TRANSACTION_FAILED — it is never
     // reported as PENDING (receipt.status 0 and TransactionStatus.PENDING are the same number).
@@ -107,7 +100,7 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       signature: outcome.signature,
       status: TransactionStatus.CONFIRMED,
       data: {
-        nonce: txResponse.nonce,
+        nonce: nonce,
         fee: feeInEth,
         amount: bigNumberWithDecimalToStr(amountInWei, 18),
         wrappedAddress: wrappedInfo.address,
@@ -116,25 +109,9 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       },
     };
   } catch (error) {
-    logger.error(`Error unwrapping ${wrappedInfo.symbol} to ${wrappedInfo.nativeSymbol}: ${error.message}`);
-
-    // Handle specific error cases
-    if (error.message && error.message.includes('insufficient funds')) {
-      throw fastify.httpErrors.badRequest(
-        `Insufficient funds for transaction. Please ensure you have enough ETH for gas costs.`,
-      );
-    } else if (error.message && error.message.includes('Insufficient') && error.message.includes('balance')) {
-      throw error; // Re-throw our custom balance error
-    } else if (error.message && error.message.includes('timeout')) {
-      throw fastify.httpErrors.requestTimeout(
-        `Transaction timeout. The transaction may still be pending. Hash: ${error.transactionHash || 'unknown'}`,
-      );
-    }
-    // HTTP errors (the seam's refusal of an external wallet, a Ledger rejection) as they are.
-    if (error.statusCode) {
-      throw error;
-    }
-
+    rethrowIfCaptured(error);
+    if (error.statusCode) throw error;
+    logger.error(`Error in unwrap: ${error.message}`);
     throw fastify.httpErrors.internalServerError(
       `Failed to unwrap ${wrappedInfo.symbol} to ${wrappedInfo.nativeSymbol}: ${error.message}`,
     );
