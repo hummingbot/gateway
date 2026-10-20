@@ -117,9 +117,7 @@ export async function executeSwap(
   // The slippage protection is handled by otherAmountThreshold
   const sqrtPriceLimitX64 = new BN(0);
 
-  // Get wallet keypair
-  const wallet = await solana.getWallet(walletAddress);
-  const walletPubkey = wallet.publicKey;
+  const walletPubkey = new PublicKey(walletAddress);
 
   // Get priority fee
   const priorityFeeInLamports = await solana.estimateGasPrice();
@@ -140,14 +138,10 @@ export async function executeSwap(
     priorityFeePerCU,
   );
 
-  // Sign transaction
-  transaction.sign([wallet]);
-
-  // Simulate transaction
-  await solana.simulateWithErrorHandling(transaction);
-
-  // Send and confirm transaction
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+  // Signed and sent through the wallet chokepoint (the signer seam), which simulates first.
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  const txData = await solana.getConfirmedTransactionData(signature);
+  const confirmed = txData !== null;
 
   if (confirmed && txData) {
     const totalFee = txData.meta.fee;

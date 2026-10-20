@@ -2,6 +2,7 @@ import { BigNumber, providers } from 'ethers';
 
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { ZeroX } from '../../../../src/connectors/0x/0x';
+import { httpErrors } from '../../../../src/services/error-handler';
 import { quoteCache } from '../../../../src/services/quote-cache';
 import { TokenService } from '../../../../src/services/token-service';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
@@ -31,11 +32,6 @@ const mockUSDC = {
   address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
   decimals: 6,
   name: 'USD Coin',
-};
-
-const mockWallet = {
-  address: '0x1234567890123456789012345678901234567890',
-  sendTransaction: jest.fn(),
 };
 
 const mockTransaction = {
@@ -121,16 +117,11 @@ describe('POST /execute-quote', () => {
     const quoteId = 'test-quote-id';
     quoteCache.set(quoteId, '0x', mockQuoteData);
 
-    mockWallet.sendTransaction.mockResolvedValue(mockTransaction);
     mockTransaction.wait.mockResolvedValue(mockReceipt);
 
     const mockEthereumInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getContract: jest.fn().mockReturnValue({}),
-      getERC20Allowance: jest.fn().mockResolvedValue({
-        value: BigNumber.from('1000000000000000000'),
-        decimals: 18,
-      }),
+      requireAllowance: jest.fn().mockResolvedValue(undefined),
+      sendTransactionForWallet: jest.fn().mockResolvedValue(mockTransaction),
       nativeTokenSymbol: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
       getToken: jest.fn().mockImplementation((symbolOrAddress) => {
         if (symbolOrAddress.toLowerCase() === mockWETH.address.toLowerCase() || symbolOrAddress === 'WETH')
@@ -215,6 +206,18 @@ describe('POST /execute-quote', () => {
     expect(body.data).toHaveProperty('quoteTokenBalanceChange', 0);
     expect(body.data).toHaveProperty('tokenIn', mockWETH.address);
     expect(body.data).toHaveProperty('tokenOut', mockUSDC.address);
+    // The allowance 0x's quote names is checked, and the quote's call goes through the chokepoint.
+    expect(mockEthereumInstance.requireAllowance).toHaveBeenCalledWith(
+      '0x1234567890123456789012345678901234567890',
+      mockWETH,
+      mockQuoteData.allowanceTarget,
+      BigNumber.from(mockQuoteData.sellAmount),
+      mockQuoteData.allowanceTarget,
+    );
+    expect(mockEthereumInstance.sendTransactionForWallet).toHaveBeenCalledWith(
+      '0x1234567890123456789012345678901234567890',
+      expect.objectContaining({ to: mockQuoteData.to, data: mockQuoteData.data, value: '0', gasLimit: 200000 }),
+    );
   });
 
   it('should return 400 if quote not found', async () => {
@@ -237,14 +240,15 @@ describe('POST /execute-quote', () => {
     const quoteId = 'test-quote-id';
     quoteCache.set(quoteId, '0x', mockQuoteData);
 
-    mockWallet.sendTransaction.mockResolvedValue(mockTransaction);
     mockTransaction.wait.mockResolvedValue(mockReceipt);
 
     const mockEthereumInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getContract: jest.fn().mockReturnValue({}),
-      getERC20Allowance: jest.fn().mockResolvedValue({ value: BigNumber.from('0') }),
-      approveERC20: jest.fn().mockResolvedValue({}),
+      requireAllowance: jest
+        .fn()
+        .mockRejectedValue(
+          httpErrors.badRequest('Insufficient WETH allowance for 0xdef1c0ded9bec7f1a1670819833240f027b25eff'),
+        ),
+      sendTransactionForWallet: jest.fn(),
       nativeTokenSymbol: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
       getToken: jest.fn().mockImplementation((symbolOrAddress) => {
         if (symbolOrAddress.toLowerCase() === mockWETH.address.toLowerCase() || symbolOrAddress === 'WETH')
@@ -299,7 +303,7 @@ describe('POST /execute-quote', () => {
 
     expect(response.statusCode).toBe(400);
     const body = parseWire(response.body);
-    expect(body.message).toContain('Insufficient allowance');
-    expect(mockEthereumInstance.approveERC20).not.toHaveBeenCalled();
+    expect(body.message).toContain('Insufficient WETH allowance');
+    expect(mockEthereumInstance.sendTransactionForWallet).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,3 @@
-import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount, Percent } from '@uniswap/sdk-core';
 import { Position, NonfungiblePositionManager, MintOptions, nearestUsableTick } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
@@ -13,6 +12,7 @@ import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
+import { positionManagerCall } from '../../clmm-v3-utils';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV3NftManagerAddress } from '../uniswap.contracts';
@@ -48,12 +48,6 @@ export async function openPosition(
 
   if (!baseTokenObj || !quoteTokenObj) {
     throw httpErrors.badRequest('Token information not found for pool');
-  }
-
-  // Get the wallet
-  const wallet = await ethereum.getWallet(walletAddress);
-  if (!wallet) {
-    throw httpErrors.badRequest('Wallet not found');
   }
 
   // Get the V3 pool
@@ -153,81 +147,31 @@ export async function openPosition(
   // Get position manager address for allowance checks
   const positionManagerAddress = getUniswapV3NftManagerAddress(network);
 
-  // Check token0 allowance if needed (including WETH)
-  if (!token0Amount.equalTo(0)) {
-    const token0Contract = ethereum.getContract(token0.address, wallet);
-    const allowance0 = await ethereum.getERC20Allowance(
-      token0Contract,
-      wallet,
+  // The position manager spends both tokens (spender "uniswap/clmm").
+  for (const [token, amount] of [
+    [token0, token0Amount],
+    [token1, token1Amount],
+  ] as const) {
+    await ethereum.requireAllowance(
+      walletAddress,
+      { address: token.address, symbol: token.symbol ?? token.address, decimals: token.decimals },
       positionManagerAddress,
-      token0.decimals,
+      BigNumber.from(amount.quotient.toString()),
+      'uniswap/clmm',
     );
-
-    const currentAllowance0 = BigNumber.from(allowance0.value);
-    const requiredAmount0 = BigNumber.from(token0Amount.quotient.toString());
-
-    logger.info(`${token0.symbol} allowance: ${formatTokenAmount(currentAllowance0.toString(), token0.decimals)}`);
-    logger.info(`${token0.symbol} required: ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)}`);
-
-    if (currentAllowance0.lt(requiredAmount0)) {
-      throw httpErrors.badRequest(
-        `Insufficient ${token0.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)} ${token0.symbol} (${token0.address}) for the Position Manager (${positionManagerAddress})`,
-      );
-    }
   }
 
-  // Check token1 allowance if needed (including WETH)
-  if (!token1Amount.equalTo(0)) {
-    const token1Contract = ethereum.getContract(token1.address, wallet);
-    const allowance1 = await ethereum.getERC20Allowance(
-      token1Contract,
-      wallet,
+  // Create the position. The calldata is one mint call wrapped in the position manager's multicall.
+  const tx = await ethereum.sendTransactionForWallet(
+    walletAddress,
+    positionManagerCall(
       positionManagerAddress,
-      token1.decimals,
-    );
-
-    const currentAllowance1 = BigNumber.from(allowance1.value);
-    const requiredAmount1 = BigNumber.from(token1Amount.quotient.toString());
-
-    logger.info(`${token1.symbol} allowance: ${formatTokenAmount(currentAllowance1.toString(), token1.decimals)}`);
-    logger.info(`${token1.symbol} required: ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)}`);
-
-    if (currentAllowance1.lt(requiredAmount1)) {
-      throw httpErrors.badRequest(
-        `Insufficient ${token1.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)} ${token1.symbol} (${token1.address}) for the Position Manager (${positionManagerAddress})`,
-      );
-    }
-  }
-
-  // Create position manager contract with proper multicall interface
-  const positionManager = new Contract(
-    positionManagerAddress,
-    [
-      {
-        inputs: [{ internalType: 'bytes[]', name: 'data', type: 'bytes[]' }],
-        name: 'multicall',
-        outputs: [{ internalType: 'bytes[]', name: 'results', type: 'bytes[]' }],
-        stateMutability: 'payable',
-        type: 'function',
-      },
-    ],
-    wallet,
+      calldata,
+      value,
+      CLMM_OPEN_POSITION_GAS_LIMIT,
+      `open position in pool ${poolAddress}`,
+    ),
   );
-
-  // Create the position
-  logger.info('Sending transaction to create position...');
-  logger.info(`Calldata length: ${calldata.length}`);
-  logger.info(`Value: ${value.toString()}`);
-
-  let tx;
-  try {
-    const txParams = await ethereum.prepareGasOptions(undefined, CLMM_OPEN_POSITION_GAS_LIMIT);
-    txParams.value = BigNumber.from(value.toString());
-    tx = await positionManager.multicall([calldata], txParams);
-  } catch (txError: any) {
-    logger.error('Transaction failed:', txError);
-    throw txError;
-  }
 
   // Wait for transaction confirmation
   const outcome = await ethereum.handleTransactionConfirmation(tx);

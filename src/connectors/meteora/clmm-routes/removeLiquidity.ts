@@ -2,6 +2,7 @@ import { BN } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { getBuildModeContext } from '../../../chains/solana/solana-build-mode';
 import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -65,6 +66,15 @@ export async function removeLiquidity(
 
   // Handle both single transaction and array of transactions (SDK v1.7.5 may return either)
   const transactions = Array.isArray(removeLiquidityTx) ? removeLiquidityTx : [removeLiquidityTx];
+
+  // Build mode: every transaction of the removal in one response.
+  if (getBuildModeContext()) {
+    transactions.forEach((tx) => (tx.feePayer = walletPublicKey));
+    await solana.captureSequenceForExternalSigner(
+      transactions.map((transaction) => ({ transaction })),
+      walletAddress,
+    );
+  }
 
   let totalFee = 0;
   let lastSignature = '';

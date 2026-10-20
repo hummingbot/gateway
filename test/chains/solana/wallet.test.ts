@@ -20,15 +20,13 @@ jest.mock('../../../src/https', () => ({ getHttpsOptions: jest.fn().mockReturnVa
 
 import { Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
-import * as fse from 'fs-extra';
 
 import { gatewayApp } from '../../../src/app';
 import { Solana } from '../../../src/chains/solana/solana';
 import { ConfigManagerCertPassphrase } from '../../../src/services/config-manager-cert-passphrase';
 import { GetWalletResponse } from '../../../src/wallet/schemas';
+import { MemoryFs } from '../../helpers/memory-fs';
 import { patch, unpatch } from '../../services/patch';
-
-const mockFse = fse as jest.Mocked<typeof fse>;
 
 let solana: Solana;
 
@@ -58,10 +56,8 @@ const encodedPrivateKey = {
   },
 };
 
-// Track wallet operations in memory to avoid file system pollution
-const mockWallets: { [key: string]: Set<string> } = {
-  solana: new Set<string>(),
-};
+// Wallet files live in memory, so the suite never touches conf/.
+let memoryFs: MemoryFs;
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
@@ -72,9 +68,6 @@ beforeAll(async () => {
 beforeEach(() => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
 
-  // Clear mock wallets
-  mockWallets.solana.clear();
-
   // Mock wallet operations to work with in-memory storage
   patch(solana, 'getKeypairFromPrivateKey', () => {
     return testKeypair;
@@ -84,62 +77,8 @@ beforeEach(() => {
     return JSON.stringify(encodedPrivateKey);
   });
 
-  // Setup fs-extra mocks
-  (mockFse.writeFile as jest.Mock).mockImplementation(async (path: any) => {
-    const pathStr = path.toString();
-    const pathParts = pathStr.split('/');
-    const chain = pathParts[pathParts.length - 2];
-    const address = pathParts[pathParts.length - 1].replace('.json', '');
-
-    if (chain && address) {
-      mockWallets[chain].add(address);
-    }
-    return undefined;
-  });
-
-  (mockFse.readdir as jest.Mock).mockImplementation(async (dirPath: any, options?: any) => {
-    const pathStr = dirPath.toString();
-
-    // If asking for directories in wallet path
-    if (pathStr.endsWith('/wallets') && options?.withFileTypes) {
-      return Object.keys(mockWallets).map((chain) => ({
-        name: chain,
-        isDirectory: () => true,
-        isFile: () => false,
-      }));
-    }
-
-    // If asking for files in a chain directory
-    const chain = pathStr.split('/').pop();
-    if (chain && mockWallets[chain]) {
-      if (options?.withFileTypes) {
-        return Array.from(mockWallets[chain]).map((addr) => ({
-          name: `${addr}.json`,
-          isDirectory: () => false,
-          isFile: () => true,
-        }));
-      }
-      return Array.from(mockWallets[chain]).map((addr) => `${addr}.json`);
-    }
-
-    return [];
-  });
-
-  (mockFse.readFile as jest.Mock).mockResolvedValue(Buffer.from(JSON.stringify(encodedPrivateKey)));
-  (mockFse.pathExists as jest.Mock).mockResolvedValue(true);
-  (mockFse.ensureDir as jest.Mock).mockResolvedValue(undefined);
-
-  (mockFse.remove as jest.Mock).mockImplementation(async (filePath: any) => {
-    const pathStr = filePath.toString();
-    const pathParts = pathStr.split('/');
-    const chain = pathParts[pathParts.length - 2];
-    const address = pathParts[pathParts.length - 1].replace('.json', '');
-
-    if (chain && mockWallets[chain]) {
-      mockWallets[chain].delete(address);
-    }
-    return undefined;
-  });
+  memoryFs = new MemoryFs();
+  memoryFs.install();
 });
 
 afterAll(async () => {
@@ -209,7 +148,7 @@ describe('Solana Wallet Operations', () => {
   describe('GET /wallet', () => {
     it('should fetch wallets for Solana', async () => {
       // First add a wallet
-      mockWallets.solana.add(testAddress);
+      memoryFs.files.set(`./conf/wallets/solana/${testAddress}.json`, 'key');
 
       const response = await gatewayApp.inject({
         method: 'GET',
@@ -227,9 +166,6 @@ describe('Solana Wallet Operations', () => {
     });
 
     it('should return empty array when no wallets exist', async () => {
-      // Clear wallets
-      mockWallets.solana.clear();
-
       const response = await gatewayApp.inject({
         method: 'GET',
         url: '/wallet',
@@ -247,7 +183,7 @@ describe('Solana Wallet Operations', () => {
   describe('DELETE /wallet/remove', () => {
     it('should remove a Solana wallet successfully', async () => {
       // First add the wallet to mock storage
-      mockWallets.solana.add(testAddress);
+      memoryFs.files.set(`./conf/wallets/solana/${testAddress}.json`, 'key');
 
       const response = await gatewayApp.inject({
         method: 'DELETE',
@@ -263,12 +199,10 @@ describe('Solana Wallet Operations', () => {
 
       const body = JSON.parse(response.payload);
       expect(body.message).toContain('removed successfully');
-      expect(mockWallets.solana.has(testAddress)).toBe(false);
+      expect(memoryFs.files.has(`./conf/wallets/solana/${testAddress}.json`)).toBe(false);
     });
 
     it('should fail when removing non-existent wallet', async () => {
-      (mockFse.pathExists as jest.Mock).mockResolvedValue(false);
-
       const response = await gatewayApp.inject({
         method: 'DELETE',
         url: '/wallet/remove',
@@ -278,8 +212,7 @@ describe('Solana Wallet Operations', () => {
         },
       });
 
-      // The endpoint doesn't check if wallet exists, just removes the file
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(404);
     });
 
     it('should fail with invalid address format', async () => {
@@ -292,8 +225,7 @@ describe('Solana Wallet Operations', () => {
         },
       });
 
-      // Address validation happens and throws 500 on invalid format
-      expect(response.statusCode).toBe(500);
+      expect(response.statusCode).toBe(400);
     });
   });
 

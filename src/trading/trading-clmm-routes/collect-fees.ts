@@ -10,6 +10,15 @@ import { collectFees as uniswapCollectFees } from '../../connectors/uniswap/clmm
 import { CollectFeesResponseType, CollectFeesResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import {
+  assertBuildFields,
+  ChainBuildTransactionResponse,
+  ChainBuildTransactionResponseType,
+  buildUnsigned,
+  buildShapeFields,
+  extraInstructionsField,
+  priorityField,
+} from '../build-common';
+import {
   chainNetworkField,
   CLMM_CONNECTORS,
   connectorField,
@@ -34,9 +43,95 @@ export const UnifiedCollectFeesRequest = Type.Object(
   { $id: 'ClmmCollectFeesRequest', additionalProperties: false },
 );
 
-// Import connector functions
+/** Same body as the execute route, plus the build-only extras. */
+export const BuildCollectFeesRequest = Type.Object(
+  {
+    ...UnifiedCollectFeesRequest.properties,
+    extraInstructions: extraInstructionsField(),
+    ...buildShapeFields(),
+    priority: priorityField(),
+  },
+  { $id: 'ClmmBuildCollectFeesRequest', additionalProperties: false },
+);
+
+async function dispatchCollectFees(
+  connector: string,
+  network: string,
+  walletAddress: string,
+  positionAddress: string,
+): Promise<CollectFeesResponseType> {
+  switch (connector) {
+    case 'uniswap':
+      return await uniswapCollectFees(network, walletAddress, positionAddress);
+
+    case 'pancakeswap':
+      return await pancakeswapCollectFees(network, walletAddress, positionAddress);
+
+    case 'raydium':
+      return await raydiumCollectFees(network, walletAddress, positionAddress);
+
+    case 'meteora':
+      return await meteoraCollectFees(network, walletAddress, positionAddress);
+
+    case 'pancakeswap-sol':
+      return await pancakeswapSolCollectFees(network, walletAddress, positionAddress);
+
+    case 'orca':
+      return await orcaCollectFees(network, walletAddress, positionAddress);
+
+    default:
+      throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
+  }
+}
 
 export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
+  fastify.post<{
+    Body: Static<typeof BuildCollectFeesRequest>;
+    Reply: ChainBuildTransactionResponseType;
+  }>(
+    '/build-collect-fees',
+    {
+      schema: {
+        description:
+          'Build the unsigned transaction that /collect-fees would sign and send, for the caller to sign ' +
+          'with its own wallet and broadcast via /chains/{chain}/submit.',
+        tags: ['/trading/clmm'],
+        body: BuildCollectFeesRequest,
+        response: {
+          200: ChainBuildTransactionResponse,
+        },
+      },
+    },
+    async (request) => {
+      try {
+        const {
+          connector,
+          chainNetwork,
+          walletAddress: requestedWallet,
+          positionAddress,
+          extraInstructions,
+          feePayer,
+          format,
+          memo,
+          references,
+          priority,
+        } = request.body;
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        assertBuildFields(chain, { extraInstructions, feePayer, format, memo, references, priority });
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
+        return await buildUnsigned(
+          chain,
+          connector,
+          { extraInstructions, feePayer, format, memo, references },
+          () => dispatchCollectFees(connector, network, walletAddress, positionAddress),
+          priority,
+        );
+      } catch (e: any) {
+        rethrowRouteError(e, 'Failed to build collect-fees transaction');
+      }
+    },
+  );
+
   fastify.post<{
     Body: Static<typeof UnifiedCollectFeesRequest>;
     Reply: CollectFeesResponseType;
@@ -60,31 +155,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
 
-        // Route to appropriate connector
-        const result = await (async () => {
-          switch (connector) {
-            case 'uniswap':
-              return await uniswapCollectFees(network, walletAddress, positionAddress);
-
-            case 'pancakeswap':
-              return await pancakeswapCollectFees(network, walletAddress, positionAddress);
-
-            case 'raydium':
-              return await raydiumCollectFees(network, walletAddress, positionAddress);
-
-            case 'meteora':
-              return await meteoraCollectFees(network, walletAddress, positionAddress);
-
-            case 'pancakeswap-sol':
-              return await pancakeswapSolCollectFees(network, walletAddress, positionAddress);
-
-            case 'orca':
-              return await orcaCollectFees(network, walletAddress, positionAddress);
-
-            default:
-              throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
-          }
-        })();
+        const result = await dispatchCollectFees(connector, network, walletAddress, positionAddress);
 
         // poolAddress comes from the connector, which already loaded the position.
         return withIdentifiers(result, { positionAddress });

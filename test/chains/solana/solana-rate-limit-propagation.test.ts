@@ -57,13 +57,6 @@ describe('Solana Rate Limit Error Propagation', () => {
     (solana as any).heliusService = {
       isWebSocketConnected: jest.fn().mockReturnValue(false),
     };
-
-    // Mock prepareTx to return the transaction as-is
-    jest.spyOn(solana as any, 'prepareTx').mockImplementation((tx: any) => {
-      tx.recentBlockhash = 'test-blockhash';
-      tx.feePayer = new PublicKey('11111111111111111111111111111112');
-      return Promise.resolve(tx);
-    });
   });
 
   afterEach(() => {

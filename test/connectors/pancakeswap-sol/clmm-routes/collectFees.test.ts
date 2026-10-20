@@ -38,9 +38,7 @@ const baseSolanaMock = (overrides: Record<string, any> = {}) => ({
     if (t === mockUSDC.address) return Promise.resolve(mockUSDC);
     return Promise.resolve(null);
   }),
-  getWallet: jest.fn().mockResolvedValue({ publicKey: WALLET }),
   estimateGasPrice: jest.fn().mockResolvedValue(0.001),
-  simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
   throwIfLandedWithError: jest.fn().mockResolvedValue(undefined),
   extractBalanceChangesAndFee: jest.fn().mockResolvedValue({ balanceChanges: [0.0012, 0.34] }),
   ...overrides,
@@ -67,9 +65,8 @@ describe('POST /collect-fees (pancakeswap-sol)', () => {
 
   it('collects fees via a zero-liquidity decrease — the position liquidity is NOT touched', async () => {
     const mockSolana = baseSolanaMock({
-      sendAndConfirmRawTransaction: jest
-        .fn()
-        .mockResolvedValue({ confirmed: true, signature: 'collect-sig', txData: { meta: { fee: 5000 } } }),
+      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({ signature: 'collect-sig', fee: 0.000005 }),
+      getConfirmedTransactionData: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
     });
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
 
@@ -106,12 +103,9 @@ describe('POST /collect-fees (pancakeswap-sol)', () => {
   });
 
   it('fails loudly when the collect transaction landed on-chain but failed (no silent PENDING)', async () => {
-    const failedTxData = { meta: { err: { InstructionError: [0, 'Custom'] } } };
+    // The wallet chokepoint throws the landed-but-failed error; the route passes it on as a 4xx.
     const mockSolana = baseSolanaMock({
-      sendAndConfirmRawTransaction: jest
-        .fn()
-        .mockResolvedValue({ confirmed: false, signature: 'failed-sig', txData: failedTxData }),
-      throwIfLandedWithError: jest
+      sendAndConfirmTransactionForWallet: jest
         .fn()
         .mockRejectedValue(transactionFailed('Transaction failed-sig landed on-chain but failed: custom error')),
     });
@@ -130,14 +124,12 @@ describe('POST /collect-fees (pancakeswap-sol)', () => {
 
     expect(response.statusCode).toBe(400);
     expect(parseWire(response.body).message).toMatch(/landed on-chain but failed/);
-    expect(mockSolana.throwIfLandedWithError).toHaveBeenCalledWith('failed-sig', failedTxData);
   });
 
-  it('keeps the pending shape when the transaction genuinely has not landed', async () => {
+  it('keeps the pending shape when the confirmed transaction is not readable yet', async () => {
     const mockSolana = baseSolanaMock({
-      sendAndConfirmRawTransaction: jest
-        .fn()
-        .mockResolvedValue({ confirmed: false, signature: 'pending-sig', txData: null }),
+      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({ signature: 'pending-sig', fee: 0 }),
+      getConfirmedTransactionData: jest.fn().mockResolvedValue(null),
     });
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
 

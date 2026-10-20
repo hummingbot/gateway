@@ -70,19 +70,17 @@ const primeMocks = (logs: any[]) => {
   (Contract as jest.Mock).mockImplementation(() => ({
     // Allowance is unlimited so the route reaches the swap.
     allowance: jest.fn().mockResolvedValue(utils.parseUnits('1000000000', USDC.decimals)),
-    exactOutputSingle: jest.fn().mockResolvedValue({ hash: TX_HASH }),
-    exactInputSingle: jest.fn().mockResolvedValue({ hash: TX_HASH }),
   }));
 
   (Ethereum.getInstance as jest.Mock).mockResolvedValue({
     init: jest.fn().mockResolvedValue(undefined),
     provider: {},
-    isHardwareWallet: jest.fn().mockResolvedValue(false),
-    getWallet: jest.fn().mockResolvedValue({ address: WALLET }),
+    // The route checks its allowances and sends through the chokepoint.
+    requireAllowance: jest.fn().mockResolvedValue(undefined),
+    sendTransactionForWallet: jest.fn().mockResolvedValue({ hash: TX_HASH }),
     getContract: jest.fn(() => ({
       allowance: jest.fn().mockResolvedValue(utils.parseUnits('1000000000', USDC.decimals)),
     })),
-    prepareGasOptions: jest.fn().mockResolvedValue({}),
     handleTransactionConfirmation: jest.fn().mockResolvedValue({
       confirmed: true,
       signature: TX_HASH,

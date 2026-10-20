@@ -12,65 +12,39 @@ import {
   Chain,
   getSupportedChains,
 } from '../services/connection-manager';
+import { httpErrors } from '../services/error-handler';
 import { logger } from '../services/logger';
 
+import { PrivyWallet } from './privy/privy-client';
+import { AddWalletRequest, AddWalletResponse, GetWalletResponse, PrivyWalletResponse } from './schemas';
+import { SignerKind, WalletChain } from './signers/types';
 import {
-  AddWalletRequest,
-  AddWalletResponse,
-  RemoveWalletRequest,
-  SignMessageRequest,
-  SignMessageResponse,
-  GetWalletResponse,
-} from './schemas';
-
-export const walletPath = './conf/wallets';
-
-// Utility to sanitize file paths and prevent path traversal attacks
-export function sanitizePathComponent(input: string): string {
-  // Remove any characters that could be used for directory traversal
-  return input.replace(/[/\\:*?"<>|]/g, '');
-}
-
-// Import supported chains function
+  asWalletChain,
+  canonicalAddress,
+  findWalletRecord,
+  getWalletRecord,
+  ListStoreEntry,
+  listWalletRecords,
+  localKeyFilePath,
+  walletPath,
+  WALLET_CHAINS,
+  updateListStore,
+} from './signers/wallet-store';
 
 // Validate chain name against known chains to prevent injection
 export function validateChainName(chain: string): boolean {
   if (!chain) return false;
-
-  try {
-    // Get supported chains directly without caching
-    const supportedChains = getSupportedChains();
-    return supportedChains.includes(chain.toLowerCase());
-  } catch (error) {
-    // Fallback to hardcoded list if there's an error
-    logger.warn(`Failed to get supported chains: ${error.message}. Using fallback list.`);
-    return ['ethereum', 'solana'].includes(chain.toLowerCase());
-  }
+  return getSupportedChains().includes(chain.toLowerCase());
 }
 
-// Get safe path for wallet files, with chain and address validation
-export function getSafeWalletFilePath(chain: string, address: string): string {
-  // Validate chain name
-  if (!validateChainName(chain)) {
-    throw new Error(`Invalid chain name: ${chain}`);
-  }
-
-  // Sanitize both inputs
-  const safeChain = sanitizePathComponent(chain.toLowerCase());
-  const safeAddress = sanitizePathComponent(address);
-
-  // Ensure address isn't empty after sanitization
-  if (!safeAddress) {
-    throw new Error('Invalid wallet address');
-  }
-
-  return `${walletPath}/${safeChain}/${safeAddress}.json`;
-}
-
-export async function mkdirIfDoesNotExist(path: string): Promise<void> {
-  const exists = await fse.pathExists(path);
-  if (!exists) {
-    await fse.mkdir(path, { recursive: true });
+/** A 400 when the address already has a signer of another kind: one address, one signer. */
+async function assertNotRegisteredAs(chain: WalletChain, address: string, kind: SignerKind): Promise<void> {
+  const existing = await findWalletRecord(chain, address);
+  if (existing && existing.signer !== kind) {
+    throw httpErrors.badRequest(
+      `Wallet ${address} is already registered as a ${existing.signer} wallet. ` +
+        'Remove it with DELETE /wallet/remove before adding it with another signer.',
+    );
   }
 }
 
@@ -123,16 +97,12 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
     );
   }
 
-  // Create safe path for wallet storage
-  const safeChain = sanitizePathComponent(req.chain.toLowerCase());
-  const path = `${walletPath}/${safeChain}`;
+  const chain = asWalletChain(req.chain);
+  await assertNotRegisteredAs(chain, address, 'local');
 
-  await mkdirIfDoesNotExist(path);
-
-  // Sanitize address for filename
-  const safeAddress = sanitizePathComponent(address);
   // Write the encrypted key file owner-readable only (hummingbot/gateway#652).
-  const walletFilePath = `${path}/${safeAddress}.json`;
+  await fse.ensureDir(`${walletPath}/${chain}`);
+  const walletFilePath = localKeyFilePath(chain, address);
   await fse.writeFile(walletFilePath, encryptedPrivateKey, { mode: 0o600 });
   await fse.chmod(walletFilePath, 0o600);
 
@@ -144,181 +114,111 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
   return { address };
 }
 
-export async function removeWallet(fastify: FastifyInstance, req: RemoveWalletRequest): Promise<void> {
-  logger.info(`Removing wallet: ${req.address} from chain: ${req.chain}`);
-
-  try {
-    // Validate chain name
-    if (!validateChainName(req.chain)) {
-      throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
-    }
-
-    // Validate the address based on chain type
-    let validatedAddress: string;
-    if (req.chain.toLowerCase() === 'ethereum') {
-      validatedAddress = Ethereum.validateAddress(req.address);
-    } else if (req.chain.toLowerCase() === 'solana') {
-      validatedAddress = Solana.validateAddress(req.address);
-    } else {
-      // This should not happen due to validateChainName check, but just in case
-      throw new Error(`Unsupported chain: ${req.chain}`);
-    }
-
-    // Check if this is the default wallet before removing
-    const chainLower = req.chain.toLowerCase();
-    const currentDefaultWallet = ConfigManagerV2.getInstance().get(`${chainLower}.defaultWallet`);
-    const isDefaultWallet =
-      currentDefaultWallet && currentDefaultWallet.toLowerCase() === validatedAddress.toLowerCase();
-
-    // Create safe file path
-    const safeChain = sanitizePathComponent(chainLower);
-    const safeAddress = sanitizePathComponent(validatedAddress);
-
-    // Remove file
-    await fse.remove(`${walletPath}/${safeChain}/${safeAddress}.json`);
-
-    // If the deleted wallet was the default, update the default wallet
-    if (isDefaultWallet) {
-      // Get all remaining wallet addresses (both regular and hardware)
-      const remainingAddresses = await getAllWalletAddressesForChain(chainLower);
-
-      if (remainingAddresses.length > 0) {
-        // Set the first remaining wallet as the new default
-        const newDefaultWallet = remainingAddresses[0];
-        ConfigManagerV2.getInstance().set(`${chainLower}.defaultWallet`, newDefaultWallet);
-        logger.info(`Set new default wallet for ${chainLower}: ${newDefaultWallet}`);
-      } else {
-        // No wallets remaining, clear the default wallet
-        ConfigManagerV2.getInstance().set(`${chainLower}.defaultWallet`, '');
-        logger.info(`Cleared default wallet for ${chainLower} (no wallets remaining)`);
-      }
-    }
-  } catch (error) {
-    if (error.message.includes('Invalid') || error.message.includes('Unrecognized')) {
-      throw fastify.httpErrors.badRequest(error.message);
-    }
-    throw fastify.httpErrors.internalServerError(`Failed to remove wallet: ${error.message}`);
-  }
-}
-
-export async function signMessage(fastify: FastifyInstance, req: SignMessageRequest): Promise<SignMessageResponse> {
-  logger.info(`Signing message for wallet: ${req.address} on chain: ${req.chain}`);
-  try {
-    // Validate chain name
-    if (!validateChainName(req.chain)) {
-      throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
-    }
-
-    // Validate the address based on chain type
-    let validatedAddress: string;
-    if (req.chain.toLowerCase() === 'ethereum') {
-      validatedAddress = Ethereum.validateAddress(req.address);
-    } else if (req.chain.toLowerCase() === 'solana') {
-      validatedAddress = Solana.validateAddress(req.address);
-    } else {
-      throw new Error(`Unsupported chain: ${req.chain}`);
-    }
-
-    // Get connection with validated network parameter
-    const safeNetwork = sanitizePathComponent(req.network);
-    const connection = await getInitializedChain(req.chain, safeNetwork);
-
-    // getWallet now includes its own address validation
-    const wallet = await (connection as any).getWallet(validatedAddress);
-    if (!wallet) {
-      throw fastify.httpErrors.notFound(`Wallet ${req.address} not found for chain ${req.chain}`);
-    }
-
-    const signature = await wallet.signMessage(req.message);
-    return { signature };
-  } catch (error) {
-    if (error.message.includes('Invalid') || error.message.includes('Unrecognized')) {
-      throw fastify.httpErrors.badRequest(error.message);
-    }
-    if (error.statusCode) {
-      throw error;
-    }
-    throw fastify.httpErrors.internalServerError(`Failed to sign message: ${error.message}`);
-  }
-}
-
-async function getDirectories(source: string): Promise<string[]> {
-  await mkdirIfDoesNotExist(source);
-  const files = await fse.readdir(source, { withFileTypes: true });
-  return files.filter((dirent) => dirent.isDirectory()).map((dirent) => dirent.name);
-}
-
-function dropExtension(path: string): string {
-  return path.substr(0, path.lastIndexOf('.')) || path;
-}
-
-async function getJsonFiles(source: string): Promise<string[]> {
-  try {
-    const files = await fse.readdir(source, { withFileTypes: true });
-    return files.filter((f) => f.isFile() && f.name.endsWith('.json')).map((f) => f.name);
-  } catch (error) {
-    // Return empty array if directory doesn't exist or is not accessible
-    return [];
-  }
-}
-
-export async function getWallets(
+/** Add an address-only wallet: Gateway builds for it and never signs (#682). */
+export async function addExternalWallet(
   fastify: FastifyInstance,
-  _showReadOnly: boolean = true,
-  showHardware: boolean = true,
-): Promise<GetWalletResponse[]> {
-  logger.info('Getting all wallets');
-  try {
-    // Create wallet directory if it doesn't exist
-    await mkdirIfDoesNotExist(walletPath);
+  chainName: string,
+  addressInput: string,
+  setDefault?: boolean,
+): Promise<{ address: string; signer: 'external' }> {
+  const chain = asWalletChain(chainName);
+  const address = canonicalAddress(chain, addressInput);
+  await assertNotRegisteredAs(chain, address, 'external');
 
-    // Get only valid chain directories
-    const validChains = ['ethereum', 'solana'];
-    const allDirs = await getDirectories(walletPath);
-    const chains = allDirs.filter((dir) => validChains.includes(dir.toLowerCase()));
-
-    const responses: GetWalletResponse[] = [];
-    for (const chain of chains) {
-      // Sanitize the chain name to prevent directory traversal
-      const safeChain = sanitizePathComponent(chain);
-      const walletFiles = await getJsonFiles(`${walletPath}/${safeChain}`);
-
-      // Filter out any suspicious filenames that might have survived
-      const safeWalletAddresses = walletFiles
-        .map((file) => dropExtension(file))
-        // Additional validation for addresses based on chain type
-        .filter((address) => {
-          try {
-            if (chain.toLowerCase() === 'ethereum') {
-              // Basic Ethereum address validation (0x + 40 hex chars)
-              return /^0x[a-fA-F0-9]{40}$/i.test(address);
-            } else if (chain.toLowerCase() === 'solana') {
-              // Basic Solana address length check
-              return address.length >= 32 && address.length <= 44;
-            }
-            return false;
-          } catch {
-            return false;
-          }
-        });
-
-      // Get hardware wallet addresses if requested
-      const hardwareAddresses = showHardware ? await getHardwareWalletAddresses(chain) : [];
-
-      responses.push({
-        chain: safeChain,
-        walletAddresses: safeWalletAddresses,
-        hardwareWalletAddresses: hardwareAddresses.length > 0 ? hardwareAddresses : undefined,
-      });
+  await updateListStore(chain, 'external', async (entries) => {
+    if (!entries.some((e) => e.address === address)) {
+      entries.push({ address, addedAt: new Date().toISOString() });
     }
-
-    return responses;
-  } catch (error) {
-    throw fastify.httpErrors.internalServerError(`Failed to get wallets: ${error.message}`);
+    return { entries, result: undefined };
+  });
+  if (setDefault) {
+    updateDefaultWallet(fastify, chain, address);
   }
+  return { address, signer: 'external' };
 }
 
-// Hardware wallet functions
+/**
+ * Add a Privy server wallet that Privy has returned (by id, or just created). Gateway
+ * stores its id and address only; Privy holds the key and signs.
+ */
+export async function addPrivyWallet(
+  fastify: FastifyInstance,
+  chainName: string,
+  wallet: PrivyWallet,
+  setDefault?: boolean,
+): Promise<PrivyWalletResponse> {
+  const chain = asWalletChain(chainName);
+  if (wallet.chain_type !== chain) {
+    throw httpErrors.badRequest(`Privy wallet ${wallet.id} is a ${wallet.chain_type} wallet, not ${chain}`);
+  }
+  const address = canonicalAddress(chain, wallet.address);
+  await assertNotRegisteredAs(chain, address, 'privy');
+
+  await updateListStore(chain, 'privy', async (entries) => {
+    const existing = entries.find((e) => e.address === address);
+    if (existing && existing.privyWalletId !== wallet.id) {
+      throw httpErrors.badRequest(
+        `Wallet ${address} is already registered with Privy wallet id ${existing.privyWalletId}. ` +
+          'Remove it with DELETE /wallet/remove first.',
+      );
+    }
+    if (!existing) {
+      entries.push({ address, privyWalletId: wallet.id, addedAt: new Date().toISOString() });
+      logger.info(`Added Privy wallet ${address} (${wallet.id}) on ${chain}`);
+    }
+    return { entries, result: undefined };
+  });
+  if (setDefault) {
+    updateDefaultWallet(fastify, chain, address);
+  }
+  return { address, privyWalletId: wallet.id, signer: 'privy' };
+}
+
+/**
+ * Remove a wallet of any signer kind: its key file (local) or its entry in its list
+ * store. When it was the chain's default, the next remaining wallet becomes the default.
+ */
+export async function removeWallet(chainName: string, addressInput: string): Promise<SignerKind> {
+  const chain = asWalletChain(chainName);
+  const record = await getWalletRecord(chain, canonicalAddress(chain, addressInput));
+  logger.info(`Removing ${record.signer} wallet ${record.address} from chain ${chain}`);
+
+  if (record.signer === 'local') {
+    await fse.remove(localKeyFilePath(chain, record.address));
+  } else {
+    await updateListStore(chain, record.signer, async (entries) => ({
+      entries: entries.filter((e: ListStoreEntry) => e.address !== record.address),
+      result: undefined,
+    }));
+  }
+
+  const currentDefault: string | undefined = ConfigManagerV2.getInstance().get(`${chain}.defaultWallet`);
+  if (currentDefault && currentDefault.toLowerCase() === record.address.toLowerCase()) {
+    const remaining = await listWalletRecords(chain);
+    const next = remaining.length > 0 ? remaining[0].address : '';
+    ConfigManagerV2.getInstance().set(`${chain}.defaultWallet`, next);
+    logger.info(next ? `Set new default wallet for ${chain}: ${next}` : `Cleared default wallet for ${chain}`);
+  }
+  return record.signer;
+}
+
+export async function getWallets(showHardware: boolean = true): Promise<GetWalletResponse[]> {
+  logger.info('Getting all wallets');
+  const responses: GetWalletResponse[] = [];
+  for (const chain of WALLET_CHAINS) {
+    const records = (await listWalletRecords(chain)).filter((r) => showHardware || r.signer !== 'hardware');
+    const hardware = records.filter((r) => r.signer === 'hardware').map((r) => r.address);
+    responses.push({
+      chain,
+      walletAddresses: records.filter((r) => r.signer === 'local').map((r) => r.address),
+      hardwareWalletAddresses: hardware.length > 0 ? hardware : undefined,
+      wallets: records.map((r) => ({ address: r.address, signer: r.signer })),
+    });
+  }
+  return responses;
+}
+
+// Hardware wallet registry (conf/wallets/{chain}/hardware-wallets.json)
 export interface HardwareWalletData {
   address: string;
   publicKey: string;
@@ -326,84 +226,17 @@ export interface HardwareWalletData {
   addedAt: string;
 }
 
-export function getHardwareWalletPath(chain: string): string {
-  const safeChain = sanitizePathComponent(chain.toLowerCase());
-  return `${walletPath}/${safeChain}/hardware-wallets.json`;
-}
-
-export async function getHardwareWallets(chain: string): Promise<HardwareWalletData[]> {
-  try {
-    const filePath = getHardwareWalletPath(chain);
-    const exists = await fse.pathExists(filePath);
-    if (!exists) {
-      return [];
-    }
-
-    const content = await fse.readFile(filePath, 'utf8');
-    const data = JSON.parse(content);
-
-    if (!data.wallets || !Array.isArray(data.wallets)) {
-      logger.warn(`Invalid hardware wallet file format for ${chain}`);
-      return [];
-    }
-
-    return data.wallets;
-  } catch (error) {
-    logger.error(`Failed to read hardware wallets for ${chain}: ${error.message}`);
-    return [];
-  }
-}
-
-export async function getHardwareWalletAddresses(chain: string): Promise<string[]> {
-  const wallets = await getHardwareWallets(chain);
-  return wallets.map((w) => w.address);
-}
-
 /**
- * Get all wallet addresses for a chain (both regular and hardware wallets)
+ * Add a hardware wallet to its chain's list, or replace its entry when the address is
+ * already there. Returns whether an entry was replaced.
  */
-export async function getAllWalletAddressesForChain(chain: string): Promise<string[]> {
-  const chainLower = chain.toLowerCase();
-  const safeChain = sanitizePathComponent(chainLower);
-
-  // Get regular wallet addresses
-  const walletFiles = await getJsonFiles(`${walletPath}/${safeChain}`);
-  const regularAddresses = walletFiles
-    .map((file) => file.replace('.json', ''))
-    .filter((address) => {
-      // Validate addresses based on chain type
-      try {
-        if (chainLower === 'ethereum') {
-          return /^0x[a-fA-F0-9]{40}$/i.test(address);
-        } else if (chainLower === 'solana') {
-          return address.length >= 32 && address.length <= 44;
-        }
-        return false;
-      } catch {
-        return false;
-      }
-    });
-
-  // Get hardware wallet addresses
-  const hardwareAddresses = await getHardwareWalletAddresses(chain);
-
-  return [...regularAddresses, ...hardwareAddresses];
-}
-
-export async function saveHardwareWallets(chain: string, wallets: HardwareWalletData[]): Promise<void> {
-  const filePath = getHardwareWalletPath(chain);
-  const dirPath = `${walletPath}/${sanitizePathComponent(chain.toLowerCase())}`;
-
-  await mkdirIfDoesNotExist(dirPath);
-  await fse.writeFile(filePath, JSON.stringify({ wallets }, null, 2));
-}
-
-export async function isHardwareWallet(chain: string, address: string): Promise<boolean> {
-  const hardwareAddresses = await getHardwareWalletAddresses(chain);
-  return hardwareAddresses.includes(address);
-}
-
-export async function getHardwareWalletByAddress(chain: string, address: string): Promise<HardwareWalletData | null> {
-  const wallets = await getHardwareWallets(chain);
-  return wallets.find((w) => w.address === address) || null;
+export async function upsertHardwareWallet(chain: string, wallet: HardwareWalletData): Promise<boolean> {
+  const walletChain = asWalletChain(chain);
+  await assertNotRegisteredAs(walletChain, wallet.address, 'hardware');
+  return updateListStore(walletChain, 'hardware', async (entries) => {
+    const index = entries.findIndex((e) => e.address === wallet.address);
+    if (index >= 0) entries[index] = wallet;
+    else entries.push(wallet);
+    return { entries, result: index >= 0 };
+  });
 }

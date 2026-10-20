@@ -10,7 +10,8 @@ import {
   SetDefaultWalletRequestSchema,
   SetDefaultWalletResponseSchema,
 } from '../schemas';
-import { validateChainName, getSafeWalletFilePath, isHardwareWallet } from '../utils';
+import { findWalletRecord } from '../signers/wallet-store';
+import { validateChainName } from '../utils';
 
 export const setDefaultRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Body: SetDefaultWalletRequest; Reply: SetDefaultWalletResponse }>(
@@ -61,23 +62,11 @@ export const setDefaultRoute: FastifyPluginAsync = async (fastify) => {
         throw fastify.httpErrors.badRequest(`Invalid address for ${chain}: ${address}`);
       }
 
-      // The wallet may live in either registry: encrypted keystore file (local) or the
-      // hardware-wallet registry.
-      try {
-        const walletPath = getSafeWalletFilePath(chain, validatedAddress);
-        const fs = await import('fs-extra');
-        const exists = (await fs.pathExists(walletPath)) || (await isHardwareWallet(chain, validatedAddress));
-
-        if (!exists) {
-          throw fastify.httpErrors.notFound(
-            `Wallet ${validatedAddress} not found for chain ${chain}. Please add the wallet first.`,
-          );
-        }
-      } catch (error) {
-        if (error.statusCode) {
-          throw error;
-        }
-        throw fastify.httpErrors.badRequest(`Error checking wallet: ${error.message}`);
+      // The wallet must be registered, with any signer.
+      if (!(await findWalletRecord(chain, validatedAddress))) {
+        throw fastify.httpErrors.notFound(
+          `Wallet ${validatedAddress} not found for chain ${chain}. Please add the wallet first.`,
+        );
       }
 
       // Update default wallet

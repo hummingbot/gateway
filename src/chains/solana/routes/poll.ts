@@ -13,7 +13,12 @@ export async function pollSolanaTransaction(
   const solana = await Solana.getInstance(network);
 
   try {
-    const currentBlock = await solana.getCurrentBlockNumber();
+    // The slot and the block height are both reported: the slot is what this route
+    // has always returned, the height is what an expiry check must use.
+    const [currentBlock, currentBlockHeight] = await Promise.all([
+      solana.getCurrentBlockNumber(),
+      solana.getCurrentBlockHeight(),
+    ]);
 
     // Validate transaction signature format. A malformed signature can never
     // resolve, so report NOT_FOUND rather than a pending status a poller would
@@ -21,6 +26,7 @@ export async function pollSolanaTransaction(
     if (!signature || typeof signature !== 'string' || !signature.match(/^[A-Za-z0-9]{43,88}$/)) {
       return {
         currentBlock,
+        currentBlockHeight,
         signature,
         txBlock: null,
         txStatus: TransactionStatusCode.NOT_FOUND,
@@ -40,6 +46,7 @@ export async function pollSolanaTransaction(
       const txStatus = await solana.getSignatureStatus(signature);
       return {
         currentBlock,
+        currentBlockHeight,
         signature,
         txBlock: null,
         txStatus,
@@ -70,6 +77,7 @@ export async function pollSolanaTransaction(
 
     return {
       currentBlock,
+      currentBlockHeight,
       signature,
       txBlock: txData.slot,
       txStatus,
@@ -81,8 +89,13 @@ export async function pollSolanaTransaction(
     // Transient failure (RPC error, etc.) — the transaction's fate is unknown, so
     // report pending rather than NOT_FOUND: the caller should poll again, not give up.
     logger.error(`Error polling transaction ${signature}: ${(err as Error).message}`);
+    const [currentBlock, currentBlockHeight] = await Promise.all([
+      solana.getCurrentBlockNumber(),
+      solana.getCurrentBlockHeight(),
+    ]);
     return {
-      currentBlock: await solana.getCurrentBlockNumber(),
+      currentBlock,
+      currentBlockHeight,
       signature,
       txBlock: null,
       txStatus: TransactionStatusCode.PENDING,

@@ -116,6 +116,21 @@ describe('gateway-security', () => {
       '/trading/launch/create-token',
       '/trading/launch/claim-creator-fees',
       '/trading/launch/migrate',
+      // Build routes run the same connector write paths as their execute counterparts.
+      '/trading/launch/build-swap',
+      '/trading/launch/build-create-token',
+      '/trading/router/build-swap',
+      '/trading/router/build-quote',
+      '/trading/clmm/build-swap',
+      '/trading/clmm/build-open',
+      '/trading/amm/build-swap',
+      '/trading/amm/build-add',
+      '/chains/solana/build-transaction',
+      '/chains/ethereum/build-approve',
+      '/chains/ethereum/build-wrap',
+      '/chains/ethereum/build-unwrap',
+      '/trading/clmm/build-create-pool',
+      '/trading/amm/build-create-pool',
     ])('sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(true);
     });
@@ -143,6 +158,8 @@ describe('gateway-security', () => {
       '/trading/launch/pool-info',
       '/trading/launch/creator-fees',
       '/trading/launch/launch-history',
+      '/chains/solana/submit',
+      '/chains/ethereum/submit',
     ])('not sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(false);
     });

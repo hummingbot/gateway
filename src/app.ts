@@ -56,6 +56,7 @@ import {
 } from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
 import * as walletSchemas from './wallet/schemas';
+import { trackRequestRoute } from './wallet/signers/registry';
 import { walletRoutes } from './wallet/wallet.routes';
 
 import { asciiLogo } from './index';
@@ -337,6 +338,9 @@ const configureGatewayServer = () => {
       }
     });
   }
+
+  // The signer seam names a route's build twin when it refuses an external wallet.
+  trackRequestRoute(server);
 
   // `x-connectors` marks a field as belonging to particular venues — `configAddress` is
   // meteora's, `ammConfigIndex` is raydium's — and it was documentation only: passing the

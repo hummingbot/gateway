@@ -22,6 +22,13 @@ import {
 import { CreateTokenResponse, CreateTokenResponseType } from '../../schemas/launch-schema';
 import { httpErrors } from '../../services/error-handler';
 import {
+  BuildTransactionResponse,
+  buildUnsigned,
+  buildShapeFields,
+  extraInstructionsField,
+  priorityField,
+} from '../build-common';
+import {
   chainNetworkField,
   connectorField,
   parseChainNetwork,
@@ -93,6 +100,16 @@ export const UnifiedCreateTokenRequest = Type.Object(
         'x-connectors': ['raydium'],
       } as any),
     ),
+    lookupTableAddress: Type.Optional(
+      Type.String({
+        description:
+          'pump: the address lookup table a create with devBuyAmount compiles against, instead of the ' +
+          "connector's pump.lookupTableAddress. With neither, the build is two transactions: the first makes a " +
+          "lookup table (the wallet its authority) holding the create's accounts, the second is the create and " +
+          'the dev buy, atomic, in followingTransactions — submit it after the first confirms.',
+        'x-connectors': ['pump'],
+      } as any),
+    ),
     configAddress: Type.Optional(
       Type.String({
         description:
@@ -115,6 +132,37 @@ export const UnifiedCreateTokenRequest = Type.Object(
   { $id: 'LaunchCreateTokenRequest', additionalProperties: false },
 );
 
+/** Same body as the execute route, plus the build-only extras. */
+export const BuildCreateTokenRequest = Type.Object(
+  {
+    ...UnifiedCreateTokenRequest.properties,
+    extraInstructions: extraInstructionsField(),
+    ...buildShapeFields(),
+    priority: priorityField(),
+  },
+  { $id: 'LaunchBuildCreateTokenRequest', additionalProperties: false },
+);
+
+/**
+ * Build response: the unsigned transaction plus the identity it will mint. The
+ * mint keypair partial-signs as an ephemeral signer (it is also listed in
+ * extraSigners); the metadataUri is echoed so a rebuild after blockhash expiry
+ * can pass it back and skip re-uploading.
+ */
+export const BuildCreateTokenResponse = Type.Composite(
+  [
+    BuildTransactionResponse,
+    Type.Object({
+      mint: Type.String({ description: 'Mint address the transaction will create' }),
+      metadataUri: Type.String({ description: 'Metadata URI embedded in the transaction' }),
+      poolAddress: Type.Optional(
+        Type.String({ description: 'meteora, raydium: the curve pool PDA the transaction will create' }),
+      ),
+    }),
+  ],
+  { $id: 'LaunchBuildCreateTokenResponse' },
+);
+
 type LaunchParams = CreateTokenParams & DbcCreateTokenParams & RaydiumCreateTokenParams;
 /** What a connector resolved before building; DBC and LaunchLab also know the pool they create. */
 type Prepared = PreparedLaunch & Partial<Pick<DbcPreparedLaunch, 'poolAddress'>>;
@@ -131,6 +179,9 @@ async function dispatchPrepareCreateToken(connector: string, network: string, pa
   }
   if (connector !== 'meteora' && params.configAddress !== undefined) {
     throw httpErrors.badRequest('configAddress is for meteora launches');
+  }
+  if (connector !== 'pump' && params.lookupTableAddress !== undefined) {
+    throw httpErrors.badRequest('lookupTableAddress is for pump launches');
   }
   switch (connector) {
     case 'raydium':
@@ -168,6 +219,62 @@ async function dispatchCreateToken(
 }
 
 export const createTokenRoute: FastifyPluginAsync = async (fastify) => {
+  fastify.post<{
+    Body: Static<typeof BuildCreateTokenRequest>;
+    Reply: Static<typeof BuildCreateTokenResponse>;
+  }>(
+    '/build-create-token',
+    {
+      schema: {
+        description:
+          'Build the unsigned transaction that /create-token would sign and send, for the caller to sign ' +
+          'with its own wallet and broadcast via /chains/{chain}/submit. The mint keypair has already ' +
+          'partial-signed (see extraSigners); Gateway discards it after the build. A pump launch with a dev ' +
+          'buy and no lookup table is two transactions (see lookupTableAddress).',
+        tags: ['/trading/launch'],
+        body: BuildCreateTokenRequest,
+        response: { 200: BuildCreateTokenResponse },
+      },
+    },
+    async (request) => {
+      try {
+        const {
+          connector,
+          chainNetwork,
+          walletAddress: requestedWallet,
+          extraInstructions,
+          feePayer,
+          format,
+          memo,
+          references,
+          priority,
+          ...params
+        } = request.body;
+        const { chain, network } = parseChainNetwork(chainNetwork);
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
+        assertLaunchConnectorOnChain(connector, chain);
+
+        const prepared = await dispatchPrepareCreateToken(connector, network, params);
+        const built = await buildUnsigned(
+          'solana', // launchpads are Solana-only: the launch registry refused any other chain above
+
+          connector,
+          { extraInstructions, feePayer, format, memo, references },
+          () => dispatchCreateToken(connector, network, walletAddress, params, prepared),
+          priority,
+        );
+        return {
+          ...built,
+          mint: prepared.mintKeypair.publicKey.toBase58(),
+          metadataUri: prepared.metadataUri,
+          ...(prepared.poolAddress ? { poolAddress: prepared.poolAddress } : {}),
+        };
+      } catch (e: any) {
+        rethrowRouteError(e, 'Failed to build create-token transaction');
+      }
+    },
+  );
+
   fastify.post<{
     Body: Static<typeof UnifiedCreateTokenRequest>;
     Reply: CreateTokenResponseType;
