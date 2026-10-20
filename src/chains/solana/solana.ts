@@ -18,6 +18,8 @@ import {
   PublicKey,
   ComputeBudgetProgram,
   MessageV0,
+  SendOptions,
+  SendTransactionError,
   Signer,
   Transaction,
   TransactionResponse,
@@ -69,6 +71,13 @@ const METAPLEX_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3y
 const METAPLEX_NAME_OFFSET = 65;
 
 export const BASE_FEE = 5000;
+
+/**
+ * Options for every broadcast. Preflight stays on: some RPC providers (QuickNode) accept a
+ * transaction sent with skipPreflight and answer its signature, but never forward it to
+ * the leader, so it does not land.
+ */
+export const SEND_OPTIONS: SendOptions = { skipPreflight: false, preflightCommitment: 'confirmed', maxRetries: 0 };
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 
 // Interface for token account data
@@ -2077,10 +2086,7 @@ export class Solana {
 
     try {
       logger.info('Sending transaction via sendRawTransaction');
-      signature = await this.connection.sendRawTransaction(serializedTx, {
-        skipPreflight: true,
-        maxRetries: 0,
-      });
+      signature = await this.connection.sendRawTransaction(serializedTx, SEND_OPTIONS);
 
       // Try WebSocket first, fall back to polling
       const wsResult = await this._confirmViaWebSocket(signature);
@@ -2093,6 +2099,12 @@ export class Solana {
     } catch (sendError: any) {
       if (sendError.statusCode === 429) {
         throw sendError;
+      }
+      // The RPC refused the transaction in preflight: nothing was broadcast, so report
+      // why instead of an unconfirmed send.
+      if (signature === null && sendError instanceof SendTransactionError) {
+        const { message, logs } = sendError.transactionError;
+        Solana.throwIfSimulationReturnedError({ err: message, logs });
       }
       logger.error(`Failed to send transaction: ${sendError.message}`);
       return { confirmed: false, signature: signature || '', txData: null };
@@ -2109,11 +2121,7 @@ export class Solana {
     }
 
     try {
-      const signature = await this.connection.sendRawTransaction(rawTx, {
-        skipPreflight: true,
-        preflightCommitment: 'confirmed',
-        maxRetries: 0,
-      });
+      const signature = await this.connection.sendRawTransaction(rawTx, SEND_OPTIONS);
       return signature;
     } catch (error) {
       logger.error('Failed to send raw transaction:', error);
