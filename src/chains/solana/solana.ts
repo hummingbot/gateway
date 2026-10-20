@@ -18,6 +18,8 @@ import {
   PublicKey,
   ComputeBudgetProgram,
   MessageV0,
+  SendOptions,
+  SendTransactionError,
   Signer,
   Transaction,
   TransactionResponse,
@@ -69,6 +71,19 @@ const METAPLEX_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3y
 const METAPLEX_NAME_OFFSET = 65;
 
 export const BASE_FEE = 5000;
+
+/**
+ * Options for every broadcast. Preflight stays on: some RPC providers (QuickNode) accept a
+ * transaction sent with skipPreflight and answer its signature, but never forward it to
+ * the leader, so it does not land.
+ */
+export const SEND_OPTIONS: SendOptions = { skipPreflight: false, preflightCommitment: 'confirmed', maxRetries: 0 };
+
+/**
+ * How often a sent transaction is broadcast again while it waits to confirm. With
+ * maxRetries 0 the RPC sends it to the leader once; a dropped send is not retried.
+ */
+export const REBROADCAST_INTERVAL_MS = 2000;
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 
 // Interface for token account data
@@ -2081,7 +2096,54 @@ export class Solana {
   }
 
   /**
-   * Send and confirm a raw transaction
+   * Send the same signed bytes again every REBROADCAST_INTERVAL_MS until the returned stop
+   * function is called or the block height passes lastValidBlockHeight. The bytes are not
+   * re-signed and keep their blockhash, so every send is the same transaction and it can
+   * land only once. Stopping does not wait for a resend already in flight; the loop
+   * catches its own errors, and it schedules nothing after it is stopped.
+   */
+  private _startRebroadcast(
+    serializedTx: Buffer | Uint8Array,
+    signature: string,
+    lastValidBlockHeight: number,
+  ): () => void {
+    let stopped = false;
+    let wake = () => {};
+    void (async () => {
+      let resends = 0;
+      while (!stopped) {
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, REBROADCAST_INTERVAL_MS);
+          wake = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+        });
+        if (stopped) return;
+        try {
+          const blockHeight = await this.connection.getBlockHeight('confirmed');
+          if (blockHeight > lastValidBlockHeight) {
+            logger.info(`Stopped rebroadcasting ${signature} after ${resends} resends: its blockhash expired`);
+            return;
+          }
+          if (stopped) return;
+          await this.connection.sendRawTransaction(serializedTx, SEND_OPTIONS);
+          resends++;
+        } catch (error: any) {
+          if (/already been processed/.test(error.message ?? '')) return;
+          logger.warn(`Rebroadcast of ${signature} failed: ${error.message}`);
+        }
+      }
+    })();
+    return () => {
+      stopped = true;
+      wake();
+    };
+  }
+
+  /**
+   * Send and confirm a raw transaction. The transaction is broadcast again while it waits
+   * to confirm (see _startRebroadcast).
    */
   private async _sendAndConfirmRawTransaction(
     serializedTx: Buffer | Uint8Array,
@@ -2092,19 +2154,21 @@ export class Solana {
 
     try {
       logger.info('Sending transaction via sendRawTransaction');
-      signature = await this.connection.sendRawTransaction(serializedTx, {
-        skipPreflight: true,
-        maxRetries: 0,
-      });
+      signature = await this.connection.sendRawTransaction(serializedTx, SEND_OPTIONS);
 
-      // Try WebSocket first, fall back to polling
-      const wsResult = await this._confirmViaWebSocket(signature);
-      if (wsResult !== null) {
-        return { ...wsResult, signature };
+      const stopRebroadcast = this._startRebroadcast(serializedTx, signature, lastValidBlockHeight);
+      try {
+        // Try WebSocket first, fall back to polling
+        const wsResult = await this._confirmViaWebSocket(signature);
+        if (wsResult !== null) {
+          return { ...wsResult, signature };
+        }
+
+        const pollingResult = await this._confirmViaPolling(signature, lastValidBlockHeight);
+        return { ...pollingResult, signature };
+      } finally {
+        stopRebroadcast();
       }
-
-      const pollingResult = await this._confirmViaPolling(signature, lastValidBlockHeight);
-      return { ...pollingResult, signature };
     } catch (sendError: any) {
       if (sendError.statusCode === 429) {
         throw sendError;
@@ -2121,6 +2185,12 @@ export class Solana {
         logger.info(`Transaction ${landed} had already landed; reporting it`);
         return { confirmed: txData.meta?.err == null, signature: landed, txData };
       }
+      // The RPC refused the transaction in preflight: nothing was broadcast, so report
+      // why instead of an unconfirmed send.
+      if (signature === null && sendError instanceof SendTransactionError) {
+        const { message, logs } = sendError.transactionError;
+        Solana.throwIfSimulationReturnedError({ err: message, logs });
+      }
       logger.error(`Failed to send transaction: ${sendError.message}`);
       return { confirmed: false, signature: signature || '', txData: null };
     }
@@ -2136,11 +2206,7 @@ export class Solana {
     }
 
     try {
-      const signature = await this.connection.sendRawTransaction(rawTx, {
-        skipPreflight: true,
-        preflightCommitment: 'confirmed',
-        maxRetries: 0,
-      });
+      const signature = await this.connection.sendRawTransaction(rawTx, SEND_OPTIONS);
       return signature;
     } catch (error) {
       logger.error('Failed to send raw transaction:', error);
