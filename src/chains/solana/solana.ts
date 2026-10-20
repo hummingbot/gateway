@@ -42,6 +42,7 @@ const SOLANA_CONNECTION_CONFIG: ConnectionConfig = {
 
 import { ChainstackService } from '../../rpc/chainstack-service';
 import { HeliusService } from '../../rpc/helius-service';
+import { InfuraSolanaService } from '../../rpc/infura-solana-service';
 import { createRateLimitAwareSolanaConnection } from '../../rpc/rpc-connection-interceptor';
 import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { TransactionStatusCode } from '../../schemas/chain-schema';
@@ -101,6 +102,8 @@ export class Solana {
       this.initializeHeliusProvider();
     } else if (rpcProvider === 'chainstack') {
       this.initializeChainstackProvider();
+    } else if (rpcProvider === 'infura') {
+      this.initializeInfuraProvider();
     } else {
       // Default: use nodeURL
       this.connection = createRateLimitAwareSolanaConnection(
@@ -143,6 +146,21 @@ export class Solana {
     } catch (error: any) {
       logger.warn(`Failed to initialize Chainstack provider: ${error.message}, falling back to standard RPC`);
     }
+  }
+
+  /**
+   * Initialize Infura RPC provider (shares apiKeys.infura with Ethereum).
+   * Throws when the API key is missing or the network is not served by Infura.
+   */
+  private initializeInfuraProvider() {
+    const apiKey = ConfigManagerV2.getInstance().get('apiKeys.infura') || '';
+    this.rpcProviderService = new InfuraSolanaService(
+      { apiKey },
+      { chain: 'solana', network: this.network, chainId: this.config.chainID },
+    );
+    const rpcUrl = this.rpcProviderService.getHttpUrl();
+    logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(rpcUrl)}`);
+    this.connection = createRateLimitAwareSolanaConnection(new Connection(rpcUrl, SOLANA_CONNECTION_CONFIG), rpcUrl);
   }
 
   /**

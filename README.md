@@ -64,6 +64,11 @@ Gateway includes optimized RPC provider abstractions for improved performance an
 - **Configuration**: Set `rpcProvider: infura` in network configs and configure API key in `conf/rpc/infura.yml`
 - **Benefits**: Enhanced reliability (99.9% uptime SLA), reduced latency, higher rate limits
 
+#### **Infura (Solana Networks)**
+- **Networks Supported**: Solana Mainnet-Beta, Solana Devnet
+- **Features**: HTTP JSON-RPC (no WebSocket monitoring; confirmation uses polling)
+- **Configuration**: Set `rpcProvider: infura` in `conf/chains/solana.yml` and set `infura` in `conf/apiKeys.yml` (same key as Ethereum)
+
 #### **Helius (Solana Networks)**  
 - **Networks Supported**: Solana Mainnet-Beta, Solana Devnet
 - **Features**: WebSocket transaction monitoring, Sender endpoints for fast execution, regional optimization
@@ -515,6 +520,11 @@ Gateway supports optimized RPC providers for enhanced performance:
 1. **Configure API Key**: Add your Infura API key to `conf/apiKeys.yml`
 2. **Enable for Networks**: Set `rpcProvider: infura` in `conf/chains/ethereum.yml`
 3. **Supported Networks**: Mainnet, Polygon, Arbitrum, Optimism, Base, Avalanche
+
+#### **Infura (Solana Networks)**
+1. **Configure API Key**: Add your Infura API key to `conf/apiKeys.yml` (shared with Ethereum)
+2. **Enable for Networks**: Set `rpcProvider: infura` in `conf/chains/solana.yml`
+3. **Supported Networks**: Mainnet-Beta, Devnet
 
 #### **Helius (Solana Networks)**
 1. **Configure API Key**: Add your Helius API key to `conf/apiKeys.yml`
