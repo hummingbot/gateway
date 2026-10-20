@@ -13,9 +13,7 @@ export const CreateTokenResponse = Type.Object(
     status: Type.Number({ description: 'Transaction status: 0 = PENDING, 1 = CONFIRMED, -1 = FAILED' }),
     mint: Type.String({ description: 'Mint address of the newly created token' }),
     metadataUri: Type.String({
-      description:
-        'Metadata URI embedded on-chain — the one passed in, or the one uploaded from imageUrl. ' +
-        'Reuse it on a retry to skip re-uploading.',
+      description: 'Metadata URI embedded on-chain (the one passed in).',
     }),
     poolAddress: Type.Optional(
       Type.String({

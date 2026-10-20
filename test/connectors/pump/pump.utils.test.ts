@@ -6,7 +6,6 @@ import {
   fromRawAmount,
   pumpSwapTotalFeeBps,
   toRawAmount,
-  uploadTokenMetadata,
 } from '../../../src/connectors/pump/pump.utils';
 
 // pumpPoolAuthorityPda(baseMint) — recomputed here so the canonical-pool branch
@@ -95,64 +94,5 @@ describe('constantProductPriceImpactPct', () => {
 
   it('is ~0 for a dust-sized trade', () => {
     expect(constantProductPriceImpactPct('BUY', new BN(1), reserve)).toBeLessThan(0.001);
-  });
-});
-
-describe('uploadTokenMetadata', () => {
-  const originalFetch = global.fetch;
-  afterEach(() => {
-    global.fetch = originalFetch;
-  });
-
-  it('fetches the image, posts the form, and returns the metadataUri', async () => {
-    const calls: Array<{ url: string; init?: RequestInit }> = [];
-    global.fetch = jest.fn(async (url: any, init?: any) => {
-      calls.push({ url: String(url), init });
-      if (calls.length === 1) {
-        return new Response(Buffer.from('png-bytes'), { status: 200 });
-      }
-      return new Response(JSON.stringify({ metadataUri: 'https://ipfs.io/ipfs/QmTest' }), { status: 200 });
-    }) as any;
-
-    const uri = await uploadTokenMetadata('https://upload.example/api/ipfs', {
-      name: 'Test Token',
-      symbol: 'TEST',
-      description: 'a test',
-      imageUrl: 'https://img.example/logo.png',
-    });
-
-    expect(uri).toBe('https://ipfs.io/ipfs/QmTest');
-    expect(calls[0].url).toBe('https://img.example/logo.png');
-    expect(calls[1].url).toBe('https://upload.example/api/ipfs');
-    expect(calls[1].init?.method).toBe('POST');
-  });
-
-  it('throws a clear 400 when the image cannot be fetched', async () => {
-    global.fetch = jest.fn(async () => new Response('nope', { status: 404 })) as any;
-    await expect(
-      uploadTokenMetadata('https://upload.example/api/ipfs', {
-        name: 'T',
-        symbol: 'T',
-        imageUrl: 'https://img.example/missing.png',
-      }),
-    ).rejects.toThrow(/Failed to fetch token image/);
-  });
-
-  it('tells the caller to pass metadataUri when the upload endpoint fails', async () => {
-    let call = 0;
-    global.fetch = jest.fn(async () => {
-      call += 1;
-      return call === 1
-        ? new Response(Buffer.from('png'), { status: 200 })
-        : new Response('cloudflare says no', { status: 403 });
-    }) as any;
-
-    await expect(
-      uploadTokenMetadata('https://upload.example/api/ipfs', {
-        name: 'T',
-        symbol: 'T',
-        imageUrl: 'https://img.example/logo.png',
-      }),
-    ).rejects.toThrow(/pass metadataUri instead/i);
   });
 });

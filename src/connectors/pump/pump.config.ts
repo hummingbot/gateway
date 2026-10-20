@@ -16,13 +16,9 @@ export namespace PumpConfig {
     // Global configuration
     slippagePct: number;
 
-    // Endpoint that turns an image + token metadata into an IPFS metadata URI
-    // for /trading/launch/create-token requests that pass imageUrl.
-    metadataUploadUrl: string;
-
     // An address lookup table for a create with an atomic dev buy, which exceeds
     // the transaction size limit as a legacy transaction and is compiled as a v0
-    // message against this table. Empty (or absent): such a create is refused.
+    // message against this table. Empty: such a create is refused.
     lookupTableAddress: string;
 
     // Available networks
@@ -31,8 +27,7 @@ export namespace PumpConfig {
 
   export const config: RootConfig = {
     slippagePct: ConfigManagerV2.getInstance().get('pump.slippagePct'),
-    metadataUploadUrl: ConfigManagerV2.getInstance().get('pump.metadataUploadUrl'),
-    lookupTableAddress: ConfigManagerV2.getInstance().get('pump.lookupTableAddress') ?? '',
+    lookupTableAddress: ConfigManagerV2.getInstance().get('pump.lookupTableAddress'),
 
     availableNetworks: [
       {

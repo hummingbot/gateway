@@ -178,7 +178,7 @@ describe('POST /trading/launch/create-token and /build-create-token', () => {
 
   it('surfaces a connector-side validation error as its own status', async () => {
     const { httpErrors } = require('../../../src/services/error-handler');
-    prepareCreateToken.mockRejectedValue(httpErrors.badRequest('Pass exactly one of metadataUri or imageUrl.'));
+    prepareCreateToken.mockRejectedValue(httpErrors.badRequest('metadataUri exceeds the on-chain limit of 200 bytes'));
 
     const response = await server.inject({
       method: 'POST',
@@ -187,6 +187,6 @@ describe('POST /trading/launch/create-token and /build-create-token', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toMatch(/exactly one of/);
+    expect(JSON.parse(response.body).message).toMatch(/metadataUri exceeds/);
   });
 });

@@ -45,25 +45,12 @@ export const UnifiedCreateTokenRequest = Type.Object(
     walletAddress: walletAddressField('Wallet that creates the token (creator, dev-buyer, and fee payer)'),
     name: Type.String({ description: 'Token name (on-chain limit: 32 bytes)', maxLength: 32 }),
     symbol: Type.String({ description: 'Token ticker symbol (on-chain limit: 13 bytes)', maxLength: 13 }),
-    imageUrl: Type.Optional(
-      Type.String({
-        description:
-          'URL of the token image. Gateway fetches it and uploads image + metadata to IPFS via the ' +
-          "connector's configured endpoint. Pass this OR metadataUri, not both.",
-      }),
-    ),
-    description: Type.Optional(Type.String({ description: 'Token description for the uploaded metadata' })),
-    twitter: Type.Optional(Type.String({ description: 'Twitter/X link for the uploaded metadata' })),
-    telegram: Type.Optional(Type.String({ description: 'Telegram link for the uploaded metadata' })),
-    website: Type.Optional(Type.String({ description: 'Website link for the uploaded metadata' })),
-    metadataUri: Type.Optional(
-      Type.String({
-        description:
-          'Pre-pinned metadata JSON URI to embed on-chain as-is (on-chain limit: 200 bytes). ' +
-          'Pass this OR imageUrl, not both.',
-        maxLength: 200,
-      }),
-    ),
+    metadataUri: Type.String({
+      description:
+        'Metadata JSON URI (name, symbol, image, links) that the caller pinned, embedded on-chain as-is ' +
+        '(on-chain limit: 200 bytes). Gateway uploads no images or metadata.',
+      maxLength: 200,
+    }),
     creator: Type.Optional(
       Type.String({
         description:
@@ -281,9 +268,9 @@ export const createTokenRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description:
-          'Create a new token on a launchpad: a pump.fun bonding curve (optionally with an atomic dev buy; ' +
-          'metadata from imageUrl or a pre-pinned metadataUri), a Meteora DBC virtual pool from the ' +
-          "connector's configured partner config (metadataUri required; optional atomic firstBuySol), or a " +
+          'Create a new token on a launchpad from a metadataUri the caller pinned: a pump.fun bonding curve ' +
+          '(optionally with an atomic dev buy), a Meteora DBC virtual pool from a DBC config (optional ' +
+          'atomic firstBuySol), or a ' +
           "Raydium LaunchLab curve on Raydium's platform in SOL or USDC (supply, sellSharePct, raise; " +
           'optional atomic devBuyAmount).',
         tags: ['/trading/launch'],

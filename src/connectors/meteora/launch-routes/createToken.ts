@@ -16,15 +16,14 @@ import { toRawAmount } from '../meteora-dbc.utils';
 const MAX_URI_BYTES = 200;
 
 /**
- * The unified create-token body as meteora's launch surface reads it. `metadataUri` is required
- * (DBC has no upload step) and `firstBuySol` is the creator's atomic first buy. The
+ * The unified create-token body as meteora's launch surface reads it. `firstBuySol` is the
+ * creator's atomic first buy. The
  * pump-only fields are listed so a caller who sends them gets told, not ignored.
  */
 export interface DbcCreateTokenParams {
   name: string;
   symbol: string;
-  metadataUri?: string;
-  imageUrl?: string;
+  metadataUri: string;
   devBuyAmount?: number;
   firstBuySol?: number;
   /** Hand the pool to this creator after creating it (e.g. a program that collects its creator fees). */
@@ -56,16 +55,8 @@ export interface DbcPreparedLaunch {
  * the mint and the config), so the build route can report it alongside the mint.
  */
 export async function prepareCreateToken(network: string, params: DbcCreateTokenParams): Promise<DbcPreparedLaunch> {
-  if (params.imageUrl !== undefined) {
-    throw httpErrors.badRequest(
-      'meteora does not upload metadata: pin the metadata JSON yourself and pass metadataUri instead of imageUrl.',
-    );
-  }
   if (params.devBuyAmount !== undefined) {
     throw httpErrors.badRequest('devBuyAmount is a pump parameter; meteora takes firstBuySol.');
-  }
-  if (!params.metadataUri) {
-    throw httpErrors.badRequest('metadataUri is required for a meteora launch.');
   }
   if (Buffer.byteLength(params.metadataUri, 'utf8') > MAX_URI_BYTES) {
     throw httpErrors.badRequest(`metadataUri exceeds the on-chain limit of ${MAX_URI_BYTES} bytes`);

@@ -44,13 +44,7 @@ describe('meteora-dbc prepareCreateToken', () => {
     expect(again.mintKeypair.publicKey.equals(prepared.mintKeypair.publicKey)).toBe(false);
   });
 
-  it('requires metadataUri and refuses the pump-only parameters', async () => {
-    await expect(prepareCreateToken('mainnet-beta', { name: 'T', symbol: 'T' })).rejects.toThrow(
-      /metadataUri is required/,
-    );
-    await expect(
-      prepareCreateToken('mainnet-beta', { name: 'T', symbol: 'T', metadataUri: 'https://a', imageUrl: 'https://i' }),
-    ).rejects.toThrow(/does not upload metadata/);
+  it('refuses the pump-only parameters', async () => {
     await expect(
       prepareCreateToken('mainnet-beta', { name: 'T', symbol: 'T', metadataUri: 'https://a', devBuyAmount: 1 }),
     ).rejects.toThrow(/firstBuySol/);

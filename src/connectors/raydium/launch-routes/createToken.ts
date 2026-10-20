@@ -12,8 +12,6 @@ import { Solana } from '../../../chains/solana/solana';
 import { CreateTokenResponseType } from '../../../schemas/launch-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { PumpConfig } from '../../pump/pump.config';
-import { uploadTokenMetadata } from '../../pump/pump.utils';
 import {
   LaunchlabLaunchOptions,
   buyInstruction,
@@ -34,14 +32,8 @@ import { RaydiumConfig } from '../raydium.config';
 export interface RaydiumCreateTokenParams extends LaunchlabLaunchOptions {
   name: string;
   symbol: string;
-  /** Pre-pinned metadata JSON URI. Pass this OR imageUrl. */
-  metadataUri?: string;
-  /** Image to publish with the metadata, through the same endpoint pump uses. */
-  imageUrl?: string;
-  description?: string;
-  twitter?: string;
-  telegram?: string;
-  website?: string;
+  /** Metadata JSON URI the caller pinned, embedded on-chain as-is. */
+  metadataUri: string;
   /** The first buy, in the quote, atomic with the launch. */
   devBuyAmount?: number;
   /** SOL or USDC, by symbol or mint. Default SOL. */
@@ -80,32 +72,11 @@ function checkTokenMetadata(name: string, symbol: string, uri?: string): void {
 }
 
 /**
- * Validate the request, resolve the metadata URI — publishing the image and
- * metadata the way pump does when the caller passed an imageUrl — and make the
- * mint keypair. Names, symbols and URIs are held to the Metaplex limits.
+ * Validate the request and make the mint keypair. Names, symbols and URIs are held to the Metaplex limits.
  */
 export async function prepareCreateToken(params: RaydiumCreateTokenParams): Promise<RaydiumPreparedLaunch> {
   checkTokenMetadata(params.name, params.symbol, params.metadataUri);
-  const { metadataUri: givenUri, imageUrl } = params;
-  let metadataUri: string;
-  if (givenUri && !imageUrl) {
-    metadataUri = givenUri;
-  } else if (imageUrl && !givenUri) {
-    metadataUri = await uploadTokenMetadata(PumpConfig.config.metadataUploadUrl, {
-      name: params.name,
-      symbol: params.symbol,
-      description: params.description,
-      imageUrl,
-      twitter: params.twitter,
-      telegram: params.telegram,
-      website: params.website,
-    });
-    checkTokenMetadata(params.name, params.symbol, metadataUri);
-  } else {
-    throw httpErrors.badRequest(
-      'Pass exactly one of metadataUri (pre-pinned metadata JSON) or imageUrl (Gateway publishes the metadata).',
-    );
-  }
+  const { metadataUri } = params;
   if (params.devBuyAmount !== undefined && !(params.devBuyAmount >= 0)) {
     throw httpErrors.badRequest('devBuyAmount must be a non-negative number');
   }

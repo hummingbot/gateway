@@ -8,7 +8,7 @@ import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Pump } from '../pump';
 import { PumpConfig } from '../pump.config';
-import { toRawAmount, uploadTokenMetadata } from '../pump.utils';
+import { toRawAmount } from '../pump.utils';
 
 // On-chain limits enforced by the pump program's create instructions.
 const MAX_NAME_BYTES = 32;
@@ -18,14 +18,8 @@ const MAX_URI_BYTES = 200;
 export interface CreateTokenParams {
   name: string;
   symbol: string;
-  /** Pre-pinned metadata JSON URI. Pass this OR imageUrl, not both. */
-  metadataUri?: string;
-  /** Image to upload via the configured metadata endpoint. Pass this OR metadataUri. */
-  imageUrl?: string;
-  description?: string;
-  twitter?: string;
-  telegram?: string;
-  website?: string;
+  /** Metadata JSON URI the caller pinned, embedded on-chain as-is. */
+  metadataUri: string;
   /** Optional dev buy in SOL, executed atomically with the create. */
   devBuyAmount?: number;
   /** The token's creator when it is not the signing wallet (e.g. a program that collects its creator fees). */
@@ -39,8 +33,7 @@ export interface PreparedLaunch {
 }
 
 /**
- * Validate the request and resolve its metadata URI — uploading image +
- * metadata to IPFS when the caller passed an imageUrl — and generate the mint
+ * Validate the request against the program's limits and generate the mint
  * keypair. Separate from createToken so the build route can report the mint
  * and metadataUri alongside the unsigned transaction.
  */
@@ -51,26 +44,7 @@ export async function prepareCreateToken(params: CreateTokenParams): Promise<Pre
   if (Buffer.byteLength(params.symbol, 'utf8') > MAX_SYMBOL_BYTES) {
     throw httpErrors.badRequest(`Token symbol exceeds the on-chain limit of ${MAX_SYMBOL_BYTES} bytes`);
   }
-  const { metadataUri: givenUri, imageUrl } = params;
-  let metadataUri: string;
-  if (givenUri && !imageUrl) {
-    metadataUri = givenUri;
-  } else if (imageUrl && !givenUri) {
-    metadataUri = await uploadTokenMetadata(PumpConfig.config.metadataUploadUrl, {
-      name: params.name,
-      symbol: params.symbol,
-      description: params.description,
-      imageUrl,
-      twitter: params.twitter,
-      telegram: params.telegram,
-      website: params.website,
-    });
-  } else {
-    throw httpErrors.badRequest(
-      'Pass exactly one of metadataUri (pre-pinned metadata JSON) or imageUrl (Gateway uploads the metadata).',
-    );
-  }
-
+  const { metadataUri } = params;
   if (Buffer.byteLength(metadataUri, 'utf8') > MAX_URI_BYTES) {
     throw httpErrors.badRequest(`metadataUri exceeds the on-chain limit of ${MAX_URI_BYTES} bytes`);
   }

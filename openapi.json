@@ -1787,7 +1787,7 @@
             "type": "string"
           },
           "metadataUri": {
-            "description": "Metadata URI embedded on-chain — the one passed in, or the one uploaded from imageUrl. Reuse it on a retry to skip re-uploading.",
+            "description": "Metadata URI embedded on-chain (the one passed in).",
             "type": "string"
           },
           "poolAddress": {
@@ -6424,28 +6424,8 @@
             "maxLength": 13,
             "type": "string"
           },
-          "imageUrl": {
-            "description": "URL of the token image. Gateway fetches it and uploads image + metadata to IPFS via the connector's configured endpoint. Pass this OR metadataUri, not both.",
-            "type": "string"
-          },
-          "description": {
-            "description": "Token description for the uploaded metadata",
-            "type": "string"
-          },
-          "twitter": {
-            "description": "Twitter/X link for the uploaded metadata",
-            "type": "string"
-          },
-          "telegram": {
-            "description": "Telegram link for the uploaded metadata",
-            "type": "string"
-          },
-          "website": {
-            "description": "Website link for the uploaded metadata",
-            "type": "string"
-          },
           "metadataUri": {
-            "description": "Pre-pinned metadata JSON URI to embed on-chain as-is (on-chain limit: 200 bytes). Pass this OR imageUrl, not both.",
+            "description": "Metadata JSON URI (name, symbol, image, links) that the caller pinned, embedded on-chain as-is (on-chain limit: 200 bytes). Gateway uploads no images or metadata.",
             "maxLength": 200,
             "type": "string"
           },
@@ -6515,7 +6495,8 @@
           "connector",
           "chainNetwork",
           "name",
-          "symbol"
+          "symbol",
+          "metadataUri"
         ]
       },
       "LaunchBuildCreateTokenRequest": {
@@ -6568,28 +6549,8 @@
             "maxLength": 13,
             "type": "string"
           },
-          "imageUrl": {
-            "description": "URL of the token image. Gateway fetches it and uploads image + metadata to IPFS via the connector's configured endpoint. Pass this OR metadataUri, not both.",
-            "type": "string"
-          },
-          "description": {
-            "description": "Token description for the uploaded metadata",
-            "type": "string"
-          },
-          "twitter": {
-            "description": "Twitter/X link for the uploaded metadata",
-            "type": "string"
-          },
-          "telegram": {
-            "description": "Telegram link for the uploaded metadata",
-            "type": "string"
-          },
-          "website": {
-            "description": "Website link for the uploaded metadata",
-            "type": "string"
-          },
           "metadataUri": {
-            "description": "Pre-pinned metadata JSON URI to embed on-chain as-is (on-chain limit: 200 bytes). Pass this OR imageUrl, not both.",
+            "description": "Metadata JSON URI (name, symbol, image, links) that the caller pinned, embedded on-chain as-is (on-chain limit: 200 bytes). Gateway uploads no images or metadata.",
             "maxLength": 200,
             "type": "string"
           },
@@ -6761,7 +6722,8 @@
           "connector",
           "chainNetwork",
           "name",
-          "symbol"
+          "symbol",
+          "metadataUri"
         ]
       },
       "LaunchBuildCreateTokenResponse": {
@@ -14249,7 +14211,7 @@
         "tags": [
           "/trading/launch"
         ],
-        "description": "Create a new token on a launchpad: a pump.fun bonding curve (optionally with an atomic dev buy; metadata from imageUrl or a pre-pinned metadataUri), a Meteora DBC virtual pool from the connector's configured partner config (metadataUri required; optional atomic firstBuySol), or a Raydium LaunchLab curve on Raydium's platform in SOL or USDC (supply, sellSharePct, raise; optional atomic devBuyAmount).",
+        "description": "Create a new token on a launchpad from a metadataUri the caller pinned: a pump.fun bonding curve (optionally with an atomic dev buy), a Meteora DBC virtual pool from a DBC config (optional atomic firstBuySol), or a Raydium LaunchLab curve on Raydium's platform in SOL or USDC (supply, sellSharePct, raise; optional atomic devBuyAmount).",
         "requestBody": {
           "content": {
             "application/json": {
