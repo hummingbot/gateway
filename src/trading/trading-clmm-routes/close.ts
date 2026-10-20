@@ -10,6 +10,15 @@ import { closePosition as uniswapClosePosition } from '../../connectors/uniswap/
 import { ClosePositionResponseType, ClosePositionResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import {
+  assertBuildFields,
+  ChainBuildTransactionResponse,
+  ChainBuildTransactionResponseType,
+  buildUnsigned,
+  buildShapeFields,
+  extraInstructionsField,
+  priorityField,
+} from '../build-common';
+import {
   chainNetworkField,
   CLMM_CONNECTORS,
   connectorField,
@@ -41,9 +50,98 @@ export const UnifiedClosePositionRequest = Type.Object(
   { $id: 'ClmmCloseRequest', additionalProperties: false },
 );
 
-// Import connector functions
+/** Same body as the execute route, plus the build-only extras. */
+export const BuildClosePositionRequest = Type.Object(
+  {
+    ...UnifiedClosePositionRequest.properties,
+    extraInstructions: extraInstructionsField(),
+    ...buildShapeFields(),
+    priority: priorityField(),
+  },
+  { $id: 'ClmmBuildCloseRequest', additionalProperties: false },
+);
+
+async function dispatchClosePosition(
+  connector: string,
+  network: string,
+  walletAddress: string,
+  positionAddress: string,
+  slippagePct?: number,
+): Promise<ClosePositionResponseType> {
+  switch (connector) {
+    case 'uniswap':
+      return await uniswapClosePosition(network, walletAddress, positionAddress, slippagePct);
+
+    case 'pancakeswap':
+      return await pancakeswapClosePosition(network, walletAddress, positionAddress, slippagePct);
+
+    case 'raydium':
+      return await raydiumClosePosition(network, walletAddress, positionAddress);
+
+    case 'meteora':
+      return await meteoraClosePosition(network, walletAddress, positionAddress);
+
+    case 'pancakeswap-sol':
+      return await pancakeswapSolClosePosition(network, walletAddress, positionAddress);
+
+    case 'orca':
+      return await orcaClosePosition(network, walletAddress, positionAddress, slippagePct);
+
+    default:
+      throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
+  }
+}
 
 export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
+  fastify.post<{
+    Body: Static<typeof BuildClosePositionRequest>;
+    Reply: ChainBuildTransactionResponseType;
+  }>(
+    '/build-close',
+    {
+      schema: {
+        description:
+          'Build the unsigned transaction that /close would sign and send, for the caller to sign with ' +
+          'its own wallet and broadcast via /chains/{chain}/submit. A close that spans several ' +
+          'transactions (a wide Meteora position) returns the rest in followingTransactions; submit them in order.',
+        tags: ['/trading/clmm'],
+        body: BuildClosePositionRequest,
+        response: {
+          200: ChainBuildTransactionResponse,
+        },
+      },
+    },
+    async (request) => {
+      try {
+        const {
+          connector,
+          chainNetwork,
+          walletAddress: requestedWallet,
+          positionAddress,
+          slippagePct,
+          extraInstructions,
+          feePayer,
+          format,
+          memo,
+          references,
+          priority,
+        } = request.body;
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        assertBuildFields(chain, { extraInstructions, feePayer, format, memo, references, priority });
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
+        return await buildUnsigned(
+          chain,
+          connector,
+          { extraInstructions, feePayer, format, memo, references },
+          () => dispatchClosePosition(connector, network, walletAddress, positionAddress, slippagePct),
+          priority,
+        );
+      } catch (e: any) {
+        rethrowRouteError(e, 'Failed to build close-position transaction');
+      }
+    },
+  );
+
   fastify.post<{
     Body: Static<typeof UnifiedClosePositionRequest>;
     Reply: ClosePositionResponseType;
@@ -67,31 +165,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
         const walletAddress = resolveWalletAddress(chain, requestedWallet);
 
-        // Route to appropriate connector
-        const result = await (async () => {
-          switch (connector) {
-            case 'uniswap':
-              return await uniswapClosePosition(network, walletAddress, positionAddress, slippagePct);
-
-            case 'pancakeswap':
-              return await pancakeswapClosePosition(network, walletAddress, positionAddress, slippagePct);
-
-            case 'raydium':
-              return await raydiumClosePosition(network, walletAddress, positionAddress);
-
-            case 'meteora':
-              return await meteoraClosePosition(network, walletAddress, positionAddress);
-
-            case 'pancakeswap-sol':
-              return await pancakeswapSolClosePosition(network, walletAddress, positionAddress);
-
-            case 'orca':
-              return await orcaClosePosition(network, walletAddress, positionAddress, slippagePct);
-
-            default:
-              throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
-          }
-        })();
+        const result = await dispatchClosePosition(connector, network, walletAddress, positionAddress, slippagePct);
 
         // poolAddress comes from the connector, which already loaded the position.
         return withIdentifiers(result, { positionAddress });

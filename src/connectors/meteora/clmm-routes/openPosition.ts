@@ -1,9 +1,10 @@
 import { DecimalUtil } from '@orca-so/common-sdk';
-import { Keypair, PublicKey, Transaction } from '@solana/web3.js';
+import { Keypair, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { getBuildModeContext } from '../../../chains/solana/solana-build-mode';
 import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -199,6 +200,24 @@ export async function openPosition(
 
     const [plan] = instructionsByPositions;
     positionKeypair = plan.positionKeypair;
+
+    // Build mode answers the whole open in one response: the position's creation, then
+    // each deposit chunk. It cannot be resumed by calling again, because each call makes
+    // a new position keypair and would open a second, empty position.
+    if (getBuildModeContext()) {
+      const step = (...ixs: TransactionInstruction[]) => {
+        const tx = new Transaction().add(...ixs);
+        tx.feePayer = walletPublicKey;
+        return tx;
+      };
+      await solana.captureSequenceForExternalSigner(
+        [
+          { transaction: step(...plan.initializeAtaIxs, plan.initializePositionIx), signers: [plan.positionKeypair] },
+          ...plan.addLiquidityIxs.map((ixs) => ({ transaction: step(...ixs) })),
+        ],
+        walletAddress,
+      );
+    }
 
     // Create the position first, on its own. The deposit chunks are already sized to fit a
     // transaction by themselves, so folding the init and the ATA creations in alongside one

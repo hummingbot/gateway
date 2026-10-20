@@ -1,12 +1,12 @@
 import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount } from '@uniswap/sdk-core';
 import { NonfungiblePositionManager, computePoolAddress } from '@uniswap/v3-sdk';
-import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
+import { positionManagerCall } from '../../clmm-v3-utils';
 import { Uniswap } from '../uniswap';
 import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress, getUniswapV3FactoryAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
@@ -27,12 +27,6 @@ export async function collectFees(
   // Get Uniswap and Ethereum instances
   const uniswap = await Uniswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
-
-  // Get the wallet
-  const wallet = await ethereum.getWallet(walletAddress);
-  if (!wallet) {
-    throw httpErrors.badRequest('Wallet not found');
-  }
 
   // Get position manager address
   const positionManagerAddress = getUniswapV3NftManagerAddress(network);
@@ -96,26 +90,16 @@ export async function collectFees(
   // Get calldata for collecting fees
   const { calldata, value } = NonfungiblePositionManager.collectCallParameters(collectParams);
 
-  // Initialize position manager with multicall interface
-  const positionManagerWithSigner = new Contract(
-    positionManagerAddress,
-    [
-      {
-        inputs: [{ internalType: 'bytes[]', name: 'data', type: 'bytes[]' }],
-        name: 'multicall',
-        outputs: [{ internalType: 'bytes[]', name: 'results', type: 'bytes[]' }],
-        stateMutability: 'payable',
-        type: 'function',
-      },
-    ],
-    wallet,
+  const tx = await ethereum.sendTransactionForWallet(
+    walletAddress,
+    positionManagerCall(
+      positionManagerAddress,
+      calldata,
+      value,
+      CLMM_COLLECT_FEES_GAS_LIMIT,
+      `collect fees of position ${positionAddress}`,
+    ),
   );
-
-  // Execute the transaction to collect fees
-  const txParams = await ethereum.prepareGasOptions(undefined, CLMM_COLLECT_FEES_GAS_LIMIT);
-  txParams.value = BigNumber.from(value.toString());
-
-  const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
   // Wait for transaction confirmation
   const outcome = await ethereum.handleTransactionConfirmation(tx);

@@ -8,6 +8,7 @@ import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
+import { positionManagerCall } from '../../clmm-v3-utils';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV3NftManagerAddress, POSITION_MANAGER_ABI, getUniswapV3FactoryAddress } from '../uniswap.contracts';
@@ -30,11 +31,6 @@ export async function addLiquidity(
 
   const uniswap = await Uniswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
-  const wallet = await ethereum.getWallet(walletAddress);
-  if (!wallet) {
-    throw httpErrors.badRequest('Wallet not found');
-  }
-
   const positionManagerAddress = getUniswapV3NftManagerAddress(network);
   const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
   const position = await positionManager.positions(positionAddress);
@@ -105,60 +101,31 @@ export async function addLiquidity(
 
   const { calldata, value } = NonfungiblePositionManager.addCallParameters(newPosition, increaseLiquidityOptions);
 
-  // Check allowances
-  if (!token0Amount.equalTo(0) && token0.symbol !== 'WETH') {
-    const token0Contract = ethereum.getContract(token0.address, wallet);
-    const allowance0 = await ethereum.getERC20Allowance(
-      token0Contract,
-      wallet,
+  // The position manager spends both tokens (spender "uniswap/clmm"). WETH is exempt, as before.
+  for (const [token, amount] of [
+    [token0, token0Amount],
+    [token1, token1Amount],
+  ] as const) {
+    if (token.symbol === 'WETH') continue;
+    await ethereum.requireAllowance(
+      walletAddress,
+      { address: token.address, symbol: token.symbol ?? token.address, decimals: token.decimals },
       positionManagerAddress,
-      token0.decimals,
+      BigNumber.from(amount.quotient.toString()),
+      'uniswap/clmm',
     );
-    const currentAllowance0 = BigNumber.from(allowance0.value);
-    const requiredAmount0 = BigNumber.from(token0Amount.quotient.toString());
-
-    if (currentAllowance0.lt(requiredAmount0)) {
-      throw httpErrors.badRequest(
-        `Insufficient ${token0.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)} ${token0.symbol} for the Position Manager (${positionManagerAddress})`,
-      );
-    }
   }
 
-  if (!token1Amount.equalTo(0) && token1.symbol !== 'WETH') {
-    const token1Contract = ethereum.getContract(token1.address, wallet);
-    const allowance1 = await ethereum.getERC20Allowance(
-      token1Contract,
-      wallet,
+  const tx = await ethereum.sendTransactionForWallet(
+    walletAddress,
+    positionManagerCall(
       positionManagerAddress,
-      token1.decimals,
-    );
-    const currentAllowance1 = BigNumber.from(allowance1.value);
-    const requiredAmount1 = BigNumber.from(token1Amount.quotient.toString());
-
-    if (currentAllowance1.lt(requiredAmount1)) {
-      throw httpErrors.badRequest(
-        `Insufficient ${token1.symbol} allowance. Please approve at least ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)} ${token1.symbol} for the Position Manager (${positionManagerAddress})`,
-      );
-    }
-  }
-
-  const positionManagerWithSigner = new Contract(
-    positionManagerAddress,
-    [
-      {
-        inputs: [{ internalType: 'bytes[]', name: 'data', type: 'bytes[]' }],
-        name: 'multicall',
-        outputs: [{ internalType: 'bytes[]', name: 'results', type: 'bytes[]' }],
-        stateMutability: 'payable',
-        type: 'function',
-      },
-    ],
-    wallet,
+      calldata,
+      value,
+      CLMM_ADD_LIQUIDITY_GAS_LIMIT,
+      `add liquidity to position ${positionAddress}`,
+    ),
   );
-
-  const txParams = await ethereum.prepareGasOptions(undefined, CLMM_ADD_LIQUIDITY_GAS_LIMIT);
-  txParams.value = BigNumber.from(value.toString());
-  const tx = await positionManagerWithSigner.multicall([calldata], txParams);
   const outcome = await ethereum.handleTransactionConfirmation(tx);
   if (!outcome.confirmed) {
     // Still pending — the mint amounts below were computed before sending and have not moved.

@@ -1,6 +1,6 @@
 import EthApp, { ledgerService } from '@ledgerhq/hw-app-eth';
 import SolanaApp from '@ledgerhq/hw-app-solana';
-import { Transaction, VersionedTransaction, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 
 import { LedgerTransportManager } from './ledger-transport';
 import { logger } from './logger';
@@ -100,11 +100,12 @@ export class HardwareWalletService {
   }
 
   /**
-   * Sign a Solana transaction using Ledger
+   * Sign a Solana transaction's serialized message with the Ledger. Returns the 64-byte
+   * ed25519 signature; the caller places it in the transaction.
    */
-  public async signSolanaTransaction(
+  public async signSolanaMessageBytes(
     derivationPath: string,
-    transaction: Transaction | VersionedTransaction,
+    message: Uint8Array,
     options?: SignTransactionOptions,
   ): Promise<Buffer> {
     const timeout = options?.timeout || 60000; // Default 60 seconds
@@ -119,20 +120,9 @@ export class HardwareWalletService {
       transport.setExchangeTimeout(timeout);
 
       try {
-        let messageToSign: Buffer;
-
-        if (transaction instanceof VersionedTransaction) {
-          // VersionedTransaction.message.serialize() returns Uint8Array
-          const serialized = transaction.message.serialize();
-          // Convert Uint8Array to Buffer properly
-          messageToSign = Buffer.from(serialized.buffer, serialized.byteOffset, serialized.byteLength);
-        } else {
-          messageToSign = transaction.serializeMessage();
-        }
-
         logger.info(`Requesting signature for transaction on path: ${derivationPath}`);
 
-        const result = await solanaApp.signTransaction(derivationPath, messageToSign);
+        const result = await solanaApp.signTransaction(derivationPath, Buffer.from(message));
 
         if (!result || !result.signature) {
           throw new Error('Failed to get signature from Ledger device');

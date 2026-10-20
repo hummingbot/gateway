@@ -90,6 +90,8 @@ describe('App Integration - Route Registration', () => {
       ['GET', '/trading/amm/quote-liquidity'],
       ['POST', '/trading/amm/add'],
       ['POST', '/trading/amm/remove'],
+      ['POST', '/trading/amm/collect-fees'],
+      ['POST', '/trading/amm/build-collect-fees'],
       ['POST', '/trading/amm/create-pool'],
     ] as Array<['GET' | 'POST', string]>)('registers %s %s', async (method, url) => {
       expect(registered(method, url)).toBe(true);

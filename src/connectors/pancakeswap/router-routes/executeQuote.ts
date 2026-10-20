@@ -1,7 +1,7 @@
-import { BigNumber, utils } from 'ethers';
+import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
+import { rethrowIfCaptured } from '../../../chains/ethereum/evm-build-mode';
 import { SwapExecuteResponseType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -19,148 +19,44 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
 
   const ethereum = await Ethereum.getInstance(network);
 
-  // Check if this is a hardware wallet
-  const isHardwareWallet = await ethereum.isHardwareWallet(walletAddress);
+  logger.info(`Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
 
-  logger.info(
-    `Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}${isHardwareWallet ? ' with hardware wallet' : ''}`,
-  );
-
-  // Check and approve allowance if needed
+  // The PancakeSwap Universal Router spends the token directly (plain ERC-20 allowance).
   if (inputToken.address !== ethereum.nativeTokenSymbol) {
-    const requiredAllowance = BigNumber.from(quote.trade.inputAmount.quotient.toString());
-    const universalRouterAddress = quote.methodParameters.to;
-
-    // Step 1: Check token allowance
-    logger.info(`Checking ${inputToken.symbol} allowance`);
-    const tokenContract = ethereum.getContract(inputToken.address, ethereum.provider);
-    const tokenAllowance = await tokenContract.allowance(walletAddress, universalRouterAddress);
-
-    if (BigNumber.from(tokenAllowance).lt(requiredAllowance)) {
-      const inputAmount = utils.formatUnits(requiredAllowance, inputToken.decimals);
-      const currentAllowance = utils.formatUnits(tokenAllowance, inputToken.decimals);
-
-      throw httpErrors.badRequest(
-        `Insufficient ${inputToken.symbol} allowance to ${universalRouterAddress}. ` +
-          `Required: ${inputAmount}, Current: ${currentAllowance}. ` +
-          `Please approve ${inputToken.symbol} using spender: "pancakeswap/router"`,
-      );
-    }
-
-    logger.info(`Allowance confirmed: Token->UniversalRouter`);
+    await ethereum.requireAllowance(
+      walletAddress,
+      inputToken,
+      quote.methodParameters.to,
+      BigNumber.from(quote.trade.inputAmount.quotient.toString()),
+      'pancakeswap/router',
+    );
   }
 
   // Execute the swap transaction
-  let txReceipt;
+  let txReceipt: Awaited<ReturnType<typeof ethereum.handleTransactionExecution>> = null;
+  let txHash: string | undefined;
 
   try {
-    if (isHardwareWallet) {
-      // Hardware wallet flow
-      logger.info('Hardware wallet detected. Building swap transaction for Ledger signing.');
-
-      const ledger = new EthereumLedger();
-      const nonce = await ethereum.provider.getTransactionCount(walletAddress, 'latest');
-
-      // Get gas options with increased gas limit for Universal Router V2
-      const gasLimit = 500000; // Increased for Universal Router V2
-      const gasOptions = await ethereum.prepareGasOptions(undefined, gasLimit);
-
-      // Build unsigned transaction with gas parameters
-      const unsignedTx = {
-        to: quote.methodParameters.to,
-        data: quote.methodParameters.calldata,
-        value: quote.methodParameters.value,
-        nonce: nonce,
-        chainId: ethereum.chainId,
-        ...gasOptions, // Include gas parameters from prepareGasOptions (includes gasLimit)
-      };
-
-      // Sign with Ledger
-      const signedTx = await ledger.signTransaction(walletAddress, unsignedTx as any);
-
-      // Send the signed transaction
-      const txResponse = await ethereum.provider.sendTransaction(signedTx);
-
-      // Wait for confirmation with timeout
-      txReceipt = await ethereum.handleTransactionExecution(txResponse);
-    } else {
-      // Regular wallet flow
-      let wallet;
-      try {
-        wallet = await ethereum.getWallet(walletAddress);
-      } catch (err) {
-        logger.error(`Failed to load wallet: ${err.message}`);
-        throw httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
-      }
-
-      // Get gas options with increased gas limit for Universal Router V2
-      // Pancakeswap Universal Router V2 swaps typically use between 200k-500k gas
-      const gasLimit = 500000; // Increased for Universal Router V2
-      const gasOptions = await ethereum.prepareGasOptions(undefined, gasLimit);
-      logger.info(`Using gas limit: ${gasOptions.gasLimit?.toString() || gasLimit}`);
-
-      // Build transaction parameters with gas options
-      const txData = {
-        to: quote.methodParameters.to,
-        data: quote.methodParameters.calldata,
-        value: quote.methodParameters.value,
-        nonce: await ethereum.provider.getTransactionCount(walletAddress, 'latest'),
-        ...gasOptions, // Include gas parameters from prepareGasOptions (includes gasLimit)
-      };
-
-      logger.info(`Using gas options: ${JSON.stringify({ ...gasOptions, gasLimit: gasLimit.toString() })}`);
-
-      // Send transaction directly without relying on ethers' automatic gas estimation
-      const txResponse = await wallet.sendTransaction(txData);
-      logger.info(`Transaction sent: ${txResponse.hash}`);
-
-      // Wait for transaction confirmation with timeout
-      txReceipt = await ethereum.handleTransactionExecution(txResponse);
-    }
-
-    // Log transaction info if available
+    const txResponse = await ethereum.sendTransactionForWallet(walletAddress, {
+      to: quote.methodParameters.to,
+      data: quote.methodParameters.calldata,
+      value: BigNumber.from(quote.methodParameters.value).toString(),
+      // PancakeSwap Universal Router swaps typically use between 200k-500k gas
+      gasLimit: 500000,
+      description: `PancakeSwap swap of ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
+    });
+    txHash = txResponse.hash;
+    txReceipt = await ethereum.handleTransactionExecution(txResponse);
     if (txReceipt) {
       logger.info(`Transaction hash: ${txReceipt.transactionHash}`);
       logger.info(`Gas used: ${txReceipt.gasUsed?.toString() || 'unknown'}`);
     }
   } catch (error) {
+    rethrowIfCaptured(error);
     logger.error(`Swap execution error: ${error.message}`);
-    // Log more details about the error for debugging Universal Router issues
-    if (error.error && error.error.data) {
-      logger.error(`Error data: ${error.error.data}`);
-    }
-    if (error.reason) {
-      logger.error(`Error reason: ${error.reason}`);
-    }
-    if (error.transaction) {
-      logger.debug(`Transaction details: ${JSON.stringify(error.transaction)}`);
-    }
-    if (error.receipt) {
-      logger.debug(`Transaction receipt: ${JSON.stringify(error.receipt)}`);
-    }
-
-    // Handle specific error cases
-    if (error.message && error.message.includes('insufficient funds')) {
-      throw httpErrors.badRequest(
-        'Insufficient funds for transaction. Please ensure you have enough ETH to cover gas costs.',
-      );
-    } else if (error.message && error.message.includes('cannot estimate gas')) {
-      throw httpErrors.badRequest(
-        'Transaction would fail. This could be due to an expired quote, insufficient token balance, or market conditions have changed. Please request a new quote.',
-      );
-    } else if (error.message.includes('rejected on Ledger')) {
-      throw httpErrors.badRequest('Transaction rejected on Ledger device');
-    } else if (error.message.includes('Ledger device is locked')) {
-      throw httpErrors.badRequest(error.message);
-    } else if (error.message.includes('Wrong app is open')) {
-      throw httpErrors.badRequest(error.message);
-    }
-
-    // Re-throw if already an http error
     if (error.statusCode) {
       throw error;
     }
-
     throw httpErrors.internalServerError(`Failed to execute swap: ${error.message}`);
   }
 
@@ -176,12 +72,12 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
     expectedAmountIn,
     expectedAmountOut,
     side,
-    undefined,
+    txHash,
     slippagePct,
   );
 
   // Handle different transaction states
-  if (result.status === 0) {
+  if (result.status === -1) {
     // Transaction failed
     logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(txReceipt)}`);
     throw httpErrors.internalServerError(

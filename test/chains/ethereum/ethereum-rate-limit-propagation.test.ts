@@ -79,7 +79,6 @@ describe('Ethereum Rate Limit Error Propagation', () => {
       const error429 = rateLimitError();
       const stub = ethereumStub({
         nativeTokenSymbol: 'ETH',
-        isHardwareWallet: jest.fn().mockResolvedValue(true),
         getNativeBalanceByAddress: jest.fn().mockRejectedValue(error429),
       });
 
@@ -92,7 +91,6 @@ describe('Ethereum Rate Limit Error Propagation', () => {
       const stub = ethereumStub({
         nativeTokenSymbol: 'ETH',
         provider: {},
-        isHardwareWallet: jest.fn().mockResolvedValue(true),
         getNativeBalanceByAddress: jest
           .fn()
           .mockResolvedValue({ value: BigNumber.from('1000000000000000000'), decimals: 18 }),
@@ -108,7 +106,6 @@ describe('Ethereum Rate Limit Error Propagation', () => {
       const stub = ethereumStub({
         nativeTokenSymbol: 'ETH',
         provider: {},
-        isHardwareWallet: jest.fn().mockResolvedValue(true),
         getNativeBalanceByAddress: jest
           .fn()
           .mockResolvedValue({ value: BigNumber.from('1000000000000000000'), decimals: 18 }),

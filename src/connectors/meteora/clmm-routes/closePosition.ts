@@ -2,6 +2,7 @@ import { BN } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { getBuildModeContext } from '../../../chains/solana/solana-build-mode';
 import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -58,6 +59,15 @@ export async function closePosition(
 
     // Handle both single transaction and array of transactions
     const transactions = Array.isArray(removeLiquidityTxs) ? removeLiquidityTxs : [removeLiquidityTxs];
+
+    // Build mode: every transaction of the close in one response, the close last.
+    if (getBuildModeContext()) {
+      transactions.forEach((tx) => (tx.feePayer = walletPublicKey));
+      await solana.captureSequenceForExternalSigner(
+        transactions.map((transaction) => ({ transaction })),
+        walletAddress,
+      );
+    }
 
     let totalFee = 0;
     let lastSignature = '';

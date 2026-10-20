@@ -190,7 +190,6 @@ export async function createPool(
   logger.info(`Creating PancakeSwap CLMM pool ${poolAddress} (${baseToken}/${quoteToken})`);
 
   const walletPubkey = new PublicKey(walletAddress);
-  const wallet = await solana.getWallet(walletAddress);
 
   const priorityFeeInLamports = await solana.estimateGasPrice();
   const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
@@ -202,11 +201,10 @@ export async function createPool(
     600000,
     priorityFeePerCU,
   );
-  transaction.sign([wallet]);
-
-  await solana.simulateWithErrorHandling(transaction);
-
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+  // Signed and sent through the wallet chokepoint (the signer seam), which simulates first.
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  const txData = await solana.getConfirmedTransactionData(signature);
+  const confirmed = txData !== null;
 
   if (confirmed && txData) {
     return {

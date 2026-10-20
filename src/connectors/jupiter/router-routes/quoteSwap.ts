@@ -18,6 +18,7 @@ export async function quoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number = JupiterConfig.config.slippagePct,
   approximateIfNoExactOut: boolean = true,
+  platformFeeBps?: number,
 ): Promise<Static<typeof JupiterQuoteSwapResponse>> {
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
@@ -56,6 +57,7 @@ export async function quoteSwap(
       effectiveOnlyDirectRoutes,
       effectiveRestrictIntermediateTokens,
       side === 'BUY' ? 'ExactOut' : 'ExactIn',
+      platformFeeBps,
     );
   } catch (error) {
     const errorMessage = error?.message || String(error);
@@ -84,6 +86,7 @@ export async function quoteSwap(
               effectiveOnlyDirectRoutes,
               effectiveRestrictIntermediateTokens,
               'ExactIn',
+              platformFeeBps,
             );
             return { inAmount: quote.inAmount, outAmount: quote.outAmount, quote };
           },
@@ -144,6 +147,8 @@ export async function quoteSwap(
     slippagePct,
     inputToken,
     outputToken,
+    // A quote with a platform fee can only be executed with a fee account.
+    platformFeeBps,
   });
 
   return {
