@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 
 import { EstimateGasResponse } from '../../../schemas/chain-schema';
-import { logger } from '../../../services/logger';
+import { logger, redactUrl } from '../../../services/logger';
 import { Ethereum, EIP1559_NETWORKS } from '../ethereum';
 
 export async function estimateGasEthereum(fastify: FastifyInstance, network: string): Promise<EstimateGasResponse> {
@@ -44,27 +44,29 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
 
     return response;
   } catch (error) {
-    logger.error(`Error estimating gas for network ${network}: ${error.message}`);
+    const message = redactUrl(error.message);
+    logger.error(`Error estimating gas for network ${network}: ${message}`);
 
     if (error.statusCode === 429) {
+      error.message = message;
       throw error;
     }
 
     // Check if it's a network/RPC error
-    if (error.message?.includes('RPC') || error.message?.includes('network') || error.message?.includes('provider')) {
-      throw fastify.httpErrors.serviceUnavailable(`RPC provider unavailable for network ${network}: ${error.message}`);
+    if (message?.includes('RPC') || message?.includes('network') || message?.includes('provider')) {
+      throw fastify.httpErrors.serviceUnavailable(`RPC provider unavailable for network ${network}: ${message}`);
     }
 
     // Check if it's an invalid network
     if (
-      error.message?.includes('Invalid') ||
-      error.message?.includes('not found') ||
-      error.message?.includes('Unsupported')
+      message?.includes('Invalid') ||
+      message?.includes('not found') ||
+      message?.includes('Unsupported')
     ) {
-      throw fastify.httpErrors.badRequest(`Invalid network ${network}: ${error.message}`);
+      throw fastify.httpErrors.badRequest(`Invalid network ${network}: ${message}`);
     }
 
     // Generic error
-    throw fastify.httpErrors.internalServerError(`Failed to estimate gas for network ${network}: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(`Failed to estimate gas for network ${network}: ${message}`);
   }
 }

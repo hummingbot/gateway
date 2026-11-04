@@ -57,4 +57,26 @@ describe('redactUrl', () => {
   it('returns empty string and undefined-like inputs unchanged', () => {
     expect(redactUrl('')).toBe('');
   });
+
+  it('redacts Alchemy /v2/<key> path token', () => {
+    expect(redactUrl('https://eth-mainnet.g.alchemy.com/v2/your-api-key')).toBe(
+      'https://eth-mainnet.g.alchemy.com/v2/***',
+    );
+  });
+
+  it('redacts Infura /v3/<key> embedded inside an ethers SERVER_ERROR message', () => {
+    const errorMessage =
+      'processing response error (body="{\"jsonrpc\":\"2.0\",\"id\":71,\"error\":{\"code\":-32603,\"message\":\"Internal error\"}}", requestMethod="POST", url="https://bsc-mainnet.infura.io/v3/0123456789abcdef0123456789abcdef", code=SERVER_ERROR, version=web/5.8.0)';
+    expect(redactUrl(errorMessage)).toBe(
+      'processing response error (body="{\"jsonrpc\":\"2.0\",\"id\":71,\"error\":{\"code\":-32603,\"message\":\"Internal error\"}}", requestMethod="POST", url="https://bsc-mainnet.infura.io/v3/***", code=SERVER_ERROR, version=web/5.8.0)',
+    );
+  });
+
+  it('redacts ?api-key= query parameter embedded inside an error string without truncating trailing fields', () => {
+    const errorMessage =
+      'request failed (url="https://mainnet.helius-rpc.com/?api-key=abc123def", code=SERVER_ERROR)';
+    expect(redactUrl(errorMessage)).toBe(
+      'request failed (url="https://mainnet.helius-rpc.com/?api-key=***", code=SERVER_ERROR)',
+    );
+  });
 });

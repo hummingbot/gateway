@@ -4,7 +4,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { getSpender as pancakeswapSpender } from '../../../connectors/pancakeswap/pancakeswap.contracts';
 import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
 import { tokenValueToString } from '../../../services/base';
-import { logger } from '../../../services/logger';
+import { logger, redactUrl } from '../../../services/logger';
 import { Ethereum, TokenInfo } from '../ethereum';
 import {
   AllowancesRequestSchema,
@@ -168,7 +168,7 @@ export async function getEthereumAllowances(
               `${symbol} allowances - Token->Permit2: ${tokenValueToString(tokenToPermit2Allowance)}, Permit2->Router: ${tokenValueToString({ value: amount.toString(), decimals: tokenInfoMap[symbol].decimals })}, Effective: ${approvals[symbol]}`,
             );
           } catch (error) {
-            logger.error(`Error checking allowance for ${symbol}: ${error.message}`);
+            logger.error(`Error checking allowance for ${symbol}: ${redactUrl(error.message)}`);
             approvals[symbol] = '0';
           }
         }),
@@ -197,14 +197,17 @@ export async function getEthereumAllowances(
       approvals: approvals,
     };
   } catch (error) {
-    logger.error(`Error getting allowances: ${error.message}`);
+    const message = redactUrl(error.message);
+    logger.error(`Error getting allowances: ${message}`);
     if (error.statusCode === 400) {
+      error.message = message;
       throw error; // Rethrow badRequest errors
     }
     if (error.statusCode === 429) {
+      error.message = message;
       throw error;
     }
-    throw fastify.httpErrors.internalServerError(`Failed to get allowances: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(`Failed to get allowances: ${message}`);
   }
 }
 

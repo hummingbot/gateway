@@ -105,6 +105,24 @@ describe('Ethereum Estimate Gas Route', () => {
       expect(data.message).toContain('Failed to estimate gas');
     });
 
+    it('should redact Infura API key from RPC error messages', async () => {
+      mockInstance.estimateGasPrice.mockRejectedValueOnce(
+        new Error(
+          'processing response error (requestMethod="POST", url="https://bsc-mainnet.infura.io/v3/0123456789abcdef0123456789abcdef", code=SERVER_ERROR)',
+        ),
+      );
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/chains/ethereum/estimate-gas?network=bsc',
+      });
+
+      expect(response.statusCode).toBe(500);
+      const data = parseWire(response.body);
+      expect(data.message).toContain('https://bsc-mainnet.infura.io/v3/***');
+      expect(data.message).not.toContain('0123456789abcdef0123456789abcdef');
+    });
+
     it('should work with different networks', async () => {
       const networks = ['mainnet', 'sepolia', 'arbitrum', 'polygon'];
 
