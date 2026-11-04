@@ -38,12 +38,18 @@ export const redactUrl = (url: string | null | undefined): string => {
 
   let redacted = url;
 
+  // Redact basic-auth userinfo in URLs (e.g., https://user:secret@host)
+  redacted = redacted.replace(/(\/\/[^/\s"']+?@)/g, '//***@');
+
   // Redact query parameter API keys (e.g., ?api-key=XXX, ?apiKey=XXX, ?apikey=XXX)
-  redacted = redacted.replace(/([?&]api[-_]?key=)[^&]+/gi, '$1***');
+  redacted = redacted.replace(/([?&]api[-_]?key=)[^&\s"',)]+/gi, '$1***');
 
   // Redact Infura-style path API keys (e.g., /v3/API_KEY)
-  // Match 32 characters of alphanumeric after /v3/
-  redacted = redacted.replace(/(\/v3\/)([a-zA-Z0-9]{32})($|\/|\?)/gi, '$1***$3');
+  // Match 32 characters of alphanumeric after /v3/ whether standalone or embedded in error strings
+  redacted = redacted.replace(/(\/v3\/)([a-zA-Z0-9]{32})(?=$|[^a-zA-Z0-9])/gi, '$1***');
+
+  // Redact Alchemy-style path API keys (e.g., https://eth-mainnet.g.alchemy.com/v2/API_KEY)
+  redacted = redacted.replace(/(alchemy\.com\/v2\/)[^/\s?"',)]+/gi, '$1***');
 
   // Redact Chainstack-style path tokens (e.g.,
   //   https://<network>.core.chainstack.com/<token>
@@ -76,8 +82,8 @@ const logFileFormat = winston.format.combine(
     }
 
     return info.stack
-      ? `${localDate} | ${info.level} | ${output} | ${info.stack}`
-      : `${localDate} | ${info.level} | ${output}`;
+      ? redactUrl(`${localDate} | ${info.level} | ${output} | ${info.stack}`)
+      : redactUrl(`${localDate} | ${info.level} | ${output}`);
   }),
 );
 
@@ -99,7 +105,7 @@ const sdtoutFormat = winston.format.combine(
       output += ' ' + JSON.stringify(metaData, null, 2);
     }
 
-    return `${localDate} | ${info.level} | ${output}`;
+    return redactUrl(`${localDate} | ${info.level} | ${output}`);
   }),
 );
 
