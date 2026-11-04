@@ -448,7 +448,7 @@ export class Raydium {
         };
         return poolInfo;
       } else if (poolType === 'cpmm') {
-        const rawPool = await this.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress]);
+        const rawPool = await this.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress], true);
 
         poolInfo = {
           address: poolAddress,
