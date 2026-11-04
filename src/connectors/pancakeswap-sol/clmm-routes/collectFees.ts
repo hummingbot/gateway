@@ -1,3 +1,4 @@
+import { NATIVE_MINT } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
@@ -77,9 +78,19 @@ async function collectFees(
 
     // Unwrapping closes the wrapped-SOL account, so its rent comes back in the same
     // native balance change as the fee. Rent is not fee income.
-    const { closed } = accountLifecycleSol(txData);
-    const baseFeeCollected = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
-    const quoteFeeCollected = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
+    const { opened, closed } = accountLifecycleSol(txData);
+    const baseMint = new PublicKey(baseToken.address);
+    const quoteMint = new PublicKey(quoteToken.address);
+    const baseFeeCollected = liquidityWithoutRent(
+      baseMint.equals(NATIVE_MINT) ? balanceChanges[0] + opened : balanceChanges[0],
+      baseMint,
+      closed,
+    );
+    const quoteFeeCollected = liquidityWithoutRent(
+      quoteMint.equals(NATIVE_MINT) ? balanceChanges[1] + opened : balanceChanges[1],
+      quoteMint,
+      closed,
+    );
 
     logger.info(
       `Fees collected from position ${positionAddress}: ${baseFeeCollected.toFixed(6)} ${baseToken.symbol}, ` +

@@ -1,4 +1,9 @@
-import { NATIVE_MINT, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
+import {
+  NATIVE_MINT,
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction,
+  createAssociatedTokenAccountIdempotentInstruction,
+} from '@solana/spl-token';
 import {
   PublicKey,
   TransactionInstruction,
@@ -196,6 +201,46 @@ export function buildUnwrapSolInstructions(
   return hasNativeSide ? [solana.unwrapSOL(walletPubkey)] : [];
 }
 
+/**
+ * Ensure the wallet's associated token accounts exist for all pool mints before an
+ * instruction that transfers tokens out of the pool (`decrease_liquidity_v2`).
+ *
+ * After an open, collect-fees, remove-liquidity, or SOL-output swap, the unwrap step
+ * closes the wallet's WSOL ATA. Without recreating missing recipient ATAs first,
+ * `decrease_liquidity_v2` fails in preflight with `AccountNotInitialized` (0xbc4).
+ * Uses the idempotent ATA instruction so concurrent creation between `getAccountInfo`
+ * and execution never aborts the withdrawal.
+ */
+export async function buildEnsureTokenAccountInstructions(
+  solana: Solana,
+  walletPubkey: PublicKey,
+  mints: string[],
+): Promise<TransactionInstruction[]> {
+  const uniqueMints = Array.from(new Set(mints));
+  const instructions: TransactionInstruction[] = [];
+
+  for (const mintAddress of uniqueMints) {
+    const mint = new PublicKey(mintAddress);
+    const tokenProgram = await getTokenProgramForMint(solana, mint);
+    const tokenAccount = getAssociatedTokenAddressSync(mint, walletPubkey, false, tokenProgram);
+    const accountInfo = await solana.connection.getAccountInfo(tokenAccount);
+
+    if (!accountInfo) {
+      instructions.push(
+        createAssociatedTokenAccountIdempotentInstruction(
+          walletPubkey,
+          tokenAccount,
+          walletPubkey,
+          mint,
+          tokenProgram,
+        ),
+      );
+    }
+  }
+
+  return instructions;
+}
+
 export async function buildTransactionWithInstructions(
   solana: Solana,
   walletPubkey: PublicKey,
@@ -243,14 +288,17 @@ export async function buildRemoveLiquidityTransaction(
   computeUnits: number = 600000,
   priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
-  const removeLiqIx = await buildDecreaseLiquidityV2Instruction(
-    solana,
-    positionNftMint,
-    walletPubkey,
-    liquidityToRemove,
-    amount0Min,
-    amount1Min,
-  );
+  const [createAtaInstructions, removeLiqIx] = await Promise.all([
+    buildEnsureTokenAccountInstructions(solana, walletPubkey, poolMints),
+    buildDecreaseLiquidityV2Instruction(
+      solana,
+      positionNftMint,
+      walletPubkey,
+      liquidityToRemove,
+      amount0Min,
+      amount1Min,
+    ),
+  ]);
 
   const instructions: TransactionInstruction[] = [];
 
@@ -264,6 +312,9 @@ export async function buildRemoveLiquidityTransaction(
       }),
     );
   }
+
+  // Ensure recipient token accounts exist before decreasing liquidity
+  instructions.push(...createAtaInstructions);
 
   // Add remove liquidity instruction
   instructions.push(removeLiqIx);

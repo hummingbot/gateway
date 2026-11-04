@@ -1,3 +1,4 @@
+import { NATIVE_MINT } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
@@ -13,7 +14,11 @@ import { logger } from '../../../services/logger';
 import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
 import { buildDecreaseLiquidityV2Instruction, buildClosePositionInstruction } from '../pancakeswap-sol.instructions';
 import { parsePositionData } from '../pancakeswap-sol.parser';
-import { buildTransactionWithInstructions, buildUnwrapSolInstructions } from '../pancakeswap-sol.transactions';
+import {
+  buildEnsureTokenAccountInstructions,
+  buildTransactionWithInstructions,
+  buildUnwrapSolInstructions,
+} from '../pancakeswap-sol.transactions';
 
 export async function closePosition(
   network: string,
@@ -76,7 +81,12 @@ export async function closePosition(
   // silently contained them. A zero-liquidity decrease collects the fees and touches
   // nothing else (it is exactly what the collect-fees route does), so the two land in
   // different top-level instructions and the transaction says which is which.
+  const poolMints = [baseToken.address, quoteToken.address];
+
   if (hasLiquidity) {
+    const createAtaInstructions = await buildEnsureTokenAccountInstructions(solana, walletPubkey, poolMints);
+    instructions.push(...createAtaInstructions);
+
     const collectFeesIx = await buildDecreaseLiquidityV2Instruction(
       solana,
       positionNftMint,
@@ -105,7 +115,11 @@ export async function closePosition(
   // 3. Unwrap what the withdrawal paid out in WSOL. Without this the SOL never reaches
   // the native balance, and the only thing that moves it is the rent — which is exactly
   // how this route came to report the rent as the liquidity withdrawn.
-  instructions.push(...buildUnwrapSolInstructions(solana, walletPubkey, [baseToken.address, quoteToken.address]));
+  // Only unwrap when liquidity/fees were withdrawn (otherwise no WSOL was paid out and
+  // the wallet may have no WSOL account to close).
+  if (hasLiquidity) {
+    instructions.push(...buildUnwrapSolInstructions(solana, walletPubkey, poolMints));
+  }
 
   // Build complete transaction
   const transaction = await buildTransactionWithInstructions(
@@ -135,9 +149,19 @@ export async function closePosition(
     // account, the tick array if this was the last position in it, and the wrapped-SOL
     // account the unwrap above closes. All of it arrives in the same native balance
     // change as the withdrawal, and none of it is liquidity.
-    const { closed, rentRefunded } = accountLifecycleSol(txData);
-    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
-    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
+    const { opened, closed, rentRefunded } = accountLifecycleSol(txData);
+    const baseMint = new PublicKey(baseToken.address);
+    const quoteMint = new PublicKey(quoteToken.address);
+    const baseTokenChange = liquidityWithoutRent(
+      baseMint.equals(NATIVE_MINT) ? balanceChanges[0] + opened : balanceChanges[0],
+      baseMint,
+      closed,
+    );
+    const quoteTokenChange = liquidityWithoutRent(
+      quoteMint.equals(NATIVE_MINT) ? balanceChanges[1] + opened : balanceChanges[1],
+      quoteMint,
+      closed,
+    );
 
     // The fee-collecting instruction is the first of this program's instructions in the
     // transaction, so its transfers are the fees and nothing else. Taken from the

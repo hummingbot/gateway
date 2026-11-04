@@ -327,3 +327,172 @@ describe('pancakeswap-sol close: fees and principal are separate money', () => {
     expect(result.data?.baseTokenAmountRemoved).toBeCloseTo(SOL_FROM_THE_POOL / 1e9, 9);
   });
 });
+
+describe('pancakeswap-sol missing WSOL ATA handling (#740)', () => {
+  it('creates missing recipient ATAs idempotently before DecreaseLiquidityV2 in buildRemoveLiquidityTransaction', async () => {
+    const { PublicKey, TransactionInstruction } = await import('@solana/web3.js');
+    const { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } = await import(
+      '@solana/spl-token'
+    );
+    const actualTransactions = jest.requireActual(
+      '../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.transactions',
+    );
+
+    const walletPubkey = new PublicKey(WALLET);
+    const positionMint = new PublicKey(POSITION);
+    const wsolAta = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, false, TOKEN_PROGRAM_ID);
+
+    const decreaseIx = new TransactionInstruction({
+      programId: PANCAKESWAP_CLMM_PROGRAM_ID,
+      keys: [],
+      data: Buffer.from([1]),
+    });
+    const unwrapIx = new TransactionInstruction({
+      programId: TOKEN_PROGRAM_ID,
+      keys: [],
+      data: Buffer.from([9]),
+    });
+    (buildDecreaseLiquidityV2Instruction as jest.Mock).mockResolvedValueOnce(decreaseIx);
+
+    const solana: any = {
+      connection: {
+        getAccountInfo: jest.fn((pubkey: any) => {
+          // Simulate wallet having no WSOL ATA while USDC ATA already exists
+          if (pubkey.equals(wsolAta)) return Promise.resolve(null);
+          return Promise.resolve({ data: Buffer.alloc(200), owner: TOKEN_PROGRAM_ID });
+        }),
+        getLatestBlockhash: jest.fn().mockResolvedValue({
+          blockhash: '11111111111111111111111111111111',
+        }),
+      },
+      unwrapSOL: jest.fn().mockReturnValue(unwrapIx),
+    };
+
+    const ataIxs = await actualTransactions.buildEnsureTokenAccountInstructions(solana, walletPubkey, [
+      SOL.address,
+      USDC.address,
+    ]);
+    expect(ataIxs).toHaveLength(1);
+    expect(ataIxs[0].programId.equals(ASSOCIATED_TOKEN_PROGRAM_ID)).toBe(true);
+    expect(ataIxs[0].keys[1].pubkey.equals(wsolAta)).toBe(true);
+    // CreateIdempotent instruction discriminator is 1 (0x01)
+    expect(ataIxs[0].data).toEqual(Buffer.from([1]));
+
+    const tx = await actualTransactions.buildRemoveLiquidityTransaction(
+      solana,
+      positionMint,
+      walletPubkey,
+      new BN(500),
+      new BN(0),
+      new BN(0),
+      [SOL.address, USDC.address],
+    );
+    expect(tx).toBeDefined();
+    expect(solana.unwrapSOL).toHaveBeenCalledWith(walletPubkey);
+
+    // Verify instruction ordering in compiled transaction: ATA creation -> DecreaseLiquidityV2 -> unwrapSOL
+    const programIds = tx.message.compiledInstructions.map((ix: any) =>
+      tx.message.staticAccountKeys[ix.programIdIndex].toBase58(),
+    );
+    const ataIxIndex = programIds.indexOf(ASSOCIATED_TOKEN_PROGRAM_ID.toBase58());
+    const decreaseIxIndex = programIds.indexOf(PANCAKESWAP_CLMM_PROGRAM_ID.toBase58());
+    const unwrapIxIndex = programIds.indexOf(TOKEN_PROGRAM_ID.toBase58());
+
+    expect(ataIxIndex).toBeGreaterThanOrEqual(0);
+    expect(decreaseIxIndex).toBeGreaterThan(ataIxIndex);
+    expect(unwrapIxIndex).toBeGreaterThan(decreaseIxIndex);
+  });
+
+  it('creates missing WSOL ATA before decreasing liquidity and unwraps at the end when closing a non-empty position', async () => {
+    const { PublicKey } = await import('@solana/web3.js');
+    const { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } = await import(
+      '@solana/spl-token'
+    );
+    const walletPubkey = new PublicKey(WALLET);
+    const wsolAta = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, false, TOKEN_PROGRAM_ID);
+
+    const solana = solanaMock(closeTxData);
+    solana.connection.getAccountInfo = jest.fn((pubkey: any) => {
+      if (pubkey.equals && pubkey.equals(wsolAta)) return Promise.resolve(null);
+      return Promise.resolve({ data: Buffer.alloc(200) });
+    });
+    (Solana.getInstance as jest.Mock).mockResolvedValue(solana);
+
+    const { closePosition } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/closePosition');
+    await closePosition('mainnet-beta', WALLET, POSITION);
+
+    const instructions = (buildTransactionWithInstructions as jest.Mock).mock.calls[0][2];
+    // 1: create WSOL ATA (idempotent), 2: collect fees decrease, 3: principal decrease, 4: closePosition, 5: unwrapSOL
+    expect(instructions).toHaveLength(5);
+    expect(instructions[0].programId.equals(ASSOCIATED_TOKEN_PROGRAM_ID)).toBe(true);
+    expect(instructions[0].keys[1].pubkey.equals(wsolAta)).toBe(true);
+    expect(instructions[0].data).toEqual(Buffer.from([1]));
+    expect(instructions[instructions.length - 1]).toEqual({ ix: 'closeWsolAccount' });
+  });
+
+  it('does not append unwrapSOL when closing an already-empty position (liquidity = 0)', async () => {
+    const { parsePositionData } = await import(
+      '../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.parser'
+    );
+    (parsePositionData as jest.Mock).mockReturnValueOnce({
+      poolId: { toString: () => 'pool' },
+      tickLowerIndex: -100,
+      tickUpperIndex: 100,
+      liquidity: new BN(0),
+    });
+
+    const solana = solanaMock(closeTxData);
+    (Solana.getInstance as jest.Mock).mockResolvedValue(solana);
+
+    const { closePosition } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/closePosition');
+    await closePosition('mainnet-beta', WALLET, POSITION);
+
+    const instructions = (buildTransactionWithInstructions as jest.Mock).mock.calls[0][2];
+    expect(instructions).toEqual([{ ix: 'close' }]);
+    expect(solana.unwrapSOL).not.toHaveBeenCalled();
+    expect(buildDecreaseLiquidityV2Instruction).not.toHaveBeenCalled();
+  });
+
+  it('adds back SOL spent on newly opened non-SOL ATAs when reporting SOL withdrawals and fees', async () => {
+    const NEW_ATA_RENT = 2_039_280;
+    const txWithOpenedAta = {
+      meta: {
+        fee: TX_FEE,
+        preBalances: [
+          2_549_410_306, // wallet
+          0, // newly created non-SOL ATA (e.g. USDC ATA)
+        ],
+        postBalances: [
+          2_549_410_306 + SOL_FROM_THE_POOL - NEW_ATA_RENT - TX_FEE,
+          NEW_ATA_RENT,
+        ],
+        preTokenBalances: [],
+        postTokenBalances: [
+          { accountIndex: 1, mint: USDC.address, uiTokenAmount: { amount: '1033991' } },
+        ],
+      },
+    };
+    const netNativeChangeWithAtaRent = (SOL_FROM_THE_POOL - NEW_ATA_RENT) / 1e9;
+    const mock = {
+      ...solanaMock(txWithOpenedAta),
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [netNativeChangeWithAtaRent, USDC_FROM_THE_POOL],
+        txDetails: { meta: {} },
+      }),
+    };
+    (Solana.getInstance as jest.Mock).mockResolvedValue(mock);
+
+    const { removeLiquidity } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/removeLiquidity');
+    const { collectFees } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/collectFees');
+    const { closePosition } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/closePosition');
+
+    const removeRes = await removeLiquidity('mainnet-beta', WALLET, POSITION, 100);
+    expect(removeRes.data?.baseTokenAmountRemoved).toBeCloseTo(SOL_FROM_THE_POOL / 1e9, 9);
+
+    const feeRes = await collectFees('mainnet-beta', WALLET, POSITION);
+    expect(feeRes.data?.baseFeeAmountCollected).toBeCloseTo(SOL_FROM_THE_POOL / 1e9, 9);
+
+    const closeRes = await closePosition('mainnet-beta', WALLET, POSITION);
+    expect(closeRes.data?.baseTokenAmountRemoved).toBeCloseTo(SOL_FROM_THE_POOL / 1e9, 9);
+  });
+});
