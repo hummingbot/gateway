@@ -1,3 +1,4 @@
+import { NATIVE_MINT } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
@@ -97,9 +98,19 @@ export async function removeLiquidity(
     // Unwrapping closes the wrapped-SOL account, so its rent — and any WSOL the wallet
     // was already holding in it — lands in the native balance change alongside the
     // withdrawal. None of that is liquidity this position gave back.
-    const { closed } = accountLifecycleSol(txData);
-    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
-    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
+    const { opened, closed } = accountLifecycleSol(txData);
+    const baseMint = new PublicKey(baseToken.address);
+    const quoteMint = new PublicKey(quoteToken.address);
+    const baseTokenChange = liquidityWithoutRent(
+      baseMint.equals(NATIVE_MINT) ? balanceChanges[0] + opened : balanceChanges[0],
+      baseMint,
+      closed,
+    );
+    const quoteTokenChange = liquidityWithoutRent(
+      quoteMint.equals(NATIVE_MINT) ? balanceChanges[1] + opened : balanceChanges[1],
+      quoteMint,
+      closed,
+    );
 
     logger.info(`Liquidity removed successfully. Signature: ${signature}`);
     logger.info(
