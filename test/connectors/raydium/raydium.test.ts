@@ -402,21 +402,24 @@ describe('Raydium', () => {
         isValidCpmm.mockReturnValue(true);
 
         mockRaydiumSDK.api.fetchPoolById.mockResolvedValue([mockPoolInfo]);
-        mockRaydiumSDK.cpmm.getRpcPoolInfos.mockResolvedValue({
-          [mockPoolAddress]: {
-            mintA: { toString: () => 'base-token' },
-            mintB: { toString: () => 'quote-token' },
-            configInfo: { tradeFeeRate: 30 },
-            poolPrice: '200',
-            baseReserve: '2000000000',
-            quoteReserve: '400000000',
-            mintDecimalA: 9,
-            mintDecimalB: 6,
-          },
-        });
+        mockRaydiumSDK.cpmm.getRpcPoolInfos.mockImplementation(
+          async (_poolIds: string[], fetchConfigInfo?: boolean) => ({
+            [mockPoolAddress]: {
+              mintA: { toString: () => 'base-token' },
+              mintB: { toString: () => 'quote-token' },
+              configInfo: fetchConfigInfo ? { tradeFeeRate: 30 } : undefined,
+              poolPrice: '200',
+              baseReserve: '2000000000',
+              quoteReserve: '400000000',
+              mintDecimalA: 9,
+              mintDecimalB: 6,
+            },
+          }),
+        );
 
         const result = await raydiumInstance.getAmmPoolInfo(mockPoolAddress);
 
+        expect(mockRaydiumSDK.cpmm.getRpcPoolInfos).toHaveBeenCalledWith([mockPoolAddress], true);
         expect(result).toEqual({
           address: mockPoolAddress,
           baseTokenAddress: 'base-token',
