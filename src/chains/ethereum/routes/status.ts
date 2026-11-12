@@ -1,5 +1,5 @@
 import { StatusResponseType } from '../../../schemas/chain-schema';
-import { logger } from '../../../services/logger';
+import { logger, redactUrl } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 import { getEthereumChainConfig } from '../ethereum.config';
 
@@ -18,9 +18,11 @@ export async function getEthereumStatus(network: string): Promise<StatusResponse
         rpcUrl = rpcProviderService.getHttpUrl() ?? rpcUrl;
       } catch (error) {
         // If provider URL generation fails, fall back to standard rpcUrl
-        logger.warn(`Failed to get RPC provider URL, using standard rpcUrl: ${error.message}`);
+        logger.warn(`Failed to get RPC provider URL, using standard rpcUrl: ${redactUrl(error.message)}`);
       }
     }
+
+    rpcUrl = redactUrl(rpcUrl);
 
     const nativeCurrency = ethereum.nativeTokenSymbol;
 
@@ -36,7 +38,7 @@ export async function getEthereumStatus(network: string): Promise<StatusResponse
       // Race the block request against the timeout
       currentBlockNumber = await Promise.race([blockPromise, timeoutPromise]);
     } catch (blockError) {
-      logger.warn(`Failed to get block number: ${blockError.message}`);
+      logger.warn(`Failed to get block number: ${redactUrl(blockError.message)}`);
       // Continue with default block number
     }
 
@@ -50,7 +52,8 @@ export async function getEthereumStatus(network: string): Promise<StatusResponse
       swapProvider: ethereum.swapProvider,
     };
   } catch (error) {
-    logger.error(`Error getting Ethereum status: ${error.message}`);
-    throw new Error(`Failed to get Ethereum status: ${error.message}`);
+    const message = redactUrl(error.message);
+    logger.error(`Error getting Ethereum status: ${message}`);
+    throw new Error(`Failed to get Ethereum status: ${message}`);
   }
 }

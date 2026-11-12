@@ -106,6 +106,38 @@ describe('Ethereum Status Route', () => {
       expect(mockEthereumInstance.getRpcProviderService).toHaveBeenCalled();
     });
 
+    it('should redact 32-character Infura API key from rpcUrl in status response', async () => {
+      getEthereumChainConfig.mockReturnValue({
+        defaultNetwork: 'bsc',
+        defaultWallet: 'test-wallet',
+        rpcProvider: 'url',
+      });
+
+      mockEthereumInstance.rpcUrl = 'https://bsc-mainnet.infura.io/v3/0123456789abcdef0123456789abcdef';
+      mockEthereumInstance.getRpcProviderService.mockReturnValue(null);
+
+      const result = await getEthereumStatus('bsc');
+
+      expect(result.rpcUrl).toBe('https://bsc-mainnet.infura.io/v3/***');
+      expect(result.rpcUrl).not.toContain('0123456789abcdef0123456789abcdef');
+    });
+
+    it('should redact Alchemy /v2/<key> from rpcUrl in status response', async () => {
+      getEthereumChainConfig.mockReturnValue({
+        defaultNetwork: 'mainnet',
+        defaultWallet: 'test-wallet',
+        rpcProvider: 'url',
+      });
+
+      mockEthereumInstance.rpcUrl = 'https://eth-mainnet.g.alchemy.com/v2/your-api-key';
+      mockEthereumInstance.getRpcProviderService.mockReturnValue(null);
+
+      const result = await getEthereumStatus('mainnet');
+
+      expect(result.rpcUrl).toBe('https://eth-mainnet.g.alchemy.com/v2/***');
+      expect(result.rpcUrl).not.toContain('your-api-key');
+    });
+
     it('should fallback to standard rpcUrl when rpcProvider is "infura" but service is not available', async () => {
       getEthereumChainConfig.mockReturnValue({
         defaultNetwork: 'mainnet',

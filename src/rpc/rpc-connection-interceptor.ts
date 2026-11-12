@@ -6,7 +6,7 @@
 import { Connection } from '@solana/web3.js';
 import { providers, utils } from 'ethers';
 
-import { logger } from '../services/logger';
+import { logger, redactUrl } from '../services/logger';
 
 // Read RPC retry policy, applied to both chains. This Proxy is the single
 // retry layer: ethers and web3.js built-in 429 retries are disabled, so use
@@ -42,14 +42,6 @@ export function rateLimitAwareConnection(url: string): utils.ConnectionInfo {
     // ...without letting it discard the evidence that a retry was warranted.
     throttleCallback: async () => false,
   };
-}
-
-/**
- * Redact sensitive parts of RPC URL (API keys, tokens)
- */
-function redactUrl(url: string): string {
-  if (!url) return url;
-  return url.replace(/([?&]api[-_]key=)[^&]+/gi, '$1[REDACTED]').replace(/(\/\/[^/]+@)/g, '//[REDACTED]@');
 }
 
 /**
@@ -142,6 +134,9 @@ export function createRateLimitAwareSolanaConnection(connection: Connection, rpc
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return await (value as (...args: any[]) => any).apply(target, args);
           } catch (error: any) {
+            if (typeof error?.message === 'string') {
+              error.message = redactUrl(error.message);
+            }
             if (!is429Error(error)) {
               throw error;
             }
@@ -197,6 +192,9 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return await (value as (...args: any[]) => any).apply(target, args);
           } catch (error: any) {
+            if (typeof error?.message === 'string') {
+              error.message = redactUrl(error.message);
+            }
             if (!is429Error(error)) {
               throw error;
             }
