@@ -9,7 +9,7 @@ import { ZeroX } from '../0x';
 
 async function executeQuote(walletAddress: string, network: string, quoteId: string): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote from global cache
-  const quote = quoteCache.get(quoteId);
+  const quote = quoteCache.get(quoteId, '0x');
   if (!quote) {
     throw httpErrors.badRequest('Quote not found or expired');
   }
@@ -75,7 +75,7 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
     expectedAmountOut,
     undefined,
     undefined,
-    quoteCache.getRequest(quoteId)?.slippagePct,
+    quoteCache.getRequest(quoteId, '0x')?.slippagePct,
   );
 
   // Handle different transaction states

@@ -63,8 +63,7 @@ describe('POST /execute-quote (okx)', () => {
     const getSwapTransaction = jest.fn(async () => ({ transaction: unsignedTx }));
     (Okx.getInstance as jest.Mock).mockResolvedValue({ getSwapTransaction });
 
-    quoteCache.set('okx-quote-1', {
-      connector: 'okx',
+    quoteCache.set('okx-quote-1', 'okx', {
       network: 'mainnet-beta',
       inputToken: mockSOL,
       outputToken: mockUSDC,
@@ -108,7 +107,7 @@ describe('POST /execute-quote (okx)', () => {
       undefined,
       0.5,
     );
-    expect(quoteCache.get('okx-quote-1')).toBeNull();
+    expect(quoteCache.get('okx-quote-1', 'okx')).toBeNull();
   });
 
   it('returns 400 for an unknown or expired quote', async () => {

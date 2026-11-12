@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { removeLiquidity as meteoraRemoveLiquidity } from '../../connectors/meteora/amm-routes/removeLiquidity';
 import { removeLiquidity as pancakeswapRemoveLiquidity } from '../../connectors/pancakeswap/amm-routes/removeLiquidity';
+import { removeLiquidity as pumpRemoveLiquidity } from '../../connectors/pump/amm-routes/removeLiquidity';
 import { removeLiquidity as raydiumRemoveLiquidity } from '../../connectors/raydium/amm-routes/removeLiquidity';
 import { removeLiquidity as uniswapRemoveLiquidity } from '../../connectors/uniswap/amm-routes/removeLiquidity';
 import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../schemas/amm-schema';
@@ -91,6 +92,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
                 percentageToRemove,
                 slippagePct,
               );
+            case 'pump':
+              return await pumpRemoveLiquidity(network, walletAddress, poolAddress, percentageToRemove, slippagePct);
             case 'raydium':
               return await raydiumRemoveLiquidity(network, walletAddress, poolAddress, percentageToRemove, slippagePct);
             case 'uniswap':

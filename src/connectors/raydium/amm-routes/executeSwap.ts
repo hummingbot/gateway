@@ -117,8 +117,8 @@ export async function executeSwap(
         inputAmount: new BN(0), // not used when fixedOut is true
         fixedOut: true,
         swapResult: {
-          sourceAmountSwapped: quote.amountIn,
-          destinationAmountSwapped: new BN(quote.amountOut),
+          inputAmount: quote.amountIn,
+          outputAmount: new BN(quote.amountOut),
         },
         slippage: effectiveSlippage / 100,
         baseIn: inputToken.address === quote.poolInfo.mintA.address,
@@ -135,8 +135,8 @@ export async function executeSwap(
         poolKeys: quote.poolKeys,
         inputAmount: quote.amountIn,
         swapResult: {
-          sourceAmountSwapped: quote.amountIn,
-          destinationAmountSwapped: quote.amountOut,
+          inputAmount: quote.amountIn,
+          outputAmount: quote.amountOut,
         },
         slippage: effectiveSlippage / 100,
         baseIn: inputToken.address === quote.poolInfo.mintA.address,

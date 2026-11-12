@@ -78,6 +78,17 @@ export const OPERATION_IDS: Record<string, string> = {
   'POST /trading/clmm/collect-fees': 'collectClmmFees',
   'POST /trading/clmm/close': 'closeClmmPosition',
 
+  // Launchpads
+  'POST /trading/launch/create-token': 'createToken',
+  'GET /trading/launch/pool-info': 'getLaunchPoolInfo',
+  'GET /trading/launch/quote-swap': 'quoteLaunchSwap',
+  'POST /trading/launch/execute-quote': 'executeLaunchQuote',
+  'POST /trading/launch/execute-swap': 'executeLaunchSwap',
+  'GET /trading/launch/creator-fees': 'getCreatorFees',
+  'POST /trading/launch/claim-creator-fees': 'claimCreatorFees',
+  'POST /trading/launch/migrate': 'migrateLaunchCurve',
+  'GET /trading/launch/launch-history': 'getLaunchHistory',
+
   // Constant product
   'GET /trading/amm/quote-swap': 'quoteAmmSwap',
   'POST /trading/amm/execute-swap': 'executeAmmSwap',

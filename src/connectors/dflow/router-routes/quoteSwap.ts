@@ -85,8 +85,7 @@ export async function quoteSwap(
   // Generate quote ID and cache a self-contained quote object (quoteCache returns only
   // the cached value at execute time, so everything needed must live in it)
   const quoteId = uuidv4();
-  quoteCache.set(quoteId, {
-    connector: 'dflow',
+  quoteCache.set(quoteId, 'dflow', {
     network,
     inputToken,
     outputToken,

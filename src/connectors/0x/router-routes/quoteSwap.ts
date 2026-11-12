@@ -120,7 +120,7 @@ async function quoteSwap(
     expirationTime = now + 30000; // 30 seconds TTL
 
     // Store the quote in global cache for later execution
-    quoteCache.set(quoteId, apiResponse, {
+    quoteCache.set(quoteId, '0x', apiResponse, {
       network,
       baseToken,
       quoteToken,

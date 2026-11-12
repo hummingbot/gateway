@@ -98,8 +98,7 @@ export async function quoteSwap(
   // transaction is wallet-bound, so execute-quote re-fetches the route with the
   // executing wallet using these cached parameters.
   const quoteId = uuidv4();
-  quoteCache.set(quoteId, {
-    connector: 'okx',
+  quoteCache.set(quoteId, 'okx', {
     network,
     inputToken,
     outputToken,

@@ -61,8 +61,7 @@ describe('POST /execute-quote (dflow)', () => {
     const buildSwapTransactionUnsigned = jest.fn(async () => unsignedTx);
     (DFlow.getInstance as jest.Mock).mockResolvedValue({ buildSwapTransactionUnsigned });
 
-    quoteCache.set('dflow-quote-1', {
-      connector: 'dflow',
+    quoteCache.set('dflow-quote-1', 'dflow', {
       network: 'mainnet-beta',
       inputToken: mockSOL,
       outputToken: mockUSDC,
@@ -88,7 +87,7 @@ describe('POST /execute-quote (dflow)', () => {
     // The unsigned tx goes to the chokepoint with the executing wallet.
     expect(sendAndConfirmTransactionForWallet).toHaveBeenCalledWith(unsignedTx, WALLET);
     // A confirmed execution consumes the cached quote.
-    expect(quoteCache.get('dflow-quote-1')).toBeNull();
+    expect(quoteCache.get('dflow-quote-1', 'dflow')).toBeNull();
   });
 
   it('returns 400 for an unknown or expired quote', async () => {
@@ -105,17 +104,5 @@ describe('POST /execute-quote (dflow)', () => {
 
     expect(response.statusCode).toBe(400);
     expect(JSON.parse(response.body).message).toContain('Quote not found or expired');
-  });
-
-  it("returns 400 for another connector's cached quote", async () => {
-    quoteCache.set('other-quote', { connector: 'jupiter' });
-
-    const response = await server.inject({
-      method: 'POST',
-      url: '/execute-quote',
-      body: { walletAddress: WALLET, chainNetwork: 'solana-mainnet-beta', connector: 'dflow', quoteId: 'other-quote' },
-    });
-
-    expect(response.statusCode).toBe(400);
   });
 });

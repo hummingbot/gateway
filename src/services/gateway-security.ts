@@ -79,7 +79,7 @@ const SENSITIVE_PREFIXES = [/^\/wallet(\/|$)/, /^\/config\/update(\/|$)/, /^\/re
 // including the AMM add/remove/create-pool routes, which the previous /trading
 // pattern omitted only because /connectors was still gating them.
 const SENSITIVE_TRADING =
-  /^\/trading\/(router\/(execute-swap|execute-quote)|(clmm|amm)\/(execute-swap|open|close|add|remove|collect-fees|create-pool))(\/|$)/i;
+  /^\/trading\/(router\/(execute-swap|execute-quote)|(clmm|amm)\/(execute-swap|open|close|add|remove|collect-fees|create-pool)|launch\/(create-token|execute-swap|execute-quote|claim-creator-fees|migrate))(\/|$)/i;
 
 // Chain-level routes that sign with the hot wallet. `approve` is the sharpest of them —
 // an unauthenticated caller reaching it can have the wallet approve an unlimited

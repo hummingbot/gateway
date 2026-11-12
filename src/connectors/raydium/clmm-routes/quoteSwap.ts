@@ -54,6 +54,12 @@ export async function getSwapQuote(
     connection: solana.connection,
     poolKeys: [clmmPoolInfo],
   });
+  // The pool's dynamic fee decays with chain time, so the quote is priced at
+  // the cluster's clock rather than this machine's.
+  const blockTimestamp = await solana.connection.getBlockTime(await solana.connection.getSlot());
+  if (blockTimestamp === null) {
+    throw httpErrors.serviceUnavailable('The RPC returned no block time to price the CLMM dynamic fee with');
+  }
   // The SDK expects slippage as a fractional number (e.g. 0.02 for 2%).
   // Do NOT wrap in BN — new BN(0.02) truncates to 0, disabling slippage.
   const effectiveSlippageNumber = slippagePct / 100;
@@ -63,7 +69,9 @@ export async function getSwapQuote(
     side === 'BUY'
       ? await PoolUtils.computeAmountIn({
           poolInfo: clmmPoolInfo,
+          tickarrayBitmapExtension: clmmPoolInfo.exBitmapInfo,
           tickArrayCache: tickCache[poolAddress],
+          blockTimestamp,
           amountOut: amount_bn,
           epochInfo: await raydium.raydiumSDK.fetchEpochInfo(),
           // baseMint denominates amountOut and the returned amountIn is in the
@@ -75,7 +83,9 @@ export async function getSwapQuote(
         })
       : await PoolUtils.computeAmountOutFormat({
           poolInfo: clmmPoolInfo,
+          tickarrayBitmapExtension: clmmPoolInfo.exBitmapInfo,
           tickArrayCache: tickCache[poolAddress],
+          blockTimestamp,
           amountIn: amount_bn,
           tokenOut: poolInfo['mintB'],
           slippage: effectiveSlippageNumber,

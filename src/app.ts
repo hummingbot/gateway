@@ -22,6 +22,7 @@ import * as ammSchemas from './schemas/amm-schema';
 import * as chainSchemas from './schemas/chain-schema';
 import * as clmmSchemas from './schemas/clmm-schema';
 import * as errorSchemas from './schemas/error-schema';
+import * as launchSchemas from './schemas/launch-schema';
 import * as routerSchemas from './schemas/router-schema';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { httpErrors } from './services/error-handler';
@@ -45,8 +46,14 @@ import * as clmmReadRouteSchemas from './trading/clmm';
 import * as poolSwapRoutes from './trading/pool-swap-routes';
 import * as ammRouteSchemas from './trading/trading-amm-routes';
 import * as clmmRouteSchemas from './trading/trading-clmm-routes';
+import * as launchRouteSchemas from './trading/trading-launch-routes';
 import * as routerRouteSchemas from './trading/trading-router-routes';
-import { tradingRouterRoutes, tradingClmmRoutes, tradingAmmRoutes } from './trading/trading.routes';
+import {
+  tradingRouterRoutes,
+  tradingClmmRoutes,
+  tradingAmmRoutes,
+  tradingLaunchRoutes,
+} from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
 import * as walletSchemas from './wallet/schemas';
 import { walletRoutes } from './wallet/wallet.routes';
@@ -104,10 +111,12 @@ const identifiedSchemas = (): Array<Record<string, any>> => {
     chainSchemas,
     clmmSchemas,
     routerSchemas,
+    launchSchemas,
     ammRouteSchemas,
     clmmRouteSchemas,
     clmmReadRouteSchemas,
     routerRouteSchemas,
+    launchRouteSchemas,
     poolSwapRoutes,
     ethereumSchemas,
     walletSchemas,
@@ -214,6 +223,10 @@ const swaggerOptions = {
       { name: '/trading/router', description: 'Swaps routed across pools by a router connector' },
       { name: '/trading/clmm', description: 'Concentrated-liquidity pools: swaps, positions, and pool management' },
       { name: '/trading/amm', description: 'Constant-product pools: swaps, liquidity, and pool management' },
+      {
+        name: '/trading/launch',
+        description: 'Launchpads (pump.fun, Meteora DBC, Raydium LaunchLab): token creation and bonding-curve trades',
+      },
       { name: '/', description: 'Server lifecycle' },
     ],
     components: {
@@ -425,6 +438,7 @@ const configureGatewayServer = () => {
     app.register(tradingRouterRoutes, { prefix: '/trading/router' });
     app.register(tradingClmmRoutes, { prefix: '/trading/clmm' });
     app.register(tradingAmmRoutes, { prefix: '/trading/amm' });
+    app.register(tradingLaunchRoutes, { prefix: '/trading/launch' });
 
     // Chain routes, parameterized by chain (/chains/:chain/...).
     app.register(chainRoutes, { prefix: '/chains' });

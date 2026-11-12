@@ -1,4 +1,9 @@
-import { ApiV3PoolInfoStandardItem, ApiV3PoolInfoStandardItemCpmm, CurveCalculator } from '@raydium-io/raydium-sdk-v2';
+import {
+  ApiV3PoolInfoStandardItem,
+  ApiV3PoolInfoStandardItemCpmm,
+  CpmmParsedRpcData,
+  CurveCalculator,
+} from '@raydium-io/raydium-sdk-v2';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
@@ -107,6 +112,26 @@ async function quoteAmmSwap(
   throw httpErrors.badRequest('Either amountIn or amountOut must be provided');
 }
 
+/**
+ * The fee terms a CPMM swap is priced with, as the program applies them: the
+ * creator fee counts only when the pool enables it, and it is charged on the
+ * input when the pool takes it in both tokens or in the token being sold
+ * (`creator_fee_on` 0 = both, 1 = token 0 only, 2 = token 1 only).
+ */
+function cpmmSwapFees(rpcData: CpmmParsedRpcData, baseIn: boolean) {
+  const config = rpcData.configInfo;
+  if (!config)
+    throw httpErrors.internalServerError(`CPMM config ${rpcData.configId.toBase58()} was not loaded with the pool`);
+  const feeOn = rpcData.feeOn;
+  return {
+    tradeFeeRate: config.tradeFeeRate,
+    creatorFeeRate: rpcData.enableCreatorFee ? config.creatorFeeRate : new BN(0),
+    protocolFeeRate: config.protocolFeeRate,
+    fundFeeRate: config.fundFeeRate,
+    isCreatorFeeOnInput: feeOn === 0 || (feeOn === 1 && baseIn) || (feeOn === 2 && !baseIn),
+  };
+}
+
 async function quoteCpmmSwap(
   raydium: Raydium,
   network: string,
@@ -142,24 +167,28 @@ async function quoteCpmmSwap(
     // Exact input (swap base in)
     const inputAmount = new BN(amountIn);
 
-    // swap pool mintA for mintB
-    const swapResult = CurveCalculator.swap(
+    const fees = cpmmSwapFees(rpcData, baseIn);
+    const swapResult = CurveCalculator.swapBaseInput(
       inputAmount,
       baseIn ? rpcData.baseReserve : rpcData.quoteReserve,
       baseIn ? rpcData.quoteReserve : rpcData.baseReserve,
-      rpcData.configInfo!.tradeFeeRate,
+      fees.tradeFeeRate,
+      fees.creatorFeeRate,
+      fees.protocolFeeRate,
+      fees.fundFeeRate,
+      fees.isCreatorFeeOnInput,
     );
 
     // Apply slippage to output amount
     const effectiveSlippage = slippagePct / 100;
-    const minAmountOut = swapResult.destinationAmountSwapped
+    const minAmountOut = swapResult.outputAmount
       .mul(new BN(Math.floor((1 - effectiveSlippage) * 10000)))
       .div(new BN(10000));
 
     return {
       poolInfo,
       amountIn: inputAmount,
-      amountOut: swapResult.destinationAmountSwapped,
+      amountOut: swapResult.outputAmount,
       minAmountOut,
       maxAmountIn: inputAmount,
       fee: swapResult.tradeFee,
@@ -172,34 +201,33 @@ async function quoteCpmmSwap(
     const outputAmount = new BN(amountOut);
     const outputMintPk = new PublicKey(outputMint);
 
-    // Log inputs to swapBaseOut
-    logger.info(`CurveCalculator.swapBaseOut inputs: 
-      poolMintA=${poolInfo.mintA.address}, 
-      poolMintB=${poolInfo.mintB.address}, 
-      tradeFeeRate=${rpcData.configInfo!.tradeFeeRate.toString()}, 
-      baseReserve=${rpcData.baseReserve.toString()}, 
-      quoteReserve=${rpcData.quoteReserve.toString()}, 
-      outputMint=${outputMintPk.toString()}, 
-      outputAmount=${outputAmount.toString()}`);
-
-    // swap pool mintA for mintB
-    const swapResult = CurveCalculator.swapBaseOut({
-      poolMintA: poolInfo.mintA,
-      poolMintB: poolInfo.mintB,
-      tradeFeeRate: rpcData.configInfo!.tradeFeeRate,
-      baseReserve: rpcData.baseReserve,
-      quoteReserve: rpcData.quoteReserve,
-      outputMint: outputMintPk,
+    const outputReserve = baseIn ? rpcData.quoteReserve : rpcData.baseReserve;
+    if (outputAmount.gte(outputReserve)) {
+      throw httpErrors.badRequest(
+        `Output amount ${outputAmount.toString()} exceeds the pool's ${outputMintPk.toBase58()} reserve of ${outputReserve.toString()}`,
+      );
+    }
+    const fees = cpmmSwapFees(rpcData, baseIn);
+    const swapResult = CurveCalculator.swapBaseOutput(
       outputAmount,
-    });
+      baseIn ? rpcData.baseReserve : rpcData.quoteReserve,
+      outputReserve,
+      fees.tradeFeeRate,
+      fees.creatorFeeRate,
+      fees.protocolFeeRate,
+      fees.fundFeeRate,
+      fees.isCreatorFeeOnInput,
+    );
 
     // Apply slippage to input amount
     const effectiveSlippage = slippagePct / 100;
-    const maxAmountIn = swapResult.amountIn.mul(new BN(Math.floor((1 + effectiveSlippage) * 10000))).div(new BN(10000));
+    const maxAmountIn = swapResult.inputAmount
+      .mul(new BN(Math.floor((1 + effectiveSlippage) * 10000)))
+      .div(new BN(10000));
 
     return {
       poolInfo,
-      amountIn: swapResult.amountIn,
+      amountIn: swapResult.inputAmount,
       amountOut: outputAmount,
       minAmountOut: outputAmount,
       maxAmountIn,

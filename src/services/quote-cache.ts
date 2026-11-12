@@ -1,13 +1,17 @@
 import { logger } from './logger';
 
 interface CachedQuote {
+  connector: string;
   quote: any;
   request: any;
 }
 
 /**
- * Global quote cache for router quotes across all connectors
- * Uses quote_id as the key for simple lookup
+ * Global quote cache for router and launch quotes across all connectors.
+ *
+ * Every quote is stored under the connector that priced it and is only handed back to
+ * that connector: a quoteId from one connector must never execute through another's
+ * route, whose cached shape and signing path it does not match.
  */
 class QuoteCache {
   private static instance: QuoteCache;
@@ -17,9 +21,6 @@ class QuoteCache {
     this.cache = new Map();
   }
 
-  /**
-   * Get singleton instance of QuoteCache
-   */
   public static getInstance(): QuoteCache {
     if (!QuoteCache.instance) {
       QuoteCache.instance = new QuoteCache();
@@ -28,76 +29,46 @@ class QuoteCache {
   }
 
   /**
-   * Get a quote from cache by quote ID
-   * @param quoteId The unique quote identifier
-   * @returns The cached quote data or null if not found
+   * The quote `connector` cached under `quoteId`, or null when there is none — including
+   * when the quoteId belongs to a different connector.
    */
-  public get(quoteId: string): any | null {
+  public get(quoteId: string, connector: string): any | null {
     const cached = this.cache.get(quoteId);
-    if (!cached) {
+    if (!cached || cached.connector !== connector) {
       return null;
     }
-
     return cached.quote;
   }
 
-  /**
-   * Get the original request data stored alongside a quote
-   * @param quoteId The unique quote identifier
-   * @returns The cached request data or null if not found
-   */
-  public getRequest(quoteId: string): any | null {
+  /** The request stored alongside `connector`'s quote, or null when there is none. */
+  public getRequest(quoteId: string, connector: string): any | null {
     const cached = this.cache.get(quoteId);
-    if (!cached) {
+    if (!cached || cached.connector !== connector) {
       return null;
     }
-
     return cached.request;
   }
 
-  /**
-   * Store a quote in cache
-   * @param quoteId The unique quote identifier
-   * @param quote The quote data to cache
-   * @param request The original request data (optional)
-   */
-  public set(quoteId: string, quote: any, request?: any): void {
-    this.cache.set(quoteId, {
-      quote,
-      request: request || {},
-    });
-    logger.debug(`Quote cache: Stored quote ${quoteId}`);
+  public set(quoteId: string, connector: string, quote: any, request: any = {}): void {
+    this.cache.set(quoteId, { connector, quote, request });
+    logger.debug(`Quote cache: Stored ${connector} quote ${quoteId}`);
   }
 
-  /**
-   * Delete a specific quote from cache
-   * @param quoteId The unique quote identifier
-   */
   public delete(quoteId: string): void {
     if (this.cache.delete(quoteId)) {
-      logger.debug(`Quote cache: Manually deleted quote ${quoteId}`);
+      logger.debug(`Quote cache: Deleted quote ${quoteId}`);
     }
   }
 
-  /**
-   * Clear all quotes from cache
-   */
   public clear(): void {
-    const size = this.cache.size;
     this.cache.clear();
-    logger.debug(`Quote cache: Cleared all ${size} quotes`);
   }
 
-  /**
-   * Get the current size of the cache
-   */
   public size(): number {
     return this.cache.size;
   }
 }
 
-// Export singleton instance
 export const quoteCache = QuoteCache.getInstance();
 
-// Export the QuoteCache class for type definitions if needed
 export { QuoteCache };

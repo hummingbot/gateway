@@ -63,7 +63,8 @@ const percent = (significant: string) => ({ toSignificant: () => significant });
 
 const setupMocks = () => {
   const mockSolanaInstance = {
-    connection: {},
+    // The quote prices the pool's dynamic fee at the cluster's clock.
+    connection: { getSlot: jest.fn().mockResolvedValue(1), getBlockTime: jest.fn().mockResolvedValue(1_790_000_000) },
     getToken: jest.fn((t: string) => {
       if (t === 'SOL' || t === mockSOL.address) return Promise.resolve(mockSOL);
       if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
@@ -141,7 +142,9 @@ describe('GET /quote-swap (Raydium CLMM)', () => {
     expect(body).toHaveProperty('slippagePct', 1);
 
     // Slippage must reach the SDK as a fraction (1% -> 0.01), not truncated to 0.
-    expect(PoolUtils.computeAmountOutFormat).toHaveBeenCalledWith(expect.objectContaining({ slippage: 0.01 }));
+    expect(PoolUtils.computeAmountOutFormat).toHaveBeenCalledWith(
+      expect.objectContaining({ slippage: 0.01, blockTimestamp: 1_790_000_000 }),
+    );
   });
 
   it('returns a BUY quote where maxAmountIn exceeds amountIn by the slippage', async () => {

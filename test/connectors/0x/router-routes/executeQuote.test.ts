@@ -119,7 +119,7 @@ describe('POST /execute-quote', () => {
 
   it('should execute a previously fetched quote', async () => {
     const quoteId = 'test-quote-id';
-    quoteCache.set(quoteId, mockQuoteData);
+    quoteCache.set(quoteId, '0x', mockQuoteData);
 
     mockWallet.sendTransaction.mockResolvedValue(mockTransaction);
     mockTransaction.wait.mockResolvedValue(mockReceipt);
@@ -235,7 +235,7 @@ describe('POST /execute-quote', () => {
 
   it('should throw error if allowance is insufficient', async () => {
     const quoteId = 'test-quote-id';
-    quoteCache.set(quoteId, mockQuoteData);
+    quoteCache.set(quoteId, '0x', mockQuoteData);
 
     mockWallet.sendTransaction.mockResolvedValue(mockTransaction);
     mockTransaction.wait.mockResolvedValue(mockReceipt);

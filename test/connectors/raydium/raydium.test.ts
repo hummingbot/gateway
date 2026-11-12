@@ -14,7 +14,6 @@ jest.mock('@raydium-io/raydium-sdk-v2', () => {
     AMM_STABLE: new PublicKey('5quBtoiQqxF9Jv6KYKctB59NT3gtJD2Y65kdnB1Uev3h'),
     CLMM_PROGRAM_ID: new PublicKey('CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'),
     CREATE_CPMM_POOL_PROGRAM: new PublicKey('CPMDWBwJDtYax9qW7AyRuVC19Cc4L4Vcy4n2BHAbHkCW'),
-    DEV_CREATE_CPMM_POOL_PROGRAM: new PublicKey('CPMDWBwJDtYax9qW7AyRuVC19Cc4L4Vcy4n2BHAbHkCW'),
     DEVNET_PROGRAM_ID: {
       AMM_V4: new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'),
       AMM_STABLE: new PublicKey('5quBtoiQqxF9Jv6KYKctB59NT3gtJD2Y65kdnB1Uev3h'),
@@ -23,13 +22,10 @@ jest.mock('@raydium-io/raydium-sdk-v2', () => {
       // catch the network being ignored.
       CLMM_PROGRAM_ID: new PublicKey('devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH'),
     },
-    PositionInfoLayout: {
+    PersonalPositionLayout: {
       decode: jest.fn(),
     },
-    TickUtils: {
-      getTickPrice: jest.fn(),
-    },
-    PositionUtils: {
+    PoolUtils: {
       getAmountsFromLiquidity: jest.fn(),
     },
     getPdaPersonalPositionAddress: jest.fn(),
@@ -306,7 +302,7 @@ describe('Raydium', () => {
           currentPrice: '150.5',
           vaultA: 'vault-a',
           vaultB: 'vault-b',
-          ammConfig: 'config-address',
+          configId: 'config-address',
         };
 
         mockRaydiumSDK.clmm.getRpcClmmPoolInfo.mockResolvedValue(mockRpcData);

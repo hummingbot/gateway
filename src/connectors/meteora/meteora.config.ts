@@ -11,7 +11,10 @@ export namespace MeteoraConfig {
   // Supported trading types
   // - clmm: DLMM (dynamic liquidity market maker)
   // - amm:  DAMM v2 (constant-product cp-amm)
-  export const tradingTypes = ['clmm', 'amm'] as const;
+  // amm/clmm are DLMM and DAMM v2 pools; launch is the Dynamic Bonding Curve —
+  // a pool per newly launched token, which migrates to DAMM v2 and is then traded
+  // through this same connector's amm surface.
+  export const tradingTypes = ['clmm', 'amm', 'launch'] as const;
 
   export interface RootConfig {
     // Global configuration

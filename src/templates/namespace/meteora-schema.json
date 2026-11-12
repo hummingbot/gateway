@@ -9,8 +9,24 @@
     "strategyType": {
       "type": "number",
       "description": "Default DLMM strategy type for positions"
+    },
+    "launch": {
+      "type": "object",
+      "description": "Dynamic Bonding Curve (trading type `launch`): a virtual pool per launched token",
+      "properties": {
+        "slippagePct": {
+          "type": "number",
+          "description": "Default slippage percentage for swaps on the curve"
+        },
+        "configAddress": {
+          "type": "string",
+          "description": "DBC partner config address that create-token launches pools from; empty refuses launches"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["slippagePct", "configAddress"]
     }
   },
   "additionalProperties": false,
-  "required": ["slippagePct", "strategyType"]
+  "required": ["slippagePct", "strategyType", "launch"]
 }

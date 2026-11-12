@@ -135,7 +135,7 @@ export async function quoteSwap(
   // Generate quote ID and cache the entire quote response
   const quoteId = uuidv4();
 
-  quoteCache.set(quoteId, bestRoute, {
+  quoteCache.set(quoteId, 'jupiter', bestRoute, {
     network,
     baseToken,
     quoteToken,
