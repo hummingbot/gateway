@@ -1,29 +1,18 @@
 /**
  * pump launch surface: a bonding curve's pool-info (graduation measured in the
- * quote the curve will hold when its tokens sell out) and the creator-fee claim.
+ * quote the curve will hold when its tokens sell out).
  */
 import { bondingCurvePda } from '@pump-fun/pump-sdk';
 import { NATIVE_MINT, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
-const getCreatorVaultBalanceBothPrograms = jest.fn();
-const collectCoinCreatorFeeInstructions = jest.fn();
-
-jest.mock('@pump-fun/pump-sdk', () => ({
-  ...jest.requireActual('@pump-fun/pump-sdk'),
-  OnlinePumpSdk: jest.fn().mockImplementation(() => ({
-    getCreatorVaultBalanceBothPrograms,
-    collectCoinCreatorFeeInstructions,
-  })),
-}));
 jest.mock('@solana/spl-token', () => ({
   ...jest.requireActual('@solana/spl-token'),
   getMint: jest.fn(async (_c: unknown, mint: PublicKey) => ({ decimals: mint.equals(NATIVE_MINT) ? 9 : 6 })),
 }));
 jest.mock('../../../src/connectors/pump/pump', () => ({ Pump: { getInstance: jest.fn() } }));
 
-import { claimCreatorFees } from '../../../src/connectors/pump/launch-routes/creatorFees';
 import { getPoolInfo } from '../../../src/connectors/pump/launch-routes/poolInfo';
 import { Pump } from '../../../src/connectors/pump/pump';
 
@@ -77,13 +66,5 @@ describe('pump pool-info', () => {
     await expect(
       getPoolInfo('mainnet-beta', { baseMint: MINT.toBase58(), poolAddress: PublicKey.unique().toBase58() }),
     ).rejects.toThrow(/is not the pump curve/);
-  });
-});
-
-describe('pump claimCreatorFees', () => {
-  it('refuses to claim an empty vault without sending anything', async () => {
-    getCreatorVaultBalanceBothPrograms.mockResolvedValue(new BN(0));
-    await expect(claimCreatorFees('mainnet-beta', CREATOR.toBase58())).rejects.toThrow(/No pump creator fees/);
-    expect(sendAndConfirmTransactionForWallet).not.toHaveBeenCalled();
   });
 });

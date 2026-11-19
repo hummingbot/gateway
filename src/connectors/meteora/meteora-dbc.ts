@@ -101,7 +101,7 @@ export class MeteoraDbc {
     if (!this.config.configAddress) {
       throw httpErrors.badRequest(
         'No DBC config to launch from: pass configAddress, or set meteora.launch.configAddress in ' +
-          'conf/connectors/meteora.yml.',
+          'conf/connectors/meteora.yml. See docs/connectors/meteora-dbc.md for how to get one.',
       );
     }
     try {

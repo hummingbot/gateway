@@ -137,13 +137,20 @@ export async function getLaunchHistory(
 
   const signatures: ConfirmedSignatureInfo[] = [];
   let before: string | undefined;
+  let exhausted = false;
   for (;;) {
     const page = await connection.getSignaturesForAddress(mint, { before, limit: PAGE });
     signatures.push(...page);
-    if (page.length < PAGE || signatures.length >= maxTransactions) break;
-    before = page[page.length - 1].signature;
+    before = page[page.length - 1]?.signature;
+    exhausted = page.length < PAGE;
+    if (exhausted || signatures.length >= maxTransactions) break;
   }
-  const complete = signatures.length <= maxTransactions;
+  // A listing that stopped at the cap on a full page says nothing about what lies past
+  // it, so one more signature is asked for before the history is called complete.
+  if (!exhausted && signatures.length === maxTransactions) {
+    exhausted = (await connection.getSignaturesForAddress(mint, { before, limit: 1 })).length === 0;
+  }
+  const complete = exhausted && signatures.length <= maxTransactions;
   const wanted = signatures
     .slice(0, maxTransactions)
     .filter((s) => !s.err)

@@ -214,7 +214,7 @@ export async function executeQuote(
     cached.tokenIn.address,
     cached.tokenOut.address,
     walletAddress,
-    undefined,
+    cached.side,
     cached.slippagePct,
   );
   if (result.status === 1) quoteCache.delete(quoteId);
