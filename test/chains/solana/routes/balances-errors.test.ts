@@ -25,7 +25,7 @@ describe('POST /chains/solana/balances errors', () => {
 
   afterEach(() => jest.restoreAllMocks());
 
-  // The real getBalances, on an instance with no connection: the address is refused
+  // The real balance read, on an instance with no connection: the address is refused
   // before anything is read.
   const realSolana = () => {
     const instance = Object.create(Solana.prototype);
@@ -48,9 +48,9 @@ describe('POST /chains/solana/balances errors', () => {
     expect(JSON.parse(response.body).message).toBe(`Invalid Solana address: ${MALFORMED}`);
   });
 
-  it('keeps any 4xx from getBalances a 4xx', async () => {
+  it('keeps any 4xx from the balance read a 4xx', async () => {
     const notFound = Object.assign(new Error('gone'), { statusCode: 404, name: 'NotFoundError' });
-    jest.spyOn(Solana, 'getInstance').mockResolvedValue({ getBalances: jest.fn().mockRejectedValue(notFound) } as any);
+    jest.spyOn(Solana, 'getInstance').mockResolvedValue({ getTokenBalances: jest.fn().mockRejectedValue(notFound) } as any);
 
     const response = await post('11111111111111111111111111111111');
 

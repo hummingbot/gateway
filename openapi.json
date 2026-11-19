@@ -464,14 +464,60 @@
         "type": "object",
         "properties": {
           "balances": {
+            "description": "Balance by name. The name follows the request: a token asked for by its address is under that address exactly as sent, one asked for by symbol under the token list symbol. With no tokens named, each is under its symbol.",
             "type": "object",
             "additionalProperties": {
               "type": "number"
             }
+          },
+          "tokens": {
+            "description": "The same balances with the token each one is, whichever way it was asked for",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "description": "the name this balance has in `balances`",
+                  "type": "string"
+                },
+                "symbol": {
+                  "description": "token list symbol; null for a token outside the token list",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "address": {
+                  "description": "token address; null for the native currency",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "balance": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "key",
+                "symbol",
+                "address",
+                "balance"
+              ]
+            }
           }
         },
         "required": [
-          "balances"
+          "balances",
+          "tokens"
         ]
       },
       "PollRequest": {

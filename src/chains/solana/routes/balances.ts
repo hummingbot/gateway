@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 
 import { BalanceResponseType } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
+import { balanceResponse } from '../../wallet-balances';
 import { Solana } from '../solana';
 
 /**
@@ -16,8 +17,7 @@ export async function getSolanaBalances(
 ): Promise<BalanceResponseType> {
   try {
     const solana = await Solana.getInstance(network);
-    const balances = await solana.getBalances(address, tokens);
-    return { balances };
+    return balanceResponse(await solana.getTokenBalances(address, tokens));
   } catch (error) {
     logger.error(`Error getting balances: ${error.message}`);
 
