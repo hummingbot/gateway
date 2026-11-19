@@ -17,7 +17,11 @@ import {
   buildRewardAccountSetup,
 } from '../pancakeswap-sol.instructions';
 import { parsePositionData } from '../pancakeswap-sol.parser';
-import { buildTransactionWithInstructions, buildUnwrapSolInstructions } from '../pancakeswap-sol.transactions';
+import {
+  buildRecipientAccountSetup,
+  buildTransactionWithInstructions,
+  buildUnwrapSolInstructions,
+} from '../pancakeswap-sol.transactions';
 
 export async function closePosition(
   network: string,
@@ -75,8 +79,10 @@ export async function closePosition(
   // silently contained them. A zero-liquidity decrease collects the fees and touches
   // nothing else (it is exactly what the collect-fees route does), so the two land in
   // different top-level instructions and the transaction says which is which.
+  const poolMints = [baseToken.address, quoteToken.address];
   if (hasLiquidity) {
-    // The wallet's reward accounts, which both decreases pay into.
+    // The wallet's token and reward accounts, which both decreases pay into.
+    instructions.push(...(await buildRecipientAccountSetup(solana, walletPubkey, poolMints)));
     instructions.push(...(await buildRewardAccountSetup(solana, positionNftMint, walletPubkey)));
     const collectFeesIx = await buildDecreaseLiquidityV2Instruction(
       solana,
@@ -105,8 +111,9 @@ export async function closePosition(
 
   // 3. Unwrap what the withdrawal paid out in WSOL. Without this the SOL never reaches
   // the native balance, and the only thing that moves it is the rent — which is exactly
-  // how this route came to report the rent as the liquidity withdrawn.
-  instructions.push(...buildUnwrapSolInstructions(solana, walletPubkey, [baseToken.address, quoteToken.address]));
+  // how this route came to report the rent as the liquidity withdrawn. An empty position
+  // pays nothing out, and the wallet may have no wrapped-SOL account to close.
+  if (hasLiquidity) instructions.push(...buildUnwrapSolInstructions(solana, walletPubkey, poolMints));
 
   // Build complete transaction
   const transaction = await buildTransactionWithInstructions(

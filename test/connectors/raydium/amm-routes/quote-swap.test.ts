@@ -160,7 +160,9 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('amountOut', 14.85);
     expect(body).toHaveProperty('minAmountOut', 14.7);
     expect(body).toHaveProperty('price', 148.5);
-    expect(body).toHaveProperty('priceImpactPct', 1);
+    // 14.85 USDC out of a 150,000 USDC reserve. The SDK's own figure (the mock's 0.01)
+    // is not used: it is already a percent, and was multiplied by 100 again.
+    expect(body.priceImpactPct).toBeCloseTo(0.0099, 10);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
     expect(body).toHaveProperty('maxAmountIn', 0.1);
@@ -235,7 +237,9 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('tokenOut', mockSOL.address);
     expect(body).toHaveProperty('minAmountOut', 0.1);
     expect(body).toHaveProperty('price', 150);
-    expect(body).toHaveProperty('priceImpactPct', 1);
+    // 0.1 SOL out of a 1,000 SOL reserve. The SDK's exact-out figure mixes raw and
+    // decimal-adjusted amounts and reported 99,650% for a trade like this one (#737).
+    expect(body.priceImpactPct).toBeCloseTo(0.01, 10);
     expect(body).toHaveProperty('slippagePct', 1);
   });
 });

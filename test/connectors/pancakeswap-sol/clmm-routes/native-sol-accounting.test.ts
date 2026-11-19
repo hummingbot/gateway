@@ -1,4 +1,11 @@
-import { NATIVE_MINT } from '@solana/spl-token';
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  NATIVE_MINT,
+  TOKEN_2022_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddressSync,
+} from '@solana/spl-token';
+import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
@@ -7,7 +14,9 @@ import {
   PancakeswapSol,
 } from '../../../../src/connectors/pancakeswap-sol/pancakeswap-sol';
 import { buildDecreaseLiquidityV2Instruction } from '../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.instructions';
+import { parsePositionData } from '../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.parser';
 import {
+  buildRecipientAccountSetup,
   buildTransactionWithInstructions,
   buildRemoveLiquidityTransaction,
 } from '../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.transactions';
@@ -146,7 +155,7 @@ const parsedCloseTx = (feeBase: number, feeQuote: number, principalBase: number,
 });
 
 const solanaMock = (txData: any, parsedTx: any = { meta: {} }) => ({
-  connection: { getAccountInfo: jest.fn().mockResolvedValue({ data: Buffer.alloc(200) }) },
+  connection: { getAccountInfo: jest.fn().mockResolvedValue({ data: Buffer.alloc(200), owner: TOKEN_PROGRAM_ID }) },
   getToken: jest.fn((t: string) => Promise.resolve(t === SOL.address ? SOL : t === USDC.address ? USDC : null)),
   sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({ signature: 'close-sig', fee: 0 }),
   getConfirmedTransactionData: jest.fn().mockResolvedValue(txData),
@@ -232,6 +241,66 @@ describe('pancakeswap-sol close: the withdrawal reaches the native balance', () 
 
     // USDC neither wraps nor carries rent; it was the one number the close got right.
     expect(result.data?.quoteTokenAmountRemoved).toBeCloseTo(USDC_FROM_THE_POOL, 9);
+  });
+});
+
+// #740: every payout route closes the wrapped-SOL account to unwrap, so the next
+// withdrawal finds the wallet without one. decrease_liquidity_v2 pays into it and failed
+// with AccountNotInitialized; closing an already-empty position failed the other way, on
+// an unwrap of an account that was never there.
+describe('pancakeswap-sol: the accounts a withdrawal pays into', () => {
+  const wallet = new PublicKey(WALLET);
+  const isIdempotentCreate = (ix: any, mint: PublicKey, tokenProgram: PublicKey) =>
+    ix.programId?.equals(ASSOCIATED_TOKEN_PROGRAM_ID) &&
+    ix.data?.length === 1 &&
+    ix.data[0] === 1 &&
+    ix.keys[1].pubkey.equals(getAssociatedTokenAddressSync(mint, wallet, true, tokenProgram)) &&
+    ix.keys[5].pubkey.equals(tokenProgram);
+
+  it('creates the token account of each pool mint, under the program that owns the mint', async () => {
+    const token2022Mint = new PublicKey(USDC.address);
+    const solana: any = {
+      connection: {
+        getAccountInfo: jest.fn(async (mint: PublicKey) => ({
+          owner: mint.equals(token2022Mint) ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID,
+        })),
+      },
+    };
+
+    const ixs = await buildRecipientAccountSetup(solana, wallet, [SOL.address, USDC.address]);
+
+    expect(ixs).toHaveLength(2);
+    expect(isIdempotentCreate(ixs[0], NATIVE_MINT, TOKEN_PROGRAM_ID)).toBe(true);
+    expect(isIdempotentCreate(ixs[1], token2022Mint, TOKEN_2022_PROGRAM_ID)).toBe(true);
+  });
+
+  it('close creates them before the first decrease', async () => {
+    (Solana.getInstance as jest.Mock).mockResolvedValue(solanaMock(closeTxData));
+    const { closePosition } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/closePosition');
+
+    await closePosition('mainnet-beta', WALLET, POSITION);
+
+    const instructions = (buildTransactionWithInstructions as jest.Mock).mock.calls[0][2];
+    expect(isIdempotentCreate(instructions[0], NATIVE_MINT, TOKEN_PROGRAM_ID)).toBe(true);
+    expect(isIdempotentCreate(instructions[1], new PublicKey(USDC.address), TOKEN_PROGRAM_ID)).toBe(true);
+    expect(instructions.slice(2)).toEqual([
+      { ix: 'decrease' },
+      { ix: 'decrease' },
+      { ix: 'close' },
+      { ix: 'closeWsolAccount' },
+    ]);
+  });
+
+  it('close of an already-empty position neither creates nor unwraps', async () => {
+    const solana = solanaMock(closeTxData);
+    (Solana.getInstance as jest.Mock).mockResolvedValue(solana);
+    (parsePositionData as jest.Mock).mockReturnValueOnce({ liquidity: new BN(0) });
+    const { closePosition } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/closePosition');
+
+    await closePosition('mainnet-beta', WALLET, POSITION);
+
+    expect((buildTransactionWithInstructions as jest.Mock).mock.calls[0][2]).toEqual([{ ix: 'close' }]);
+    expect(solana.unwrapSOL).not.toHaveBeenCalled();
   });
 });
 

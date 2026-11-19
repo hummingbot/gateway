@@ -100,11 +100,14 @@ export const PoolAddRequestSchema = Type.Object({
 // Get pool request
 export const GetPoolRequestSchema = Type.Object({
   chainNetwork: chainNetworkField({ defaulted: false }),
-  type: Type.String({
-    description: 'Pool type',
-    examples: ['amm', 'clmm'],
-    enum: ['amm', 'clmm'],
-  }),
+  // required when the path names a trading pair, unused when it names a pool address
+  type: Type.Optional(
+    Type.String({
+      description: 'Pool type; required to look a pool up by trading pair',
+      examples: ['amm', 'clmm'],
+      enum: ['amm', 'clmm'],
+    }),
+  ),
   connector: Type.Optional(
     Type.String({
       description: 'Optional: filter by connector (raydium, meteora, uniswap, orca)',

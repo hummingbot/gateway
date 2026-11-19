@@ -3,6 +3,7 @@ import JSBI from 'jsbi';
 
 import { QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
+import { toRawAmount } from '../../../services/raw-amount';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Pancakeswap } from '../pancakeswap';
 import { getPancakeswapPoolInfo } from '../pancakeswap.utils';
@@ -82,8 +83,8 @@ export async function quotePosition(
 
   if (baseTokenAmount !== undefined && quoteTokenAmount !== undefined) {
     // Both amounts provided - use fromAmounts to calculate optimal position
-    const baseAmountRaw = JSBI.BigInt(Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals)).toString());
-    const quoteAmountRaw = JSBI.BigInt(Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals)).toString());
+    const baseAmountRaw = JSBI.BigInt(toRawAmount(baseTokenAmount, baseTokenObj.decimals));
+    const quoteAmountRaw = JSBI.BigInt(toRawAmount(quoteTokenAmount, quoteTokenObj.decimals));
 
     // Create position from both amounts
     if (isBaseToken0) {
@@ -116,7 +117,7 @@ export async function quotePosition(
     baseLimited = baseRatio <= quoteRatio;
   } else if (baseTokenAmount !== undefined) {
     // Only base amount provided
-    const baseAmountRaw = JSBI.BigInt(Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals)).toString());
+    const baseAmountRaw = JSBI.BigInt(toRawAmount(baseTokenAmount, baseTokenObj.decimals));
 
     if (isBaseToken0) {
       position = Position.fromAmount0({
@@ -137,7 +138,7 @@ export async function quotePosition(
     baseLimited = true;
   } else if (quoteTokenAmount !== undefined) {
     // Only quote amount provided
-    const quoteAmountRaw = JSBI.BigInt(Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals)).toString());
+    const quoteAmountRaw = JSBI.BigInt(toRawAmount(quoteTokenAmount, quoteTokenObj.decimals));
 
     if (isBaseToken0) {
       position = Position.fromAmount1({

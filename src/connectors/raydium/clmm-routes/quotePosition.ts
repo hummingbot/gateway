@@ -133,9 +133,7 @@ export async function quotePosition(
     let res;
     let baseLimited = false;
     if (resBase && resQuote) {
-      const baseLiquidity = Number(resBase.liquidity.toString());
-      const quoteLiquidity = Number(resQuote.liquidity.toString());
-      baseLimited = baseLiquidity < quoteLiquidity;
+      baseLimited = resBase.liquidity.lt(resQuote.liquidity);
       res = baseLimited ? resBase : resQuote;
     } else {
       // Otherwise use the one that was calculated
@@ -149,7 +147,7 @@ export async function quotePosition(
       quoteTokenAmount: Number(res.amountB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
       baseTokenAmountMax: maxAmount(res.amountA.amount, baseLimited) / 10 ** poolInfo.mintA.decimals,
       quoteTokenAmountMax: maxAmount(res.amountB.amount, !baseLimited) / 10 ** poolInfo.mintB.decimals,
-      liquidity: res.liquidity,
+      liquidity: res.liquidity.toString(10),
     };
   } catch (error) {
     logger.error(error);
