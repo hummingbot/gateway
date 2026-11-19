@@ -237,11 +237,4 @@ export class SolanaPriorityFees {
       return result;
     }
   }
-
-  /**
-   * Clear the cache (useful for testing)
-   */
-  public static clearCache(): void {
-    SolanaPriorityFees.cache.clear();
-  }
 }

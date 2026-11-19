@@ -367,3 +367,65 @@ export const RouterQuoteSwapResponseSchema = Type.Composite(
   { $id: 'RouterQuoteSwapResponse' },
 );
 export type RouterQuoteSwapResponseType = Static<typeof RouterQuoteSwapResponseSchema>;
+
+// ── a wallet's activity ──────────────────────────────────────────────────────
+
+export const TransactionsRequestSchema = Type.Object({
+  network: networkField(),
+  address: Type.String({ description: 'the wallet whose activity to read' }),
+  limit: Type.Optional(
+    Type.Integer({ minimum: 1, maximum: 100, default: 25, description: 'signatures to inspect, newest first' }),
+  ),
+  before: Type.Optional(
+    Type.String({ description: "a signature; the page ends before it (the previous page's cursor)" }),
+  ),
+  includeOther: Type.Optional(
+    Type.Boolean({
+      description: 'also return transactions that are neither a known venue call nor a balance change',
+      default: false,
+    }),
+  ),
+});
+export type TransactionsRequestType = Static<typeof TransactionsRequestSchema>;
+
+export const ActivityActionSchema = Type.Object({
+  kind: Type.String(),
+  protocol: Type.String({ description: 'connector-style name: meteora/clmm, raydium/amm, jupiter/router …' }),
+  program: Type.String(),
+  instruction: Type.String(),
+});
+
+export const ActivityChangeSchema = Type.Object({
+  mint: Type.String({ description: "a mint, or 'SOL' for the chain's own money" }),
+  symbol: Type.Union([Type.String(), Type.Null()]),
+  decimals: Type.Number(),
+  amount: Type.String({ description: 'signed, whole units' }),
+});
+
+export const ActivityEntrySchema = Type.Object({
+  signature: Type.String(),
+  slot: Type.Number(),
+  blockTime: Type.Union([Type.Number(), Type.Null()]),
+  ok: Type.Boolean(),
+  kind: Type.String({
+    description:
+      'close_position | remove_liquidity | collect_fees | add_liquidity | open_position | swap | withdraw | ' +
+      'deposit | other — the most significant of what the transaction did',
+  }),
+  protocol: Type.Union([Type.String(), Type.Null()]),
+  actions: Type.Array(ActivityActionSchema, { description: 'every venue instruction recognised, outer and inner' }),
+  changes: Type.Array(ActivityChangeSchema, { description: "what the wallet's own balances did, fee excluded" }),
+  feeLamports: Type.Union([Type.Number(), Type.Null()]),
+});
+
+export const TransactionsResponseSchema = Type.Object(
+  {
+    network: Type.String(),
+    address: Type.String(),
+    transactions: Type.Array(ActivityEntrySchema),
+    scanned: Type.Number(),
+    cursor: Type.Union([Type.String(), Type.Null()]),
+  },
+  { $id: 'TransactionsResponse' },
+);
+export type TransactionsResponseType = Static<typeof TransactionsResponseSchema>;

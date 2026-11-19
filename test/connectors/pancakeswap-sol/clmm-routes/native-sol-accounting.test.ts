@@ -22,14 +22,16 @@ jest.mock('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol', () => ({
 jest.mock('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.instructions', () => ({
   ...jest.requireActual('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.instructions'),
   buildDecreaseLiquidityV2Instruction: jest.fn().mockResolvedValue({ ix: 'decrease' }),
+  // The pool pays no rewards here: nothing to create.
+  buildRewardAccountSetup: jest.fn().mockResolvedValue([]),
   buildClosePositionInstruction: jest.fn().mockResolvedValue({ ix: 'close' }),
 }));
 // buildUnwrapSolInstructions stays real — it is the fix under test. Only the transaction
 // assembly around it is stubbed, so the assertions below are about what really gets built.
 jest.mock('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.transactions', () => ({
   ...jest.requireActual('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.transactions'),
-  buildTransactionWithInstructions: jest.fn().mockResolvedValue({ sign: jest.fn() }),
-  buildRemoveLiquidityTransaction: jest.fn().mockResolvedValue({ sign: jest.fn() }),
+  buildTransactionWithInstructions: jest.fn().mockResolvedValue({}),
+  buildRemoveLiquidityTransaction: jest.fn().mockResolvedValue({}),
 }));
 jest.mock('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.parser', () => ({
   ...jest.requireActual('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.parser'),
@@ -146,11 +148,8 @@ const parsedCloseTx = (feeBase: number, feeQuote: number, principalBase: number,
 const solanaMock = (txData: any, parsedTx: any = { meta: {} }) => ({
   connection: { getAccountInfo: jest.fn().mockResolvedValue({ data: Buffer.alloc(200) }) },
   getToken: jest.fn((t: string) => Promise.resolve(t === SOL.address ? SOL : t === USDC.address ? USDC : null)),
-  getWallet: jest.fn().mockResolvedValue({ publicKey: WALLET }),
-  estimateGasPrice: jest.fn().mockResolvedValue(0.001),
-  simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
-  throwIfLandedWithError: jest.fn().mockResolvedValue(undefined),
-  sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({ confirmed: true, signature: 'close-sig', txData }),
+  sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({ signature: 'close-sig', fee: 0 }),
+  getConfirmedTransactionData: jest.fn().mockResolvedValue(txData),
   extractBalanceChangesAndFee: jest
     .fn()
     .mockResolvedValue({ balanceChanges: [nativeChange, USDC_FROM_THE_POOL], txDetails: parsedTx }),
@@ -160,8 +159,8 @@ const solanaMock = (txData: any, parsedTx: any = { meta: {} }) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  (buildTransactionWithInstructions as jest.Mock).mockResolvedValue({ sign: jest.fn() });
-  (buildRemoveLiquidityTransaction as jest.Mock).mockResolvedValue({ sign: jest.fn() });
+  (buildTransactionWithInstructions as jest.Mock).mockResolvedValue({});
+  (buildRemoveLiquidityTransaction as jest.Mock).mockResolvedValue({});
   (PancakeswapSol.getInstance as jest.Mock).mockResolvedValue({
     getPositionInfo: jest.fn().mockResolvedValue({
       baseTokenAddress: SOL.address,

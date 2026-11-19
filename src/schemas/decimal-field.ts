@@ -32,3 +32,13 @@ import { Type } from '@sinclair/typebox';
  */
 export const DecimalNumber = (options: Record<string, unknown> = {}) =>
   Type.Unsafe<number>(Type.String({ format: 'decimal', ...options }));
+
+/**
+ * A DecimalNumber that may be unknown: a decimal string or null on the wire.
+ *
+ * Not a union with Type.Null(), nor `type: ['string', 'null']`: the serializer picks
+ * those branches by the value's own type, and a number is neither, so every known value
+ * would fail to serialize. `nullable` keeps the number-to-string coercion.
+ */
+export const NullableDecimalNumber = (options: Record<string, unknown> = {}) =>
+  Type.Unsafe<number | null>(Type.String({ format: 'decimal', nullable: true, ...options }));

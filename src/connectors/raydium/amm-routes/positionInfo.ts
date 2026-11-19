@@ -1,68 +1,48 @@
 import { PublicKey } from '@solana/web3.js';
+import BN from 'bn.js';
+import Decimal from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
 import { PositionInfo } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { Raydium } from '../raydium';
+import { Raydium, RaydiumAmmPool } from '../raydium';
 
 /**
- * Calculate the LP token amount and corresponding token amounts
+ * The wallet's LP balance and its share of the pool's on-chain reserves
  */
 async function calculateLpAmount(
   solana: Solana,
   walletAddress: PublicKey,
-  _ammPoolInfo: any,
-  poolInfo: any,
-  poolAddress: string,
+  pool: RaydiumAmmPool,
 ): Promise<{
   lpTokenAmount: number;
   baseTokenAmount: number;
   quoteTokenAmount: number;
 }> {
-  let lpMint: string;
-
-  // Get LP mint from poolInfo instead of poolKeys
-  if (poolInfo.lpMint && poolInfo.lpMint.address) {
-    lpMint = poolInfo.lpMint.address;
-  } else {
-    throw new Error(`Could not find LP mint for pool ${poolAddress}`);
-  }
-
-  // Get user's LP token account
+  const { poolInfo, rpcData } = pool;
   const lpTokenAccounts = await solana.connection.getTokenAccountsByOwner(walletAddress, {
-    mint: new PublicKey(lpMint),
+    mint: new PublicKey(poolInfo.lpMint.address),
   });
 
   if (lpTokenAccounts.value.length === 0) {
-    // Return zero values if no LP token account exists
-    return {
-      lpTokenAmount: 0,
-      baseTokenAmount: 0,
-      quoteTokenAmount: 0,
-    };
+    return { lpTokenAmount: 0, baseTokenAmount: 0, quoteTokenAmount: 0 };
   }
 
-  // Get LP token balance
-  const lpTokenAccount = lpTokenAccounts.value[0].pubkey;
-  const accountInfo = await solana.connection.getTokenAccountBalance(lpTokenAccount);
-  const lpTokenAmount = accountInfo.value.uiAmount || 0;
-
-  if (lpTokenAmount === 0) {
-    return {
-      lpTokenAmount: 0,
-      baseTokenAmount: 0,
-      quoteTokenAmount: 0,
-    };
+  const accountInfo = await solana.connection.getTokenAccountBalance(lpTokenAccounts.value[0].pubkey);
+  const lpBalance = new BN(accountInfo.value.amount);
+  if (lpBalance.isZero()) {
+    return { lpTokenAmount: 0, baseTokenAmount: 0, quoteTokenAmount: 0 };
   }
 
-  // Calculate token amounts based on LP share
-  const baseTokenAmount = (lpTokenAmount * poolInfo.mintAmountA) / poolInfo.lpAmount;
-  const quoteTokenAmount = (lpTokenAmount * poolInfo.mintAmountB) / poolInfo.lpAmount;
+  // Raw LP supply: AMM v4 tracks it as lpReserve, CPMM as lpAmount.
+  const lpSupply = pool.poolType === 'amm' ? pool.rpcData.lpReserve : pool.rpcData.lpAmount;
+  const share = (reserve: BN, decimals: number) =>
+    new Decimal(lpBalance.mul(reserve).div(lpSupply).toString()).div(10 ** decimals).toNumber();
 
   return {
-    lpTokenAmount,
-    baseTokenAmount: baseTokenAmount || 0,
-    quoteTokenAmount: quoteTokenAmount || 0,
+    lpTokenAmount: accountInfo.value.uiAmount,
+    baseTokenAmount: share(rpcData.baseReserve, poolInfo.mintA.decimals),
+    quoteTokenAmount: share(rpcData.quoteReserve, poolInfo.mintB.decimals),
   };
 }
 
@@ -94,27 +74,16 @@ export async function getPositionInfo(
     throw httpErrors.badRequest('Invalid pool address');
   }
 
-  // Get pool info
-  const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
-  const [poolInfo] = await raydium.getPoolfromAPI(poolAddress);
-  if (!poolInfo) {
-    throw httpErrors.notFound('Pool not found');
-  }
+  const pool = await raydium.getAmmPoolFromRpc(poolAddress);
+  const { poolInfo } = pool;
 
-  // Calculate LP token amount and token amounts
-  const { lpTokenAmount, baseTokenAmount, quoteTokenAmount } = await calculateLpAmount(
-    solana,
-    walletPublicKey,
-    ammPoolInfo,
-    poolInfo,
-    poolAddress,
-  );
+  const { lpTokenAmount, baseTokenAmount, quoteTokenAmount } = await calculateLpAmount(solana, walletPublicKey, pool);
 
   return {
     poolAddress,
     walletAddress,
-    baseTokenAddress: ammPoolInfo.baseTokenAddress,
-    quoteTokenAddress: ammPoolInfo.quoteTokenAddress,
+    baseTokenAddress: poolInfo.mintA.address,
+    quoteTokenAddress: poolInfo.mintB.address,
     lpTokenAmount: lpTokenAmount,
     baseTokenAmount,
     quoteTokenAmount,

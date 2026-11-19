@@ -42,6 +42,11 @@ const buildPool = (width: number, chunkCount: number, positionCount = 1) => {
     toPricePerLamport: jest.fn((p: number) => String(p)),
     getBinIdFromPrice: jest.fn((p: number) => (p <= 1 ? minBinId : maxBinId)),
     initializePositionAndAddLiquidityByStrategy: jest.fn().mockResolvedValue({ instructions: [ix()], add: jest.fn() }),
+    getPosition: jest.fn(async (publicKey: PublicKey) => ({
+      publicKey,
+      positionData: { totalXAmount: '0', totalYAmount: '0' },
+    })),
+    closePositionIfEmpty: jest.fn().mockResolvedValue({ instructions: [ix()], add: jest.fn() }),
     initializeMultiplePositionAndAddLiquidityByStrategy: jest.fn(async (gen: (n: number) => Promise<Keypair[]>) => ({
       instructionsByPositions: (await gen(positionCount)).map((positionKeypair) => ({
         positionKeypair,
@@ -143,6 +148,50 @@ describe('meteora openPosition across a wide bin range', () => {
     await expect(openPosition('mainnet-beta', WALLET, 1, 2, POOL, 1, 2)).rejects.toThrow(
       /was opened, but only 1 of 2 liquidity chunks were funded/,
     );
+  });
+
+  it('closes the empty position when the first chunk fails', async () => {
+    const pool = buildPool(200, 2);
+    (Meteora.getInstance as jest.Mock).mockResolvedValue({ getDlmmPool: jest.fn().mockResolvedValue(pool) });
+    const send = primeSolana({ failChunk: 1 }); // create lands, chunk 1 fails, the close lands
+
+    await expect(openPosition('mainnet-beta', WALLET, 1, 2, POOL, 1, 2)).rejects.toThrow(
+      /first liquidity chunk failed: blockhash expired\. Nothing was deposited; the empty position \S+ was closed/,
+    );
+    const [created] = (pool.initializeMultiplePositionAndAddLiquidityByStrategy as jest.Mock).mock.results;
+    const { positionKeypair } = (await created.value).instructionsByPositions[0];
+    expect(pool.getPosition).toHaveBeenCalledWith(positionKeypair.publicKey);
+    expect(pool.closePositionIfEmpty).toHaveBeenCalledWith({
+      owner: new PublicKey(WALLET),
+      position: { publicKey: positionKeypair.publicKey, positionData: { totalXAmount: '0', totalYAmount: '0' } },
+    });
+    expect(send).toHaveBeenCalledTimes(3);
+  });
+
+  it('says so when the empty position cannot be closed either', async () => {
+    const pool = buildPool(200, 2);
+    (Meteora.getInstance as jest.Mock).mockResolvedValue({ getDlmmPool: jest.fn().mockResolvedValue(pool) });
+    pool.closePositionIfEmpty.mockRejectedValue(new Error('rpc down'));
+    primeSolana({ failChunk: 1 });
+
+    await expect(openPosition('mainnet-beta', WALLET, 1, 2, POOL, 1, 2)).rejects.toThrow(
+      /closing the empty position \S+ failed too: rpc down\. It held nothing when read/,
+    );
+  });
+
+  it('leaves the position open when the failed chunk landed after all', async () => {
+    const pool = buildPool(200, 2);
+    (Meteora.getInstance as jest.Mock).mockResolvedValue({ getDlmmPool: jest.fn().mockResolvedValue(pool) });
+    pool.getPosition.mockImplementation(async (publicKey: PublicKey) => ({
+      publicKey,
+      positionData: { totalXAmount: '1000', totalYAmount: '0' },
+    }));
+    primeSolana({ failChunk: 1 });
+
+    await expect(openPosition('mainnet-beta', WALLET, 1, 2, POOL, 1, 2)).rejects.toThrow(
+      /reported a failure \(blockhash expired\), but position \S+ holds 1000 X and 0 Y \(raw units\), so it was left open/,
+    );
+    expect(pool.closePositionIfEmpty).not.toHaveBeenCalled();
   });
 
   it('refuses a range that needs more positions than the response can describe', async () => {

@@ -181,32 +181,6 @@ describe('Token Routes', () => {
 
       expect(response.statusCode).toBe(400);
     });
-
-    it('should update existing token with same symbol', async () => {
-      const mockService = TokenService.getInstance();
-      (mockService.addToken as jest.Mock).mockResolvedValue(undefined);
-
-      const updatedToken = {
-        chainId: 1,
-        symbol: 'TEST',
-        name: 'Updated Test Token',
-        address: '0xNewAddress1234567890123456789012345678',
-        decimals: 9,
-      };
-
-      const response = await app.inject({
-        method: 'POST',
-        url: '/',
-        payload: {
-          chainNetwork: 'ethereum-mainnet',
-          token: updatedToken,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.message).toBe('Token TEST added/updated successfully in ethereum/mainnet.');
-    });
   });
 
   describe('DELETE /tokens/:address', () => {

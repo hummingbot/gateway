@@ -14,6 +14,7 @@ overrides:
   '@openzeppelin/contracts': ^4.9.6
   pbkdf2: ^3.1.3
   axios: ^1.8.4
+  '@uniswap/v4-sdk': 2.3.0
 
 importers:
 
@@ -182,7 +183,7 @@ importers:
         specifier: ^3.31.0
         version: 3.31.0(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
       '@uniswap/v4-sdk':
-        specifier: ^2.3.0
+        specifier: 2.3.0
         version: 2.3.0(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       ajv:
         specifier: ^8.17.1
@@ -1301,9 +1302,11 @@ packages:
 
   '@ledgerhq/hw-transport-node-hid-singleton@6.31.8':
     resolution: {integrity: sha512-Gx4mu7siqpbXscyIc22lycWpOGTG65KxVCvbG87xrFZYWaKE1YrbhNZ93hGa96qQPb9KOTN7sQPVsXmEAiahHQ==}
+    deprecated: This package is no longer maintained. Use @ledgerhq/device-transport-kit-node-hid instead.
 
   '@ledgerhq/hw-transport-node-hid@6.29.8':
     resolution: {integrity: sha512-lQrhdu7JyxDL1DzDfvj9HDjQd9OHkYs5yDI13NH92qBTxuVneNfuu9DiHFLpCCpm2OUghTMmw9MRUwaTwYDTLg==}
+    deprecated: This package is no longer maintained. Use @ledgerhq/device-transport-kit-node-hid instead.
 
   '@ledgerhq/hw-transport@6.31.7':
     resolution: {integrity: sha512-R+QMlqoLJDPeCiqwWv85PbZ3m0hel5PwQzWwSIbyEwialqjXnG7LFQgytkgXlgMcayT0chvvLeYjuY5ZfMPY7w==}
@@ -2842,10 +2845,6 @@ packages:
     resolution: {integrity: sha512-S4+m+wh8HbWSO3DKk4LwUCPZJTpCugIsHrWR86m/OrUyvSqGDTXKFfc2sMuGXCZrD1ZqO3rhQsKgdWg3Hbb2Kw==}
     engines: {node: '>=10'}
 
-  '@uniswap/v3-sdk@3.27.0':
-    resolution: {integrity: sha512-BRgb9nWuxptXJmuQrax9XyqcuOMEuWsUjDSyus0UvOavzijbOu8jh3DWptg/15D7oL67Xmz5zvQaSPbLIL1cpA==}
-    engines: {node: '>=10'}
-
   '@uniswap/v3-sdk@3.31.0':
     resolution: {integrity: sha512-7M9LXSO+XhB/Y+9SwONHaiJqYSTlHMqOSqeWGpSNAQOZZd5P7z/FXyWmvL1OogVsghW0mMAwvNc+YHQvrI7ksg==}
     engines: {node: '>=18'}
@@ -2854,10 +2853,6 @@ packages:
     resolution: {integrity: sha512-JV0Qc46Px5alvg6YWd+UIaGH9lDuYG/Js7ngxPit1SPaIP30AlVer1UYB7BRYeUVVxE+byUyIeN5jeQ7LLDjIw==}
     engines: {node: '>=10'}
     deprecated: Please upgrade to 1.0.1
-
-  '@uniswap/v4-sdk@1.27.0':
-    resolution: {integrity: sha512-htQFiON12RR4BipyVdzr4XklYjy756bqruBLA8b4n9Wn7QAWemYrDGbnCvmk1xvzvtc4t9WggDlbRjZ5ON34+g==}
-    engines: {node: '>=14'}
 
   '@uniswap/v4-sdk@2.3.0':
     resolution: {integrity: sha512-aMsDxVFjnwxjWeX8lXJy+4SRPgllfEU05SJ6CRsiPOeqBMd9RHxvb0RXF4q42wNG/iKoUVg9O2q6s5uoRDXPrQ==}
@@ -11616,7 +11611,7 @@ snapshots:
       '@uniswap/universal-router-sdk': 4.30.0(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@uniswap/v2-sdk': 4.21.0
       '@uniswap/v3-sdk': 3.31.0(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
-      '@uniswap/v4-sdk': 1.27.0(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/v4-sdk': 2.3.0(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       async-retry: 1.3.3
       await-timeout: 1.1.1
       axios: 1.12.0
@@ -11662,7 +11657,7 @@ snapshots:
       '@uniswap/v2-sdk': 4.21.0
       '@uniswap/v3-core': 1.0.0
       '@uniswap/v3-sdk': 3.31.0(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
-      '@uniswap/v4-sdk': 1.27.0(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/v4-sdk': 2.3.0(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       bignumber.js: 9.3.0
       ethers: 5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
@@ -11731,19 +11726,6 @@ snapshots:
       '@uniswap/v3-core': 1.0.1
       base64-sol: 1.0.1
 
-  '@uniswap/v3-sdk@3.27.0(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
-    dependencies:
-      '@ethersproject/abi': 5.8.0
-      '@ethersproject/solidity': 5.7.0
-      '@uniswap/sdk-core': 7.18.0
-      '@uniswap/swap-router-contracts': 1.3.1(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
-      '@uniswap/v3-periphery': 1.4.4
-      '@uniswap/v3-staker': 1.0.0
-      tiny-invariant: 1.3.3
-      tiny-warning: 1.0.3
-    transitivePeerDependencies:
-      - hardhat
-
   '@uniswap/v3-sdk@3.31.0(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
     dependencies:
       '@ethersproject/abi': 5.8.0
@@ -11766,16 +11748,6 @@ snapshots:
       '@openzeppelin/contracts': 4.9.6
       '@uniswap/v3-core': 1.0.0
       '@uniswap/v3-periphery': 1.4.4
-
-  '@uniswap/v4-sdk@1.27.0(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
-    dependencies:
-      '@ethersproject/solidity': 5.7.0
-      '@uniswap/sdk-core': 7.18.0
-      '@uniswap/v3-sdk': 3.27.0(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
-      tiny-invariant: 1.3.3
-      tiny-warning: 1.0.3
-    transitivePeerDependencies:
-      - hardhat
 
   '@uniswap/v4-sdk@2.3.0(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
     dependencies:

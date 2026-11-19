@@ -59,7 +59,6 @@ export async function openPosition(
     `Tokens: ${baseToken.symbol}/${quoteToken.symbol} (${baseToken.decimals}/${quoteToken.decimals} decimals)`,
   );
 
-  const wallet = await solana.getWallet(walletAddress);
   const walletPubkey = new PublicKey(walletAddress);
   const poolPubkey = new PublicKey(poolAddress);
 
@@ -120,10 +119,6 @@ export async function openPosition(
 
   logger.info(`Liquidity: ${liquidity.toString()} (from the quoted amounts, base-limited=${quote.baseLimited})`);
 
-  // Get priority fee
-  const priorityFeeInLamports = await solana.estimateGasPrice();
-  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
-
   // Build transaction
   const { transaction, positionNftMint } = await buildOpenPositionTransaction(
     solana,
@@ -137,17 +132,15 @@ export async function openPosition(
     null, // let the maxes be ceilings; the liquidity below is what sizes the position
     liquidity,
     800000,
-    priorityFeePerCU,
   );
 
-  // Sign with both wallet and NFT mint keypair
-  transaction.sign([wallet, positionNftMint]);
+  // The wallet chokepoint simulates, sets the compute budget and priority fee, and signs
+  // for the wallet's type (local keypair or Ledger).
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress, [positionNftMint]);
+  // Retrying re-fetch; throws the shared landed-but-failed error, so txData means confirmed.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
-  await solana.simulateWithErrorHandling(transaction);
-
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-  if (confirmed && txData) {
+  if (txData) {
     const totalFee = txData.meta.fee;
 
     // Extract balance changes
@@ -182,10 +175,7 @@ export async function openPosition(
     };
   }
 
-  // A landed-but-failed transaction is terminal: fail loudly instead of returning
-  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
-  await solana.throwIfLandedWithError(signature, txData);
-
+  // Confirmed, but not yet visible to the re-fetch: report it pending.
   return {
     signature,
     status: 0, // PENDING

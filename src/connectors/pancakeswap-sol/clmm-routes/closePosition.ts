@@ -4,14 +4,18 @@ import BN from 'bn.js';
 import { Solana } from '../../../chains/solana/solana';
 import {
   accountLifecycleSol,
-  liquidityWithoutRent,
+  receivedWithoutAccounts,
   transfersByProgramInstruction,
 } from '../../../chains/solana/solana.utils';
 import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
-import { buildDecreaseLiquidityV2Instruction, buildClosePositionInstruction } from '../pancakeswap-sol.instructions';
+import {
+  buildDecreaseLiquidityV2Instruction,
+  buildClosePositionInstruction,
+  buildRewardAccountSetup,
+} from '../pancakeswap-sol.instructions';
 import { parsePositionData } from '../pancakeswap-sol.parser';
 import { buildTransactionWithInstructions, buildUnwrapSolInstructions } from '../pancakeswap-sol.transactions';
 
@@ -29,7 +33,6 @@ export async function closePosition(
     throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
-  const wallet = await solana.getWallet(walletAddress);
   const walletPubkey = new PublicKey(walletAddress);
   const positionNftMint = new PublicKey(positionAddress);
 
@@ -61,10 +64,6 @@ export async function closePosition(
     throw httpErrors.notFound('Token information not found');
   }
 
-  // Get priority fee
-  const priorityFeeInLamports = await solana.estimateGasPrice();
-  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
-
   // Build transaction with both instructions (like successful manual transaction)
   const instructions = [];
 
@@ -77,6 +76,8 @@ export async function closePosition(
   // nothing else (it is exactly what the collect-fees route does), so the two land in
   // different top-level instructions and the transaction says which is which.
   if (hasLiquidity) {
+    // The wallet's reward accounts, which both decreases pay into.
+    instructions.push(...(await buildRewardAccountSetup(solana, positionNftMint, walletPubkey)));
     const collectFeesIx = await buildDecreaseLiquidityV2Instruction(
       solana,
       positionNftMint,
@@ -113,16 +114,15 @@ export async function closePosition(
     walletPubkey,
     instructions,
     800000, // Compute units for both operations
-    priorityFeePerCU,
   );
 
-  // Sign and send
-  transaction.sign([wallet]);
-  await solana.simulateWithErrorHandling(transaction);
+  // The wallet chokepoint simulates, sets the compute budget and priority fee, and signs
+  // for the wallet's type (local keypair or Ledger).
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  // Retrying re-fetch; throws the shared landed-but-failed error, so txData means confirmed.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-  if (confirmed && txData) {
+  if (txData) {
     const totalFee = txData.meta.fee;
 
     // Extract balance changes
@@ -134,10 +134,12 @@ export async function closePosition(
     // Closing gives back the rent of every account that closed — the position, its NFT
     // account, the tick array if this was the last position in it, and the wrapped-SOL
     // account the unwrap above closes. All of it arrives in the same native balance
-    // change as the withdrawal, and none of it is liquidity.
-    const { closed, rentRefunded } = accountLifecycleSol(txData);
-    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
-    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
+    // change as the withdrawal, and none of it is liquidity. Nor is the rent of a reward
+    // account the close first creates, which comes out of the same change.
+    const lifecycle = accountLifecycleSol(txData);
+    const { rentRefunded } = lifecycle;
+    const baseTokenChange = receivedWithoutAccounts(balanceChanges[0], new PublicKey(baseToken.address), lifecycle);
+    const quoteTokenChange = receivedWithoutAccounts(balanceChanges[1], new PublicKey(quoteToken.address), lifecycle);
 
     // The fee-collecting instruction is the first of this program's instructions in the
     // transaction, so its transfers are the fees and nothing else. Taken from the
@@ -179,10 +181,7 @@ export async function closePosition(
     };
   }
 
-  // A landed-but-failed transaction is terminal: fail loudly instead of returning
-  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
-  await solana.throwIfLandedWithError(signature, txData);
-
+  // Confirmed, but not yet visible to the re-fetch: report it pending.
   return {
     signature,
     status: 0, // PENDING

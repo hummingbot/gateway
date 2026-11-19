@@ -492,22 +492,6 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
 }
 
 /**
- * Check if an error is a slippage error
- */
-export function isSlippageError(errorMessage: string): boolean {
-  const parsed = parseSolanaError(errorMessage);
-  return parsed.type === 'SLIPPAGE_EXCEEDED';
-}
-
-/**
- * Check if an error is an insufficient balance error
- */
-export function isInsufficientBalanceError(errorMessage: string): boolean {
-  const parsed = parseSolanaError(errorMessage);
-  return parsed.type === 'INSUFFICIENT_BALANCE';
-}
-
-/**
  * Get a user-friendly error message for a Solana error
  */
 export function getUserFriendlyErrorMessage(errorMessage: string): string {

@@ -76,6 +76,26 @@ describe('Solana.sendAndConfirmTransaction compute simulation', () => {
     });
     expect(_sendAndConfirmRawTransaction).not.toHaveBeenCalled();
   });
+
+  it('budgets for the compute-budget instructions it adds, not only what simulation reported', async () => {
+    // A plain transfer simulates at ~150 units; the set-limit and set-price
+    // instructions the send adds cost 150 each on top, which a 10% margin cannot cover.
+    const prepareTx = jest.fn(async (tx: Transaction) => tx);
+    const fakeThis = {
+      config: { defaultComputeUnits: 200000 },
+      estimateGasPrice: jest.fn(async () => 0.1),
+      connection: { simulateTransaction: jest.fn(async () => ({ value: { err: null, unitsConsumed: 150 } })) },
+      prepareTx,
+      _sendAndConfirmRawTransaction: jest.fn(async () => ({ confirmed: true, signature: 'sig', txData: {} })),
+      getFee: jest.fn(() => 0.000005),
+    };
+    const tx = legacyTx();
+    tx.serialize = jest.fn(() => Buffer.from([])) as any;
+
+    await sendAndConfirm.call(fakeThis, tx);
+
+    expect(prepareTx).toHaveBeenCalledWith(tx, 0.1, Math.ceil(150 * 1.1) + 450, []);
+  });
 });
 
 describe('Solana.sendAndConfirmTransactionForWallet', () => {

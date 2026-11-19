@@ -1,9 +1,4 @@
-import {
-  ApiV3PoolInfoStandardItem,
-  ApiV3PoolInfoStandardItemCpmm,
-  CpmmParsedRpcData,
-  CurveCalculator,
-} from '@raydium-io/raydium-sdk-v2';
+import { CpmmParsedRpcData, CurveCalculator } from '@raydium-io/raydium-sdk-v2';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
@@ -12,38 +7,19 @@ import { Solana } from '../../../chains/solana/solana';
 import { QuoteSwapResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { Raydium } from '../raydium';
+import { Raydium, RaydiumAmmPool } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 
 async function quoteAmmSwap(
   raydium: Raydium,
-  network: string,
-  poolId: string,
+  pool: Extract<RaydiumAmmPool, { poolType: 'amm' }>,
   inputMint: string,
   outputMint: string,
   amountIn?: string,
   amountOut?: string,
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<any> {
-  let poolInfo: ApiV3PoolInfoStandardItem;
-  let rpcData: any;
-
-  if (network === 'mainnet-beta') {
-    // note: api doesn't support get devnet pool info, so in devnet else we go rpc method
-    const [poolInfoData] = await raydium.getPoolfromAPI(poolId);
-    poolInfo = poolInfoData as ApiV3PoolInfoStandardItem;
-    rpcData = await raydium.raydiumSDK.liquidity.getRpcPoolInfo(poolId);
-  } else {
-    // note: getPoolInfoFromRpc method only returns required pool data for computing not all detail pool info
-    const data = await raydium.raydiumSDK.liquidity.getPoolInfoFromRpc({
-      poolId,
-    });
-    poolInfo = data.poolInfo;
-    rpcData = data.poolRpcData;
-  }
-
-  const [baseReserve, quoteReserve, status] = [rpcData.baseReserve, rpcData.quoteReserve, rpcData.status.toNumber()];
+  const { poolInfo, poolKeys } = pool;
 
   if (poolInfo.mintA.address !== inputMint && poolInfo.mintB.address !== inputMint)
     throw httpErrors.badRequest('input mint does not match pool');
@@ -58,13 +34,7 @@ async function quoteAmmSwap(
 
   if (amountIn) {
     const out = raydium.raydiumSDK.liquidity.computeAmountOut({
-      poolInfo: {
-        ...poolInfo,
-        baseReserve,
-        quoteReserve,
-        status,
-        version: 4,
-      },
+      poolInfo,
       amountIn: new BN(amountIn),
       mintIn: mintIn.address,
       mintOut: mintOut.address,
@@ -73,6 +43,7 @@ async function quoteAmmSwap(
 
     return {
       poolInfo,
+      poolKeys,
       mintIn,
       mintOut,
       amountIn: new BN(amountIn),
@@ -84,13 +55,7 @@ async function quoteAmmSwap(
     };
   } else if (amountOut) {
     const out = raydium.raydiumSDK.liquidity.computeAmountIn({
-      poolInfo: {
-        ...poolInfo,
-        baseReserve,
-        quoteReserve,
-        status,
-        version: 4,
-      },
+      poolInfo,
       amountOut: new BN(amountOut),
       mintIn: mintIn.address,
       mintOut: mintOut.address,
@@ -99,6 +64,7 @@ async function quoteAmmSwap(
 
     return {
       poolInfo,
+      poolKeys,
       mintIn,
       mintOut,
       amountIn: out.amountIn,
@@ -133,27 +99,14 @@ function cpmmSwapFees(rpcData: CpmmParsedRpcData, baseIn: boolean) {
 }
 
 async function quoteCpmmSwap(
-  raydium: Raydium,
-  network: string,
-  poolId: string,
+  pool: Extract<RaydiumAmmPool, { poolType: 'cpmm' }>,
   inputMint: string,
   outputMint: string,
   amountIn?: string,
   amountOut?: string,
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<any> {
-  let poolInfo: ApiV3PoolInfoStandardItemCpmm;
-  let rpcData: any;
-
-  if (network === 'mainnet-beta') {
-    const [poolInfoData] = await raydium.getPoolfromAPI(poolId);
-    poolInfo = poolInfoData as ApiV3PoolInfoStandardItemCpmm;
-    rpcData = await raydium.raydiumSDK.cpmm.getRpcPoolInfo(poolInfo.id, true);
-  } else {
-    const data = await raydium.raydiumSDK.cpmm.getPoolInfoFromRpc(poolId);
-    poolInfo = data.poolInfo;
-    rpcData = data.rpcData;
-  }
+  const { poolInfo, poolKeys, rpcData } = pool;
 
   if (inputMint !== poolInfo.mintA.address && inputMint !== poolInfo.mintB.address)
     throw httpErrors.badRequest('input mint does not match pool');
@@ -187,6 +140,7 @@ async function quoteCpmmSwap(
 
     return {
       poolInfo,
+      poolKeys,
       amountIn: inputAmount,
       amountOut: swapResult.outputAmount,
       minAmountOut,
@@ -227,6 +181,7 @@ async function quoteCpmmSwap(
 
     return {
       poolInfo,
+      poolKeys,
       amountIn: swapResult.inputAmount,
       amountOut: outputAmount,
       minAmountOut: outputAmount,
@@ -258,14 +213,12 @@ export async function getRawSwapQuote(
     `getRawSwapQuote: poolId=${poolId}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, exactIn=${exactIn}`,
   );
 
-  // Get pool info to determine if it's AMM or CPMM
-  const ammPoolInfo = await raydium.getAmmPoolInfo(poolId);
+  // Pool state read from the chain; its owner program says whether it's AMM v4 or CPMM
+  const pool = await raydium.getAmmPoolFromRpc(poolId);
+  const poolBaseAddress = pool.poolInfo.mintA.address;
+  const poolQuoteAddress = pool.poolInfo.mintB.address;
 
-  if (!ammPoolInfo) {
-    throw httpErrors.notFound(`Pool not found: ${poolId}`);
-  }
-
-  logger.info(`Pool type: ${ammPoolInfo.poolType}`);
+  logger.info(`Pool type: ${pool.poolType}`);
 
   // Resolve tokens from symbols or addresses
   const solana = await Solana.getInstance(network);
@@ -276,10 +229,7 @@ export async function getRawSwapQuote(
   if (!resolvedBaseToken || !resolvedQuoteToken) {
     // If tokens not found in list but we have pool info, create dummy token info
     // The swap quote doesn't need accurate symbol/decimals since it uses pool's on-chain data
-    if (
-      !resolvedBaseToken &&
-      (baseToken === ammPoolInfo.baseTokenAddress || baseToken === ammPoolInfo.quoteTokenAddress)
-    ) {
+    if (!resolvedBaseToken && (baseToken === poolBaseAddress || baseToken === poolQuoteAddress)) {
       resolvedBaseToken = {
         address: baseToken,
         symbol: baseToken.length > 10 ? baseToken.slice(0, 6) : baseToken,
@@ -289,10 +239,7 @@ export async function getRawSwapQuote(
       };
     }
 
-    if (
-      !resolvedQuoteToken &&
-      (quoteToken === ammPoolInfo.baseTokenAddress || quoteToken === ammPoolInfo.quoteTokenAddress)
-    ) {
+    if (!resolvedQuoteToken && (quoteToken === poolBaseAddress || quoteToken === poolQuoteAddress)) {
       resolvedQuoteToken = {
         address: quoteToken,
         symbol: quoteToken.length > 10 ? quoteToken.slice(0, 6) : quoteToken,
@@ -319,11 +266,11 @@ export async function getRawSwapQuote(
   const quoteTokenAddress = resolvedQuoteToken.address;
 
   // Verify input and output tokens match pool tokens
-  if (baseTokenAddress !== ammPoolInfo.baseTokenAddress && baseTokenAddress !== ammPoolInfo.quoteTokenAddress) {
+  if (baseTokenAddress !== poolBaseAddress && baseTokenAddress !== poolQuoteAddress) {
     throw httpErrors.badRequest(`Base token ${baseToken} is not in pool ${poolId}`);
   }
 
-  if (quoteTokenAddress !== ammPoolInfo.baseTokenAddress && quoteTokenAddress !== ammPoolInfo.quoteTokenAddress) {
+  if (quoteTokenAddress !== poolBaseAddress && quoteTokenAddress !== poolQuoteAddress) {
     throw httpErrors.badRequest(`Quote token ${quoteToken} is not in pool ${poolId}`);
   }
 
@@ -347,32 +294,25 @@ export async function getRawSwapQuote(
   logger.info(`Amount in human readable: ${amount}`);
   logger.info(`Amount in with decimals: ${amountInWithDecimals}, Amount out with decimals: ${amountOutWithDecimals}`);
 
-  let result;
-  if (ammPoolInfo.poolType === 'amm') {
-    result = await quoteAmmSwap(
-      raydium,
-      network,
-      poolId,
-      inputToken.address,
-      outputToken.address,
-      amountInWithDecimals,
-      amountOutWithDecimals,
-      slippagePct,
-    );
-  } else if (ammPoolInfo.poolType === 'cpmm') {
-    result = await quoteCpmmSwap(
-      raydium,
-      network,
-      poolId,
-      inputToken.address,
-      outputToken.address,
-      amountInWithDecimals,
-      amountOutWithDecimals,
-      slippagePct,
-    );
-  } else {
-    throw httpErrors.badRequest(`Unsupported pool type: ${ammPoolInfo.poolType}`);
-  }
+  const result =
+    pool.poolType === 'amm'
+      ? await quoteAmmSwap(
+          raydium,
+          pool,
+          inputToken.address,
+          outputToken.address,
+          amountInWithDecimals,
+          amountOutWithDecimals,
+          slippagePct,
+        )
+      : await quoteCpmmSwap(
+          pool,
+          inputToken.address,
+          outputToken.address,
+          amountInWithDecimals,
+          amountOutWithDecimals,
+          slippagePct,
+        );
 
   logger.info(
     `Raw quote result: amountIn=${result.amountIn.toString()}, amountOut=${result.amountOut.toString()}, inputMint=${result.inputMint}, outputMint=${result.outputMint}`,
@@ -386,6 +326,7 @@ export async function getRawSwapQuote(
 
   return {
     ...result,
+    poolType: pool.poolType,
     inputToken,
     outputToken,
     price,
@@ -421,16 +362,6 @@ async function formatSwapQuote(
   );
   logger.info(
     `Resolved quote token: ${resolvedQuoteToken.symbol}, address=${resolvedQuoteToken.address}, decimals=${resolvedQuoteToken.decimals}`,
-  );
-
-  // Get pool info
-  const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
-  if (!poolInfo) {
-    throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
-  }
-
-  logger.info(
-    `Pool info: type=${poolInfo.poolType}, baseToken=${poolInfo.baseTokenAddress}, quoteToken=${poolInfo.quoteTokenAddress}`,
   );
 
   const quote = await getRawSwapQuote(
@@ -515,9 +446,6 @@ export async function quoteSwap(
   const solana = await Solana.getInstance(network);
 
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
-  if (!ammPoolInfo) {
-    throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
-  }
 
   // Derive the counter ("quote") token from the pool given the requested base token.
   const baseTokenInfo = await solana.getToken(baseToken);

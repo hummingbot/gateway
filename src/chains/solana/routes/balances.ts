@@ -21,8 +21,9 @@ export async function getSolanaBalances(
   } catch (error) {
     logger.error(`Error getting balances: ${error.message}`);
 
-    // Re-throw rate limit errors (statusCode 429) without wrapping
-    if (error.statusCode === 429) {
+    // A caller's error (a 4xx, such as a malformed address) and a rate limit (429) pass
+    // through as they are; only an unexpected failure becomes a 500.
+    if (error.statusCode && error.statusCode < 500) {
       throw error;
     }
 

@@ -12,16 +12,21 @@ import { ConfigManagerV2 } from '../../src/services/config-manager-v2';
 import { logger, redactUrl, updateLoggerToStdout } from '../../src/services/logger';
 
 describe('Test logger', () => {
-  it('updateLoggerToStdout works', (done) => {
-    ConfigManagerV2.getInstance().set('server.logToStdOut', true);
-    updateLoggerToStdout();
-    const ofTypeConsole = (element: any) => element instanceof winston.transports.Console;
-    expect(logger.transports.some(ofTypeConsole)).toEqual(true);
+  it('updateLoggerToStdout adds the stdout transport when enabled and removes it when disabled', () => {
+    const consoleTransports = () =>
+      logger.transports.filter((transport) => transport instanceof winston.transports.Console).length;
+
     ConfigManagerV2.getInstance().set('server.logToStdOut', false);
     updateLoggerToStdout();
-    // Not sure why the below test doesn't on Github but passes on local
-    // expect(logger.transports.some(ofTypeConsole)).toEqual(false);
-    done();
+    const withoutStdout = consoleTransports();
+
+    ConfigManagerV2.getInstance().set('server.logToStdOut', true);
+    updateLoggerToStdout();
+    expect(consoleTransports()).toBe(withoutStdout + 1);
+
+    ConfigManagerV2.getInstance().set('server.logToStdOut', false);
+    updateLoggerToStdout();
+    expect(consoleTransports()).toBe(withoutStdout);
   });
 });
 
@@ -48,6 +53,10 @@ describe('redactUrl', () => {
     expect(redactUrl('https://nd-123-456-789.p2pify.com/abcdef0123456789')).toBe(
       'https://nd-123-456-789.p2pify.com/***',
     );
+  });
+
+  it('redacts credentials in the user information', () => {
+    expect(redactUrl('https://user:secret@rpc.example.com/path')).toBe('https://***@rpc.example.com/path');
   });
 
   it('preserves URLs that do not contain known credential formats', () => {

@@ -1,10 +1,4 @@
-import {
-  AmmV4Keys,
-  CpmmKeys,
-  ApiV3PoolInfoStandardItem,
-  ApiV3PoolInfoStandardItemCpmm,
-  Percent,
-} from '@raydium-io/raydium-sdk-v2';
+import { Percent } from '@raydium-io/raydium-sdk-v2';
 import { VersionedTransaction, Transaction, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -13,7 +7,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { Raydium } from '../raydium';
+import { Raydium, RaydiumAmmPool } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 
 // Interfaces for SDK responses
@@ -47,22 +41,18 @@ interface CPMMWithdrawLiquiditySDKResponse {
 
 async function createRemoveLiquidityTransaction(
   raydium: Raydium,
-  ammPoolInfo: any,
-  poolInfo: any,
-  poolKeys: any,
+  pool: RaydiumAmmPool,
   lpAmount: BN,
   computeBudgetConfig: { units: number; microLamports: number },
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<VersionedTransaction | Transaction> {
-  if (ammPoolInfo.poolType === 'amm') {
-    // Use a small slippage for minimum amounts (1%)
-    // const slippage = 0.01;
+  if (pool.poolType === 'amm') {
     const baseAmountMin = new BN(0); // We'll accept any amount due to slippage
     const quoteAmountMin = new BN(0); // We'll accept any amount due to slippage
 
     const response: AMMRemoveLiquiditySDKResponse = await raydium.raydiumSDK.liquidity.removeLiquidity({
-      poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
-      poolKeys: poolKeys as AmmV4Keys,
+      poolInfo: pool.poolInfo,
+      poolKeys: pool.poolKeys,
       lpAmount: lpAmount,
       baseAmountMin,
       quoteAmountMin,
@@ -70,20 +60,20 @@ async function createRemoveLiquidityTransaction(
       computeBudgetConfig,
     });
     return response.transaction;
-  } else if (ammPoolInfo.poolType === 'cpmm') {
-    const slippage = new Percent(Math.floor(slippagePct * 100), 10000);
-
-    const response: CPMMWithdrawLiquiditySDKResponse = await raydium.raydiumSDK.cpmm.withdrawLiquidity({
-      poolInfo: poolInfo as ApiV3PoolInfoStandardItemCpmm,
-      poolKeys: poolKeys as CpmmKeys,
-      lpAmount: lpAmount,
-      txVersion: raydium.txVersion,
-      slippage,
-      computeBudgetConfig,
-    });
-    return response.transaction;
   }
-  throw new Error(`Unsupported pool type: ${ammPoolInfo.poolType}`);
+
+  // The SDK derives the minimum amounts from the reserves it reads on-chain for this
+  // pool id, less the slippage; the pool info and keys fed here are chain-read too.
+  const slippage = new Percent(Math.floor(slippagePct * 100), 10000);
+  const response: CPMMWithdrawLiquiditySDKResponse = await raydium.raydiumSDK.cpmm.withdrawLiquidity({
+    poolInfo: pool.poolInfo,
+    poolKeys: pool.poolKeys,
+    lpAmount: lpAmount,
+    txVersion: raydium.txVersion,
+    slippage,
+    computeBudgetConfig,
+  });
+  return response.transaction;
 }
 
 /**
@@ -91,8 +81,7 @@ async function createRemoveLiquidityTransaction(
  */
 async function calculateLpAmountToRemove(
   solana: Solana,
-  _ammPoolInfo: any,
-  poolInfo: any,
+  poolInfo: RaydiumAmmPool['poolInfo'],
   poolAddress: string,
   percentageToRemove: number,
   walletAddress: string,
@@ -144,17 +133,16 @@ export async function removeLiquidity(
   // sendAndConfirmTransactionForWallet, which signs for the wallet's type.
   await raydium.setOwner(new PublicKey(walletAddress));
 
-  const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
-  const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
-
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
     throw httpErrors.badRequest('Invalid percentageToRemove - must be between 0 and 100');
   }
 
+  const pool = await raydium.getAmmPoolFromRpc(poolAddress);
+  const { poolInfo } = pool;
+
   // Calculate LP amount to remove
   const lpAmountToRemove = await calculateLpAmountToRemove(
     solana,
-    ammPoolInfo,
     poolInfo,
     poolAddress,
     percentageToRemove,
@@ -172,9 +160,7 @@ export async function removeLiquidity(
 
   const transaction = await createRemoveLiquidityTransaction(
     raydium,
-    ammPoolInfo,
-    poolInfo,
-    poolKeys,
+    pool,
     lpAmountToRemove,
     {
       units: COMPUTE_UNITS,

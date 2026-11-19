@@ -12,6 +12,12 @@ jest.mock('../../src/services/pool-service');
 jest.mock('../../src/services/coingecko-service');
 jest.mock('../../src/services/token-service');
 
+// The connector a pool is read from when the caller doesn't supply its facts.
+const mockGetClmmPoolInfo = jest.fn();
+jest.mock('../../src/connectors/raydium/raydium', () => ({
+  Raydium: { getInstance: jest.fn(async () => ({ getClmmPoolInfo: mockGetClmmPoolInfo })) },
+}));
+
 // Mock @fastify/sensible
 jest.mock('@fastify/sensible', () => {
   const plugin = jest.fn(async (fastify) => {
@@ -49,6 +55,7 @@ import { FastifyInstance } from 'fastify';
 
 import { poolRoutes } from '../../src/pools/pools.routes';
 import { Pool } from '../../src/pools/types';
+import { parseChainNetwork } from '../../src/services/chain-network';
 import { CoinGeckoService } from '../../src/services/coingecko-service';
 import { PoolService } from '../../src/services/pool-service';
 import { TokenService } from '../../src/services/token-service';
@@ -78,7 +85,6 @@ describe('Pool Routes Tests', () => {
       getPoolByAddress: jest.fn(),
       getPoolByMetadata: jest.fn(),
       getDefaultPools: jest.fn(),
-      getChainForConnector: jest.fn(),
     } as any;
 
     (PoolService.getInstance as jest.Mock).mockReturnValue(mockPoolService);
@@ -91,17 +97,7 @@ describe('Pool Routes Tests', () => {
       getTokenInfo: jest.fn(),
       mapNetworkId: jest.fn(),
       getSupportedNetworks: jest.fn(),
-      parseChainNetwork: jest.fn((chainNetwork: string) => {
-        // Default mock implementation for tests
-        const parts = chainNetwork.split('-');
-        if (parts.length < 2) {
-          throw new Error(`Unsupported chainNetwork format: ${chainNetwork}`);
-        }
-        return {
-          chain: parts[0],
-          network: parts.slice(1).join('-'),
-        };
-      }),
+      parseChainNetwork: jest.fn(parseChainNetwork),
     } as any;
 
     (CoinGeckoService.getInstance as jest.Mock).mockReturnValue(mockCoinGeckoService);
@@ -247,16 +243,16 @@ describe('Pool Routes Tests', () => {
       expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', undefined, undefined, 'SOL');
     });
 
-    it('should return 400 for invalid parameters', async () => {
+    it("answers 400 with the pool service's reason when it cannot list", async () => {
       mockPoolService.listPools.mockRejectedValue(new Error('Unsupported chain'));
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chainNetwork=invalid-mainnet',
+        url: '/?chainNetwork=solana-mainnet-beta',
       });
 
       expect(response.statusCode).toBe(400);
-      expect(parseWire(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload).message).toBe('Unsupported chain');
     });
   });
 
@@ -403,6 +399,61 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('reading a pool from its connector', () => {
+    const POOL = '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv';
+    const addWithoutFee = () =>
+      fastify.inject({
+        method: 'POST',
+        url: '/',
+        payload: {
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'raydium',
+          type: 'clmm',
+          baseSymbol: 'SOL',
+          quoteSymbol: 'USDC',
+          address: POOL,
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        },
+      });
+    const save = () =>
+      fastify.inject({
+        method: 'POST',
+        url: `/save/${POOL}`,
+        query: { chainNetwork: 'solana-mainnet-beta', connector: 'raydium', type: 'clmm' },
+      });
+    const readFailure = `Failed to fetch pool info for ${POOL} from raydium clmm: 429 Too Many Requests`;
+
+    it('POST /pools answers a failed read with 500 and its cause, adding nothing', async () => {
+      mockGetClmmPoolInfo.mockRejectedValue(new Error('429 Too Many Requests'));
+      const response = await addWithoutFee();
+      expect(response.statusCode).toBe(500);
+      expect(parseWire(response.payload).message).toBe(readFailure);
+      expect(mockPoolService.addPool).not.toHaveBeenCalled();
+    });
+
+    it('POST /pools answers a pool the connector does not have with 404', async () => {
+      mockGetClmmPoolInfo.mockResolvedValue(null);
+      const response = await addWithoutFee();
+      expect(response.statusCode).toBe(404);
+      expect(parseWire(response.payload).message).toBe(`Pool ${POOL} not found in raydium clmm on mainnet-beta`);
+    });
+
+    it('POST /pools/save answers a failed read with 500 and its cause', async () => {
+      mockGetClmmPoolInfo.mockRejectedValue(new Error('429 Too Many Requests'));
+      const response = await save();
+      expect(response.statusCode).toBe(500);
+      expect(parseWire(response.payload).message).toBe(readFailure);
+    });
+
+    it('POST /pools/save answers a pool the connector does not have with 404', async () => {
+      mockGetClmmPoolInfo.mockResolvedValue(null);
+      const response = await save();
+      expect(response.statusCode).toBe(404);
+      expect(parseWire(response.payload).message).toBe(`Pool ${POOL} not found in raydium clmm on mainnet-beta`);
     });
   });
 
@@ -572,7 +623,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
-      expect(parseWire(response.payload).message).toContain('Unsupported chainNetwork format');
+      expect(parseWire(response.payload).message).toContain("Invalid chainNetwork 'invalid'");
     });
 
     it('should return 500 on service error', async () => {

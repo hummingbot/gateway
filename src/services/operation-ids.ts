@@ -53,6 +53,7 @@ export const OPERATION_IDS: Record<string, string> = {
   'GET /chains/{chain}/estimate-gas': 'estimateGas',
   'POST /chains/{chain}/balances': 'getBalances',
   'POST /chains/{chain}/poll': 'pollTransaction',
+  'GET /chains/{chain}/transactions': 'getWalletTransactions',
   'POST /chains/{chain}/wrap': 'wrapNativeToken',
   'POST /chains/{chain}/unwrap': 'unwrapNativeToken',
   'POST /chains/ethereum/allowances': 'getAllowances',

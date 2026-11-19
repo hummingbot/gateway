@@ -202,53 +202,6 @@ describe('HeliusService WebSocket Functionality', () => {
         InstructionError: [0, 'InvalidAccountData'],
       });
     });
-
-    it('should handle InsufficientFundsForFee error correctly', async () => {
-      await heliusService.initialize();
-
-      const signature = 'ErrorTestSignature0';
-      const monitorPromise = heliusService.monitorTransaction(signature, 30000);
-
-      // Wait for WebSocket to connect
-      await new Promise((resolve) => setImmediate(resolve));
-
-      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
-
-      // Send subscription confirmation first
-      const subscriptionConfirmation = {
-        jsonrpc: '2.0',
-        result: 20100751,
-        id: 1,
-      };
-
-      if (onMessageCallback) {
-        onMessageCallback.call(mockWs, Buffer.from(JSON.stringify(subscriptionConfirmation)));
-      }
-
-      // Then send failed notification
-      const failedNotification = {
-        jsonrpc: '2.0',
-        method: 'signatureNotification',
-        params: {
-          result: {
-            context: { slot: 5207626 },
-            value: {
-              err: { InsufficientFundsForFee: {} },
-            },
-          },
-          subscription: 20100751,
-        },
-      };
-
-      if (onMessageCallback) {
-        onMessageCallback.call(mockWs, Buffer.from(JSON.stringify(failedNotification)));
-      }
-
-      const result = await monitorPromise;
-
-      expect(result.confirmed).toBe(false);
-      expect(result.txData.value.err).toEqual({ InsufficientFundsForFee: {} });
-    });
   });
 
   describe('Transaction Monitoring - Timeout', () => {

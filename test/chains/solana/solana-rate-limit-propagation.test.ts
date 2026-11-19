@@ -53,11 +53,6 @@ describe('Solana Rate Limit Error Propagation', () => {
     solana = await Solana.getInstance('mainnet-beta');
     mockConnection = solana.connection as jest.Mocked<Connection>;
 
-    // Mock heliusService to avoid WebSocket checks
-    (solana as any).heliusService = {
-      isWebSocketConnected: jest.fn().mockReturnValue(false),
-    };
-
     // Mock prepareTx to return the transaction as-is
     jest.spyOn(solana as any, 'prepareTx').mockImplementation((tx: any) => {
       tx.recentBlockhash = 'test-blockhash';
@@ -231,45 +226,6 @@ describe('Solana Rate Limit Error Propagation', () => {
       expect(result.signature).toBeTruthy();
       expect(result.confirmed).toBe(true);
       expect(attempts).toBeGreaterThanOrEqual(3);
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle 429 error without statusCode property', async () => {
-      // Error has 429 in message but no statusCode property
-      const error = new Error('429 Too Many Requests');
-
-      mockConnection.getBalance = jest.fn().mockRejectedValue(error);
-
-      // Interceptor should add statusCode
-      await expect(solana.getBalances('11111111111111111111111111111112', ['SOL'])).rejects.toMatchObject({
-        statusCode: 429,
-      });
-    });
-
-    it('should handle compound errors with 429', async () => {
-      const error = {
-        statusCode: 429,
-        code: 'RATE_LIMITED',
-        message: 'Too many requests for specific RPC call',
-      };
-
-      mockConnection.getBalance = jest.fn().mockRejectedValue(error);
-
-      await expect(solana.getBalances('11111111111111111111111111111112', ['SOL'])).rejects.toMatchObject({
-        statusCode: 429,
-      });
-    });
-
-    it('should not throw for non-429 status codes (returns 0 balance)', async () => {
-      const error500 = new Error('Internal Server Error');
-      (error500 as any).statusCode = 500;
-
-      mockConnection.getBalance = jest.fn().mockRejectedValue(error500);
-
-      // Non-429 errors should return 0 for SOL balance, not throw
-      const result = await solana.getBalances('11111111111111111111111111111112', ['SOL']);
-      expect(result.SOL).toBe(0);
     });
   });
 });

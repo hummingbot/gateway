@@ -130,6 +130,23 @@ describe('GET /fetch-pools (Orca)', () => {
     });
   });
 
+  it.each([
+    ['sends an unknown TVL as null, not 0', undefined, null],
+    ['parses the string TVL the API sends', '25914246.84', '25914246.84'],
+  ])('%s', async (_label, tvlUsdc, wireTvl) => {
+    (Orca.getInstance as jest.Mock).mockResolvedValue({
+      fetchPoolsFromApi: jest.fn().mockResolvedValue([{ ...mockOrcaApiResponse[0], tvlUsdc }]),
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=orca',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).pools[0].tvl).toBe(wireTvl);
+  });
+
   it('should fetch pools with search query', async () => {
     const mockOrcaInstance = {
       fetchPoolsFromApi: jest.fn().mockResolvedValue([mockOrcaApiResponse[0]]),

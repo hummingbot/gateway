@@ -51,6 +51,9 @@ export const redactUrl = (url: string | null | undefined): string => {
   // ). The path segment IS the per-node access credential.
   redacted = redacted.replace(/(core\.chainstack\.com|p2pify\.com)\/[A-Za-z0-9]+/gi, '$1/***');
 
+  // Redact credentials in the URL's user information (e.g., https://user:pass@host)
+  redacted = redacted.replace(/(\/\/)[^/@]+@/g, '$1***@');
+
   return redacted;
 };
 

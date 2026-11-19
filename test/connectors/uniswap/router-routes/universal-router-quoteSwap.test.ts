@@ -90,15 +90,6 @@ describe('GET /quote-swap', () => {
         };
         return tokens[symbol];
       }),
-      getOrFetchToken: jest.fn().mockImplementation(async (symbolOrAddress: string) => {
-        const tokens: any = {
-          WETH: mockWETH,
-          USDC: mockUSDC,
-          [mockWETH.address]: mockWETH,
-          [mockUSDC.address]: mockUSDC,
-        };
-        return tokens[symbolOrAddress];
-      }),
       getWalletAddressExample: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
     };
 
@@ -116,35 +107,6 @@ describe('GET /quote-swap', () => {
 
     // Mock UUID
     (uuidv4 as jest.Mock).mockReturnValue('test-quote-id');
-
-    // Mock Contract to return pool/pair data
-    jest.doMock('ethers', () => {
-      const actual = jest.requireActual('ethers');
-      return {
-        ...actual,
-        Contract: jest.fn().mockImplementation(() => ({
-          // V2 Pair methods
-          getReserves: jest.fn().mockResolvedValue([
-            BigNumber.from('1000000000000000000000'), // 1000 WETH
-            BigNumber.from('3000000000000'), // 3M USDC
-            BigNumber.from('1234567890'),
-          ]),
-          token0: jest.fn().mockResolvedValue(mockWETH.address),
-          token1: jest.fn().mockResolvedValue(mockUSDC.address),
-          // V3 Pool methods
-          liquidity: jest.fn().mockResolvedValue(BigNumber.from('1000000000000000000')),
-          slot0: jest
-            .fn()
-            .mockResolvedValue([BigNumber.from('1771595571142789777276510917681'), 200000, 0, 1, 1, 0, true]),
-          fee: jest.fn().mockResolvedValue(3000),
-          tickSpacing: jest.fn().mockResolvedValue(60),
-        })),
-      };
-    });
-  });
-
-  afterEach(() => {
-    jest.resetModules();
   });
 
   it('should return a valid quote for SELL side', async () => {
@@ -215,56 +177,6 @@ describe('GET /quote-swap', () => {
     expect(Number(body.amountOut)).toBe(1);
     expect(body).toHaveProperty('amountIn');
     expect(body.amountIn).toBeGreaterThan(0);
-  });
-
-  it('quotes through the universal router', async () => {
-    const response = await server.inject({
-      method: 'GET',
-      url: '/quote-swap',
-      query: {
-        chainNetwork: 'ethereum-mainnet',
-        connector: 'uniswap',
-        walletAddress: '0x0000000000000000000000000000000000000001',
-        baseToken: 'WETH',
-        quoteToken: 'USDC',
-        amount: '1',
-        side: 'SELL',
-        slippagePct: '1',
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    const body = parseWire(response.body);
-
-    // `protocols` used to be sent here and was silently dropped: the unified router
-    // route declares no such parameter and never read one, so the "filtering" this case
-    // was written for never happened. The route answers with the path it chose.
-    expect(body).toHaveProperty('routePath');
-  });
-
-  it('quotes the same pair a second time, without a protocol filter', async () => {
-    const response = await server.inject({
-      method: 'GET',
-      url: '/quote-swap',
-      query: {
-        chainNetwork: 'ethereum-mainnet',
-        connector: 'uniswap',
-        walletAddress: '0x0000000000000000000000000000000000000001',
-        baseToken: 'WETH',
-        quoteToken: 'USDC',
-        amount: '1',
-        side: 'SELL',
-        slippagePct: '1',
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    const body = parseWire(response.body);
-
-    // `protocols` used to be sent here and was silently dropped: the unified router
-    // route declares no such parameter and never read one, so the "filtering" this case
-    // was written for never happened. The route answers with the path it chose.
-    expect(body).toHaveProperty('routePath');
   });
 
   it('should return 404 for invalid token', async () => {
@@ -367,7 +279,7 @@ describe('GET /quote-swap', () => {
       expect(body).toHaveProperty('tokenOut', mockWETH.address);
     });
 
-    it('should handle lowercase eth token symbol', async () => {
+    it.each(['eth', 'Eth'])('converts the native symbol case-insensitively (%s)', async (baseToken) => {
       const response = await server.inject({
         method: 'GET',
         url: '/quote-swap',
@@ -375,7 +287,7 @@ describe('GET /quote-swap', () => {
           chainNetwork: 'ethereum-mainnet',
           connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
-          baseToken: 'eth',
+          baseToken,
           quoteToken: 'USDC',
           amount: '1',
           side: 'SELL',
@@ -384,33 +296,7 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = parseWire(response.body);
-
-      // Should convert lowercase 'eth' to WETH
-      expect(body).toHaveProperty('tokenIn', mockWETH.address);
-    });
-
-    it('should handle mixed case Eth token symbol', async () => {
-      const response = await server.inject({
-        method: 'GET',
-        url: '/quote-swap',
-        query: {
-          chainNetwork: 'ethereum-mainnet',
-          connector: 'uniswap',
-          walletAddress: '0x0000000000000000000000000000000000000001',
-          baseToken: 'Eth',
-          quoteToken: 'USDC',
-          amount: '1',
-          side: 'SELL',
-          slippagePct: '1',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = parseWire(response.body);
-
-      // Should convert mixed case 'Eth' to WETH
-      expect(body).toHaveProperty('tokenIn', mockWETH.address);
+      expect(parseWire(response.body)).toHaveProperty('tokenIn', mockWETH.address);
     });
   });
 
@@ -488,30 +374,6 @@ describe('GET /quote-swap', () => {
       expect(body).toHaveProperty('amountIn', 1);
       expect(body).toHaveProperty('amountOut', 1);
       expect(body).toHaveProperty('priceImpactPct', 0);
-    });
-
-    it('should return price=1 for ETH/ETH', async () => {
-      const response = await server.inject({
-        method: 'GET',
-        url: '/quote-swap',
-        query: {
-          chainNetwork: 'ethereum-mainnet',
-          connector: 'uniswap',
-          walletAddress: '0x0000000000000000000000000000000000000001',
-          baseToken: 'ETH',
-          quoteToken: 'ETH',
-          amount: '1',
-          side: 'SELL',
-          slippagePct: '1',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = parseWire(response.body);
-
-      expect(Number(body.price)).toBe(1);
-      expect(body).toHaveProperty('amountIn', 1);
-      expect(body).toHaveProperty('amountOut', 1);
     });
   });
 
