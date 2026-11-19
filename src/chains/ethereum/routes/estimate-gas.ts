@@ -58,11 +58,7 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
     }
 
     // Check if it's an invalid network
-    if (
-      message?.includes('Invalid') ||
-      message?.includes('not found') ||
-      message?.includes('Unsupported')
-    ) {
+    if (message?.includes('Invalid') || message?.includes('not found') || message?.includes('Unsupported')) {
       throw fastify.httpErrors.badRequest(`Invalid network ${network}: ${message}`);
     }
 
