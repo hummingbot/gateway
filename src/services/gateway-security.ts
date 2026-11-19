@@ -166,8 +166,18 @@ export function isWeakApiKey(key: string): boolean {
  * model; it does not by itself stop an attacker able to rotate many source IPs (#660 §2). The
  * primary defense remains a high-entropy token (the generated key is 256-bit).
  */
-const AUTH_FAIL_MAX = Math.max(1, Number(process.env.GATEWAY_AUTH_FAIL_MAX ?? 10));
-const AUTH_FAIL_WINDOW_MS = Math.max(1000, Number(process.env.GATEWAY_AUTH_FAIL_WINDOW_MS ?? 15 * 60 * 1000));
+/** A lockout setting from the environment. A value that is not a number would compare as
+ *  NaN and switch the lockout off (or make it permanent) without a word, so it is refused. */
+export function lockoutSetting(name: string, fallback: number, minimum: number): number {
+  const raw = process.env[name];
+  if (raw === undefined) return fallback;
+  const value = Number(raw);
+  if (raw.trim() === '' || !Number.isFinite(value)) throw new Error(`${name} must be a number, got '${raw}'`);
+  return Math.max(minimum, value);
+}
+
+const AUTH_FAIL_MAX = lockoutSetting('GATEWAY_AUTH_FAIL_MAX', 10, 1);
+const AUTH_FAIL_WINDOW_MS = lockoutSetting('GATEWAY_AUTH_FAIL_WINDOW_MS', 15 * 60 * 1000, 1000);
 const authFailures = new Map<string, { count: number; resetAt: number }>();
 
 export function isAuthLockedOut(ip: string | undefined, now: number = Date.now()): boolean {

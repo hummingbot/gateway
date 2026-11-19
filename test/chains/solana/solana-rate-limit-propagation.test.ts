@@ -148,7 +148,7 @@ describe('Solana Rate Limit Error Propagation', () => {
   });
 
   describe('Transaction Polling - Rate Limit Propagation', () => {
-    it('should propagate 429 error during polling loop', async () => {
+    it('reports a 429 during the polling loop as an unconfirmed send with its signature', async () => {
       const error429 = new Error('Too many requests');
       (error429 as any).statusCode = 429;
 
@@ -163,13 +163,18 @@ describe('Solana Rate Limit Error Propagation', () => {
       mockConnection.getSignatureStatuses = jest.fn().mockRejectedValue(error429);
 
       // Test _sendAndConfirmRawTransaction directly
+      // The transaction is out, so this is not the pre-broadcast RATE_LIMITED a client may
+      // simply retry: it is an unconfirmed send, and the callers turn that into
+      // TRANSACTION_TIMEOUT with the signature to reconcile.
       const serializedTx = Buffer.from([1, 2, 3]); // Dummy serialized transaction
-      await expect((solana as any)._sendAndConfirmRawTransaction(serializedTx)).rejects.toMatchObject({
-        statusCode: 429,
+      await expect((solana as any)._sendAndConfirmRawTransaction(serializedTx)).resolves.toEqual({
+        confirmed: false,
+        signature: 'test-signature',
+        txData: null,
       });
     });
 
-    it('should propagate 429 error from getBlockHeight during polling', async () => {
+    it('reports a 429 from getBlockHeight during polling the same way', async () => {
       const error429 = new Error('Too many requests');
       (error429 as any).statusCode = 429;
 
@@ -187,8 +192,10 @@ describe('Solana Rate Limit Error Propagation', () => {
       mockConnection.getBlockHeight = jest.fn().mockRejectedValue(error429);
 
       const serializedTx = Buffer.from([1, 2, 3]);
-      await expect((solana as any)._sendAndConfirmRawTransaction(serializedTx)).rejects.toMatchObject({
-        statusCode: 429,
+      await expect((solana as any)._sendAndConfirmRawTransaction(serializedTx)).resolves.toEqual({
+        confirmed: false,
+        signature: 'test-signature',
+        txData: null,
       });
     });
 

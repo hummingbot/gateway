@@ -2189,7 +2189,10 @@ export class Solana {
         stopRebroadcast();
       }
     } catch (sendError: any) {
-      if (sendError.statusCode === 429) {
+      // A rate limit before anything was broadcast is safe to retry, and says so. One that
+      // arrives while waiting for confirmation is not: the transaction is out and may still
+      // land, so it falls through to an unconfirmed send that carries its signature.
+      if (sendError.statusCode === 429 && signature === null) {
         throw sendError;
       }
       // The same signed bytes already landed (an identical transaction built on an
