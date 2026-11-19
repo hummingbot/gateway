@@ -134,6 +134,9 @@ export function createRateLimitAwareSolanaConnection(connection: Connection, rpc
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return await (value as (...args: any[]) => any).apply(target, args);
           } catch (error: any) {
+            if (typeof error?.message === 'string') {
+              error.message = redactUrl(error.message);
+            }
             if (!is429Error(error)) {
               throw error;
             }
@@ -189,6 +192,9 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return await (value as (...args: any[]) => any).apply(target, args);
           } catch (error: any) {
+            if (typeof error?.message === 'string') {
+              error.message = redactUrl(error.message);
+            }
             if (!is429Error(error)) {
               throw error;
             }
