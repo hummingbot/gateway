@@ -171,6 +171,7 @@ describe('Solana Rate Limit Error Propagation', () => {
         confirmed: false,
         signature: 'test-signature',
         txData: null,
+        interruptedBy: 'the RPC rate-limited the status checks',
       });
     });
 
@@ -196,6 +197,7 @@ describe('Solana Rate Limit Error Propagation', () => {
         confirmed: false,
         signature: 'test-signature',
         txData: null,
+        interruptedBy: 'the RPC rate-limited the status checks',
       });
     });
 

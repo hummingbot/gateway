@@ -52,10 +52,10 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { httpErrors, HttpError } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
-import { ReportBalance, WalletTokenBalance, balancesByKey } from '../wallet-balances';
 import { encryptSecret, decryptSecret, isLegacyKeystore } from '../../services/secure-keystore';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
+import { ReportBalance, WalletTokenBalance, balancesByKey } from '../wallet-balances';
 
 import { parseSolanaError } from './solana-error-parser';
 import { SolanaLedger } from './solana-ledger';
@@ -619,231 +619,6 @@ export class Solana {
   }
 
   /**
-   * @deprecated Use the optimized implementation in routes/balances.ts instead
-   */
-  async getBalance(wallet: Keypair, symbols?: string[]): Promise<Record<string, number>> {
-    const publicKey = wallet.publicKey;
-    const balances: Record<string, number> = {};
-    const tokenList = await this.getTokenList();
-
-    // Treat empty array as if no tokens were specified
-    const effectiveSymbols = symbols && symbols.length === 0 ? undefined : symbols;
-
-    // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
-    if (!effectiveSymbols || effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')) {
-      const solBalance = await this.connection.getBalance(publicKey);
-      const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
-      balances['SOL'] = solBalanceInSol;
-    }
-
-    // Return early if only SOL balance was requested
-    if (effectiveSymbols && effectiveSymbols.length === 1 && effectiveSymbols[0].toUpperCase() === 'SOL') {
-      return balances;
-    }
-
-    // Get all token accounts for the provided address using jsonParsed encoding
-    let allAccounts = [];
-    try {
-      const [legacyAccounts, token2022Accounts] = await Promise.all([
-        this.connection.getParsedTokenAccountsByOwner(publicKey, {
-          programId: TOKEN_PROGRAM_ID,
-        }),
-        this.connection.getParsedTokenAccountsByOwner(publicKey, {
-          programId: TOKEN_2022_PROGRAM_ID,
-        }),
-      ]);
-      allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
-    } catch (error) {
-      // If we get a StructError (validation failure from mixed parsed/base64 responses),
-      // fall back to using base64 encoding
-      if (error.name === 'StructError' || error.message?.includes('Expected an object')) {
-        logger.warn('StructError in getBalance, falling back to base64 encoding');
-        // Use the base64 fallback method to get token accounts
-        const tokenAccountsMap = await this.fetchTokenAccountsBase64(publicKey);
-        // Convert the map to the array format expected by the rest of this method
-        allAccounts = Array.from(tokenAccountsMap.values()).map((ta) => ta.value);
-      } else {
-        throw error;
-      }
-    }
-
-    // Track tokens that were found and those that still need to be fetched
-    const foundTokens = new Set<string>();
-    const tokensToFetch = new Map<string, string>(); // Maps address -> display symbol
-
-    // Create a mapping of all mint addresses to their token accounts
-    const mintToAccount = new Map();
-    for (const account of allAccounts) {
-      try {
-        const parsedInfo = account.account.data.parsed?.info;
-        if (!parsedInfo) {
-          logger.warn('Account data not parsed or missing info');
-          continue;
-        }
-        const mintAddress = parsedInfo.mint;
-        mintToAccount.set(mintAddress, {
-          parsedAccount: {
-            mint: new PublicKey(mintAddress),
-            amount: BigInt(parsedInfo.tokenAmount.amount),
-            decimals: parsedInfo.tokenAmount.decimals,
-          },
-          value: account,
-        });
-      } catch (error) {
-        logger.warn(`Error processing parsed account: ${error.message}`);
-        continue;
-      }
-    }
-
-    // Process requested specific symbols
-    if (effectiveSymbols) {
-      for (const s of effectiveSymbols) {
-        // Skip SOL as it's handled separately
-        if (s.toUpperCase() === 'SOL') {
-          foundTokens.add('SOL');
-          continue;
-        }
-
-        // Check if it's a token symbol in our list
-        const tokenBySymbol = tokenList.find((t) => t.symbol.toUpperCase() === s.toUpperCase());
-
-        if (tokenBySymbol) {
-          foundTokens.add(tokenBySymbol.symbol);
-
-          // Check if we have this token in the wallet
-          if (mintToAccount.has(tokenBySymbol.address)) {
-            const { parsedAccount } = mintToAccount.get(tokenBySymbol.address);
-            // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
-            const uiAmount =
-              parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, tokenBySymbol.decimals);
-            balances[tokenBySymbol.symbol] = uiAmount;
-            logger.debug(`Found balance for ${tokenBySymbol.symbol}: ${uiAmount}`);
-          } else {
-            // Token not found in wallet, set balance to 0
-            balances[tokenBySymbol.symbol] = 0;
-            logger.debug(`No balance found for ${tokenBySymbol.symbol}, setting to 0`);
-          }
-        }
-        // If it looks like a Solana address, prepare to fetch it directly
-        else if (s.length >= 32 && s.length <= 44) {
-          try {
-            // Validate it's a proper public key
-            const pubKey = new PublicKey(s);
-            const mintAddress = pubKey.toBase58();
-
-            // Check if we have this mint in the wallet
-            if (mintToAccount.has(mintAddress)) {
-              const { parsedAccount } = mintToAccount.get(mintAddress);
-
-              // Try to get token from our token list
-              const token = tokenList.find((t) => t.address === mintAddress);
-
-              if (token) {
-                // Token is in our list
-                foundTokens.add(token.symbol);
-                // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
-                const uiAmount = parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, token.decimals);
-                balances[token.symbol] = uiAmount;
-                logger.debug(`Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`);
-              } else {
-                // Token is not in our list, need to fetch its metadata
-                tokensToFetch.set(mintAddress, s);
-              }
-            } else {
-              // Mint not found in wallet, add to tokens to fetch for metadata
-              tokensToFetch.set(mintAddress, s);
-            }
-          } catch (e) {
-            logger.warn(`Invalid token address format: ${s}`);
-          }
-        } else {
-          logger.warn(`Token not recognized: ${s} (not a known symbol or valid address)`);
-        }
-      }
-    } else {
-      // No symbols provided or empty array - check all tokens in the token list
-      // Note: When symbols is an empty array, we check all tokens in the token list
-      logger.info(`Checking balances for all ${tokenList.length} tokens in the token list`);
-
-      // Process all tokens from the token list
-      for (const token of tokenList) {
-        // Skip if already processed
-        if (token.symbol === 'SOL' || foundTokens.has(token.symbol)) {
-          continue;
-        }
-
-        // Check if we have this token in the wallet
-        if (mintToAccount.has(token.address)) {
-          const { parsedAccount } = mintToAccount.get(token.address);
-          // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
-          const uiAmount = parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, token.decimals);
-          balances[token.symbol] = uiAmount;
-          logger.debug(`Found balance for ${token.symbol} (${token.address}): ${uiAmount}`);
-        } else {
-          // Set balance to 0 for tokens in the list but not in wallet
-          balances[token.symbol] = 0;
-          logger.debug(`No balance found for ${token.symbol} (${token.address}), setting to 0`);
-        }
-      }
-    }
-
-    // Fetch metadata for unknown tokens
-    for (const [mintAddress] of tokensToFetch.entries()) {
-      try {
-        // Check if we have this mint in the wallet
-        let balance = 0;
-        let decimals = 0;
-
-        if (mintToAccount.has(mintAddress)) {
-          const { parsedAccount } = mintToAccount.get(mintAddress);
-          // Fetch mint info to get decimals
-          const mintInfo = await getMint(this.connection, parsedAccount.mint);
-          decimals = mintInfo.decimals;
-
-          // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
-          balance = parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, decimals);
-        } else {
-          // Try to get decimals anyway for the display
-          try {
-            const mintInfo = await getMint(this.connection, new PublicKey(mintAddress));
-            decimals = mintInfo.decimals;
-          } catch (error) {
-            logger.warn(`Could not fetch mint info for ${mintAddress}: ${error.message}`);
-            decimals = 9; // Default to 9 decimals
-          }
-        }
-
-        // Use the full mint address as the display key for the balance
-        balances[mintAddress] = balance;
-        logger.debug(`Using full address as display key for ${mintAddress} with balance ${balance}`);
-      } catch (error) {
-        logger.error(`Failed to process token ${mintAddress}: ${error.message}`);
-      }
-    }
-
-    // Filter out zero balances when no specific tokens are requested
-    if (!symbols || (symbols && symbols.length === 0)) {
-      const filteredBalances: Record<string, number> = {};
-
-      // Keep SOL balance regardless of its value
-      if ('SOL' in balances) {
-        filteredBalances['SOL'] = balances['SOL'];
-      }
-
-      // Filter other tokens with zero balances
-      Object.entries(balances).forEach(([key, value]) => {
-        if (key !== 'SOL' && value > 0) {
-          filteredBalances[key] = value;
-        }
-      });
-
-      return filteredBalances;
-    }
-
-    return balances;
-  }
-
-  /**
    * Get balances for a given address
    * @param address Wallet address
    * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches tokens from token list
@@ -1204,37 +979,6 @@ export class Solana {
   }
 
   /**
-   * Process all tokens in wallet (fetchAll=true)
-   */
-  private async processAllTokens(
-    tokenAccounts: Map<string, TokenAccount>,
-    balances: Record<string, number>,
-  ): Promise<void> {
-    logger.info('Processing all token accounts (fetchAll=true)');
-    const tokenList = await this.getTokenList();
-
-    for (const [mintAddress, tokenAccount] of tokenAccounts) {
-      try {
-        // Check if token is in our list
-        const tokenInfo = tokenList.find((t) => t.address === mintAddress);
-
-        if (tokenInfo) {
-          const balance = this.getTokenBalance(tokenAccount, tokenInfo.decimals);
-          balances[tokenInfo.symbol] = balance;
-        } else {
-          // Fetch mint info for unknown token
-          const balance = await this.getTokenBalanceWithMintInfo(tokenAccount, mintAddress);
-          if (balance > 0) {
-            balances[mintAddress] = balance;
-          }
-        }
-      } catch (error) {
-        logger.warn(`Error processing token ${mintAddress}: ${error.message}`);
-      }
-    }
-  }
-
-  /**
    * Process only tokens that are in the token list (default behavior)
    */
   private async processTokenListOnly(tokenAccounts: Map<string, TokenAccount>, report: ReportBalance): Promise<void> {
@@ -1557,7 +1301,7 @@ export class Solana {
 
     // Use the confirmation retry logic from sendAndConfirmRawTransaction
     const serializedTx = tx.serialize();
-    const { confirmed, signature, txData } = await this._sendAndConfirmRawTransaction(serializedTx);
+    const { confirmed, signature, txData, interruptedBy } = await this._sendAndConfirmRawTransaction(serializedTx);
 
     if (confirmed && txData) {
       const actualFee = this.getFee(txData);
@@ -1566,20 +1310,26 @@ export class Solana {
     }
 
     await this.throwIfLandedWithError(signature);
-    throw this.confirmationTimeoutError(signature);
+    throw this.confirmationTimeoutError(signature, interruptedBy);
   }
 
   /**
-   * The 504 raised when a broadcast transaction was not seen on-chain before its blockhash
-   * expired. Includes the signature so the caller can reconcile: the send raced the
-   * confirmation window, and in rare cases the transaction may still show up.
+   * The 504 raised when a broadcast transaction was not seen on-chain. Includes the
+   * signature so the caller can reconcile. Either its blockhash expired - it most likely
+   * did not land - or the wait was cut short (`interruptedBy`), and then nothing is known:
+   * the transaction is out and its blockhash may be valid for some time yet.
    */
-  private confirmationTimeoutError(signature: string): HttpError {
+  private confirmationTimeoutError(signature: string, interruptedBy?: string): HttpError {
+    if (!signature) return httpErrors.transactionTimeout('Transaction failed to send');
+    if (interruptedBy) {
+      return httpErrors.transactionTimeout(
+        `Transaction ${signature} was broadcast, but waiting for its confirmation was cut short: ${interruptedBy}. ` +
+          'It may still land — verify the signature on-chain before retrying.',
+      );
+    }
     return httpErrors.transactionTimeout(
-      signature
-        ? `Transaction ${signature} was not confirmed before its blockhash expired. It most likely did not ` +
-            'land — verify the signature on-chain before retrying.'
-        : 'Transaction failed to send',
+      `Transaction ${signature} was not confirmed before its blockhash expired. It most likely did not ` +
+        'land — verify the signature on-chain before retrying.',
     );
   }
 
@@ -1721,14 +1471,16 @@ export class Solana {
       }
     }
 
-    const { confirmed, signature, txData } = await this._sendAndConfirmRawTransaction(signedTx.serialize());
+    const { confirmed, signature, txData, interruptedBy } = await this._sendAndConfirmRawTransaction(
+      signedTx.serialize(),
+    );
     if (confirmed && txData) {
       const actualFee = this.getFee(txData);
       logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
       return { signature, fee: actualFee };
     }
     await this.throwIfLandedWithError(signature);
-    throw this.confirmationTimeoutError(signature);
+    throw this.confirmationTimeoutError(signature, interruptedBy);
   }
 
   /**
@@ -2135,7 +1887,7 @@ export class Solana {
    */
   private async _sendAndConfirmRawTransaction(
     serializedTx: Buffer | Uint8Array,
-  ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
+  ): Promise<{ confirmed: boolean; signature: string; txData: any; interruptedBy?: string }> {
     const { lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
 
     let signature: string | null = null;
@@ -2183,7 +1935,10 @@ export class Solana {
         Solana.throwIfSimulationReturnedError({ err: message, logs });
       }
       logger.error(`Failed to send transaction: ${sendError.message}`);
-      return { confirmed: false, signature: signature || '', txData: null };
+      if (signature === null) return { confirmed: false, signature: '', txData: null };
+      // Broadcast, and then the wait failed: the caller is told so, not that the blockhash expired.
+      const interruptedBy = sendError.statusCode === 429 ? 'the RPC rate-limited the status checks' : sendError.message;
+      return { confirmed: false, signature, txData: null, interruptedBy };
     }
   }
 

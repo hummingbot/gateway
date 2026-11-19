@@ -263,6 +263,22 @@ describe('Config Utils - Chain-Network Merge', () => {
       expect(mockSetFn).not.toHaveBeenCalled();
     });
 
+    it('should reject an unknown network written to one entry of the defaultNetworks list', () => {
+      expect(() => updateConfig(fastify, 'ethereum.defaultNetworks.0', 'ralphhandsome')).toThrow(
+        expect.objectContaining({
+          statusCode: 400,
+          message: 'Unknown ethereum network: ralphhandsome. Configured networks: mainnet',
+        }),
+      );
+      expect(mockSetFn).not.toHaveBeenCalled();
+    });
+
+    it('should accept a configured network written to one entry of the defaultNetworks list', () => {
+      updateConfig(fastify, 'ethereum.defaultNetworks.0', 'mainnet');
+
+      expect(mockSetFn).toHaveBeenCalledWith('ethereum.defaultNetworks.0', 'mainnet');
+    });
+
     it('should accept a defaultNetworks list made of configured networks', () => {
       updateConfig(fastify, 'solana.defaultNetworks', ['mainnet-beta', 'devnet']);
 

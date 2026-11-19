@@ -12,9 +12,9 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { badRequest, serviceUnavailable, transactionFailed } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
-import { ReportBalance, WalletTokenBalance, balancesByKey } from '../wallet-balances';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
+import { ReportBalance, WalletTokenBalance, balancesByKey } from '../wallet-balances';
 
 import { getEthereumNetworkConfig, getEthereumChainConfig } from './ethereum.config';
 import { EtherscanService } from './etherscan-service';
@@ -1442,7 +1442,7 @@ export class Ethereum {
     await Promise.all(
       tokens.map(async (symbolOrAddress) => {
         // Don't process native token again
-        if (symbolOrAddress === this.nativeTokenSymbol) {
+        if (symbolOrAddress.toUpperCase() === this.nativeTokenSymbol.toUpperCase()) {
           return;
         }
 

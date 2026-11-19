@@ -62,15 +62,18 @@ export const getConfig = (fastify: FastifyInstance, namespace?: string): object 
  * it. The Hummingbot client checks the single field before sending; the list, and any
  * caller that is not the client, reached the file unchecked.
  */
-function assertKnownNetworks(fastify: FastifyInstance, chain: string, field: string, value: unknown): void {
+function assertKnownNetworks(fastify: FastifyInstance, chain: string, pathParts: string[], value: unknown): void {
+  const [field, ...within] = pathParts;
   if (field !== 'defaultNetwork' && field !== 'defaultNetworks') {
     return;
   }
+  // `defaultNetworks.0` replaces one entry of the list, so its value is one network
+  const oneNetwork = field === 'defaultNetwork' || within.length > 0;
   // a value of the wrong shape is left to the JSON schema, which names the type
-  if (field === 'defaultNetwork' && typeof value !== 'string') {
+  if (oneNetwork && typeof value !== 'string') {
     return;
   }
-  if (field === 'defaultNetworks' && !(Array.isArray(value) && value.every((v) => typeof v === 'string'))) {
+  if (!oneNetwork && !(Array.isArray(value) && value.every((v) => typeof v === 'string'))) {
     return;
   }
   const named: string[] = Array.isArray(value) ? value : [value];
@@ -104,7 +107,7 @@ export const updateConfig = (fastify: FastifyInstance, configPath: string, confi
         // Route to the chain namespace instead
         const chainConfigPath = `${parsed.chain}.${pathParts.join('.')}`;
         logger.info(`Routing chain-level field to: ${chainConfigPath}`);
-        assertKnownNetworks(fastify, parsed.chain, field, configValue);
+        assertKnownNetworks(fastify, parsed.chain, pathParts, configValue);
         ConfigManagerV2.getInstance().set(chainConfigPath, configValue);
         logger.info(`Successfully updated configuration: ${chainConfigPath}`);
         return;
@@ -112,7 +115,7 @@ export const updateConfig = (fastify: FastifyInstance, configPath: string, confi
     }
 
     if (KNOWN_CHAINS.includes(namespace) && field) {
-      assertKnownNetworks(fastify, namespace, field, configValue);
+      assertKnownNetworks(fastify, namespace, pathParts, configValue);
     }
 
     // Update the configuration using ConfigManagerV2

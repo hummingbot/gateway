@@ -28,20 +28,24 @@ export const getLocalDate = () => {
   return dayjs().utcOffset(offsetMinutes, false).format('YYYY-MM-DD HH:mm:ss');
 };
 
-// A URL anywhere in a piece of text: scheme, optional userinfo, host[:port], then the rest up
-// to whitespace or a quote.
-const URL_IN_TEXT = /\b((?:https?|wss?):\/\/)(?:[^/\s"'`@]*@)?([A-Za-z0-9.\-[\]:]+)[^\s"'`]*/gi;
+// A URL anywhere in a piece of text: scheme, optional userinfo (up to its last `@`),
+// host[:port], then the rest up to whitespace or a quote. The slashes may be JSON-escaped.
+const URL_IN_TEXT = /((?:https?|wss?):(?:\\?\/){2})(?:[^/?#\\\s"'`]*@)?([A-Za-z0-9.\-[\]:]+)[^\s"'`]*/gi;
+// The same credentials where the text has no scheme to recognise a URL by.
+const QUERY_KEY = /([?&](?:api[-_]?key|access[-_]?token|token|d?key)=)[^&\s"',)]+/gi;
+const USERINFO = /\/\/[^/?#\s"'`]+@/g;
 
 /**
  * Cut every http(s)/ws(s) URL in a piece of text down to its scheme and host.
  *
  * RPC providers put the access key in the userinfo, the path or the query, each in their own
  * way, so a list of known key shapes lets through every provider it has not heard of. The
- * host alone never carries the key and still says which endpoint is in use.
+ * host alone still says which endpoint is in use. A provider that issues a secret hostname
+ * is not covered: the host is what is left.
  */
 export const redactUrl = (url: string | null | undefined): string => {
   if (!url) return url ?? '';
-  return url.replace(URL_IN_TEXT, '$1$2');
+  return url.replace(URL_IN_TEXT, '$1$2').replace(QUERY_KEY, '$1***').replace(USERINFO, '//***@');
 };
 
 const logFileFormat = winston.format.combine(
