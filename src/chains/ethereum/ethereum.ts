@@ -367,7 +367,13 @@ export class Ethereum {
       logger.warn(`Gas estimate for ${method} failed: ${redactUrl(error?.message ?? String(error))}`);
       // ethers puts a `reason` on every error it makes, transport errors included ("timeout",
       // "missing response"), so the code decides which this is, not the presence of a reason.
-      const revertReason = error?.error?.reason ?? error?.reason;
+      // The contract's reason sits at whichever level ethers found it: on the error itself
+      // when the node returned revert data, with the wrapped transport error underneath
+      // saying only "processing response error".
+      const reasons = [error?.reason, error?.error?.reason, error?.error?.error?.reason].filter(
+        (reason): reason is string => typeof reason === 'string',
+      );
+      const revertReason = reasons.find((reason) => reason.startsWith('execution reverted')) ?? reasons[0];
       const reverted = error?.code === 'UNPREDICTABLE_GAS_LIMIT' || error?.code === 'CALL_EXCEPTION';
       if (reverted && typeof revertReason === 'string') {
         // the contract refused the call: a 400, the request itself is wrong

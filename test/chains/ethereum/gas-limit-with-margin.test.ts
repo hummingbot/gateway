@@ -46,6 +46,29 @@ describe('Ethereum.gasLimitWithMargin', () => {
     });
   });
 
+  it.each([
+    [
+      'on the error, over a wrapped transport error (a live mainnet node)',
+      {
+        reason: 'execution reverted: Not approved',
+        error: { reason: 'processing response error', code: 'SERVER_ERROR' },
+      },
+    ],
+    [
+      'on the wrapped error, under the generic estimate message',
+      { reason: 'cannot estimate gas; transaction may fail', error: { reason: 'execution reverted: Not approved' } },
+    ],
+  ])('names the contract reason when it sits %s', async (_where, shape) => {
+    await expect(
+      gasLimit(async () => {
+        throw Object.assign(new Error('cannot estimate gas'), { code: 'UNPREDICTABLE_GAS_LIMIT', ...shape });
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: 'Could not estimate gas for multicall: execution reverted: Not approved. The transaction was not sent.',
+    });
+  });
+
   it('answers 503 with only the error code, not the transport message, when the node did not answer', async () => {
     // an ethers SERVER_ERROR carries the request URL, and an Infura URL carries the credential
     const transportError = Object.assign(

@@ -84,7 +84,7 @@ describe('createRateLimitAwareEthereumProvider', () => {
     const stub = providerWhoseCallFails(badResponse, 99);
     const wrapped = createRateLimitAwareEthereumProvider(stub, `https://solana-mainnet.infura.io/v3/${key}`);
     const call = wrapped.call({} as any);
-    await expect(call).rejects.toThrow('https://solana-mainnet.infura.io/v3/***');
+    await expect(call).rejects.toThrow('https://solana-mainnet.infura.io');
     await expect(call).rejects.not.toThrow(key);
   });
 
@@ -157,6 +157,31 @@ describe('createRateLimitAwareEthereumProvider over a provider', () => {
     await expect(wrappedProvider.call({ to: '0x0000000000000000000000000000000000000000' })).resolves.toBe('0x01');
     expect(mockProvider.call).toHaveBeenCalledTimes(2);
   });
+
+  it.each([
+    [
+      'a lamport balance in the program logs',
+      'Transaction simulation failed: custom program error: 0x1. Logs: ["Transfer: insufficient lamports 135904296, need 1000000000000"]',
+    ],
+    ['an address', 'Account 7xKX429tgAsU2bV8wS1ZQ3fGmpP5eYd9hRc6nLk4oTjB not found'],
+    ['a decimal amount', 'insufficient funds: have 0.429 SOL'],
+    [
+      'calldata in an ethers revert',
+      'cannot estimate gas (transaction={"data":"0x0c49ccbe000000000000000000000000000429ab"}, code=UNPREDICTABLE_GAS_LIMIT)',
+    ],
+  ])('does not take %s containing the digits 429 for a rate limit', async (_what, message) => {
+    const refused = new Error(message);
+    mockProvider.sendTransaction.mockRejectedValue(refused);
+    await expect(wrappedProvider.sendTransaction('0x')).rejects.toBe(refused);
+  });
+
+  it.each(['429 Too Many Requests: {"error":"slow down"}', 'bad response (status=429)', 'Server responded with 429.'])(
+    'still takes %p for a rate limit',
+    async (message) => {
+      mockProvider.sendTransaction.mockRejectedValue(new Error(message));
+      await expect(wrappedProvider.sendTransaction('0x')).rejects.toMatchObject({ statusCode: 429 });
+    },
+  );
 
   it('should not retry sendTransaction', async () => {
     const error429 = new Error('Too many requests');

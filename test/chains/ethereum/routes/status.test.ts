@@ -95,7 +95,7 @@ describe('Ethereum Status Route', () => {
       expect(result).toEqual({
         chain: 'ethereum',
         network: 'mainnet',
-        rpcUrl: 'https://mainnet.infura.io/v3/test-key',
+        rpcUrl: 'https://mainnet.infura.io',
         rpcProvider: 'infura',
         currentBlockNumber: 23329000,
         nativeCurrency: 'ETH',
@@ -118,7 +118,7 @@ describe('Ethereum Status Route', () => {
 
       const result = await getEthereumStatus('bsc');
 
-      expect(result.rpcUrl).toBe('https://bsc-mainnet.infura.io/v3/***');
+      expect(result.rpcUrl).toBe('https://bsc-mainnet.infura.io');
       expect(result.rpcUrl).not.toContain('0123456789abcdef0123456789abcdef');
     });
 
@@ -134,7 +134,7 @@ describe('Ethereum Status Route', () => {
 
       const result = await getEthereumStatus('mainnet');
 
-      expect(result.rpcUrl).toBe('https://eth-mainnet.g.alchemy.com/v2/***');
+      expect(result.rpcUrl).toBe('https://eth-mainnet.g.alchemy.com');
       expect(result.rpcUrl).not.toContain('your-api-key');
     });
 

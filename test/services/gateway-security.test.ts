@@ -3,6 +3,8 @@ import { tmpdir } from 'os';
 import path from 'path';
 
 import {
+  assertStrongApiKey,
+  checkApiToken,
   clearAuthFailures,
   constantTimeEqual,
   extractBearerToken,
@@ -230,6 +232,33 @@ describe('gateway-security', () => {
     });
     it.each(['a'.repeat(16), 'b'.repeat(64)])('false for strong-length key %p', (k) => {
       expect(isWeakApiKey(k)).toBe(false);
+    });
+  });
+
+  describe('assertStrongApiKey', () => {
+    it('refuses a short key and says what to do', () => {
+      expect(() => assertStrongApiKey('hunter2')).toThrow('The Gateway API key is shorter than 16 characters');
+    });
+    it('accepts a generated-length key', () => {
+      expect(() => assertStrongApiKey('b'.repeat(64))).not.toThrow();
+    });
+  });
+
+  describe('checkApiToken', () => {
+    const apiKey = 'k'.repeat(64);
+    const ip = '172.18.0.1'; // a Docker bridge: every sibling container arrives from it
+    afterEach(() => clearAuthFailures());
+
+    it('rejects wrong tokens, then answers locked-out once the threshold is reached', () => {
+      for (let i = 0; i < 10; i++) expect(checkApiToken(ip, 'wrong', apiKey)).toBe('rejected');
+      expect(checkApiToken(ip, 'wrong', apiKey)).toBe('locked-out');
+    });
+
+    it('accepts the correct token from a locked-out source and clears the lockout', () => {
+      for (let i = 0; i < 10; i++) checkApiToken(ip, 'wrong', apiKey);
+      expect(isAuthLockedOut(ip)).toBe(true);
+      expect(checkApiToken(ip, apiKey, apiKey)).toBe('accepted');
+      expect(isAuthLockedOut(ip)).toBe(false);
     });
   });
 

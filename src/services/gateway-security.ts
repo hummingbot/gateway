@@ -141,30 +141,24 @@ export function loadOrCreateApiKey(confDir: string): string {
 }
 
 /**
- * Heuristic weak-key check for an operator-supplied GATEWAY_API_KEY. The auto-generated
- * key is 256-bit (64 hex chars); a short, human-chosen value is brute-forceable — which
- * matters because the general rate limiter allow-lists private-network sources (see
- * isTrustedLocalAddress), so a LAN/compose-adjacent client is not throttled on the token.
- * Pure check — the caller decides how to surface it (we warn, not fail, so an existing
- * deployment with a short key keeps working).
+ * Weak-key check for the Gateway API key. The auto-generated key is 256-bit (64 hex chars);
+ * a short, human-chosen value can be guessed, and nothing else stops the guessing: the
+ * general rate limiter allow-lists private-network sources (see isTrustedLocalAddress) and
+ * the failed-auth lockout never refuses a correct token. Startup refuses a weak key.
  */
 export function isWeakApiKey(key: string): boolean {
   return key.trim().length < 16;
 }
 
 /**
- * In-memory failed-authentication lockout for sensitive routes (hummingbot/gateway#660 §2).
+ * In-memory count of failed token checks per source IP (hummingbot/gateway#660 §2). After
+ * GATEWAY_AUTH_FAIL_MAX failures within GATEWAY_AUTH_FAIL_WINDOW_MS, further FAILED attempts
+ * from that source are answered with 429 instead of 401.
  *
- * Keyed on the source IP and incremented ONLY on a failed token check, so a correctly
- * authenticated client — including a sibling-container bot that the general rate limiter
- * allow-lists — is never affected, while a token-guessing client is locked out after
- * GATEWAY_AUTH_FAIL_MAX failures within GATEWAY_AUTH_FAIL_WINDOW_MS. This is the control the
- * global limiter cannot provide: it exempts every private-network source (isTrustedLocalAddress)
- * and would otherwise give a LAN/compose-adjacent attacker unlimited guesses against the token.
- *
- * Scope note: an IP-keyed lockout is a proportionate mitigation for this local/LAN threat
- * model; it does not by itself stop an attacker able to rotate many source IPs (#660 §2). The
- * primary defense remains a high-entropy token (the generated key is 256-bit).
+ * A correct token is always accepted, locked out or not. Clients behind one NAT or Docker
+ * bridge share a source IP, so refusing the correct token during a lockout would let one
+ * misconfigured client shut out every other. The lockout therefore does not stop guessing;
+ * the key's entropy does, which is why a weak key is refused at startup (isWeakApiKey).
  */
 /** A lockout setting from the environment. A value that is not a number would compare as
  *  NaN and switch the lockout off (or make it permanent) without a word, so it is refused. */
@@ -205,6 +199,35 @@ export function recordAuthFailure(ip: string | undefined, now: number = Date.now
 export function clearAuthFailures(ip?: string): void {
   if (ip === undefined) authFailures.clear();
   else authFailures.delete(ip);
+}
+
+/**
+ * Decide a non-loopback request to a sensitive route. The token is checked before the
+ * lockout, so a correct token is accepted even from a locked-out source.
+ */
+export function checkApiToken(
+  ip: string | undefined,
+  token: string,
+  apiKey: string,
+  now: number = Date.now(),
+): 'accepted' | 'rejected' | 'locked-out' {
+  if (constantTimeEqual(token, apiKey)) {
+    clearAuthFailures(ip ?? 'unknown');
+    return 'accepted';
+  }
+  if (isAuthLockedOut(ip, now)) return 'locked-out';
+  recordAuthFailure(ip, now);
+  return 'rejected';
+}
+
+/** Refuse a weak API key outright: see isWeakApiKey for why nothing else covers for one. */
+export function assertStrongApiKey(key: string): void {
+  if (!isWeakApiKey(key)) return;
+  throw new Error(
+    'The Gateway API key is shorter than 16 characters. The key is the only thing that stops a ' +
+      'network client guessing its way onto the fund-moving routes, so a short one is refused. ' +
+      'Set GATEWAY_API_KEY to a high-entropy value, or unset it to have a 256-bit key generated.',
+  );
 }
 
 /**
