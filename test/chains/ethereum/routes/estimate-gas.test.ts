@@ -120,7 +120,7 @@ describe('Ethereum Estimate Gas Route', () => {
 
       expect(response.statusCode).toBe(500);
       const data = parseWire(response.body);
-      expect(data.message).toContain('https://bsc-mainnet.infura.io/v3/***');
+      expect(data.message).toContain('https://bsc-mainnet.infura.io');
       expect(data.message).not.toContain('0123456789abcdef0123456789abcdef');
     });
 

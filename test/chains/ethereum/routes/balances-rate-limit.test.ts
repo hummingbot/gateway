@@ -85,7 +85,7 @@ describe('Ethereum Balances Route - Rate Limit Handling', () => {
 
     expect(response.statusCode).toBe(429);
     const body = JSON.parse(response.body);
-    expect(body.message).toContain('https://bsc-mainnet.infura.io/v3/***');
+    expect(body.message).toContain('https://bsc-mainnet.infura.io');
     expect(body.message).not.toContain('0123456789abcdef0123456789abcdef');
   });
 
@@ -123,7 +123,7 @@ describe('Ethereum Balances Route - Rate Limit Handling', () => {
 
     expect(response.statusCode).toBe(500);
     const body = JSON.parse(response.body);
-    expect(body.message).toContain('https://bsc-mainnet.infura.io/v3/***');
+    expect(body.message).toContain('https://bsc-mainnet.infura.io');
     expect(body.message).not.toContain('0123456789abcdef0123456789abcdef');
   });
 

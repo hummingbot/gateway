@@ -91,7 +91,7 @@ describe('Solana Status Route', () => {
         chain: 'solana',
         network: 'mainnet-beta',
         // The route is not behind the API token, so the key does not leave with the URL.
-        rpcUrl: 'https://mainnet.helius-rpc.com/?api-key=***',
+        rpcUrl: 'https://mainnet.helius-rpc.com',
         rpcProvider: 'helius',
         currentBlockNumber: 365795000,
         nativeCurrency: 'SOL',
@@ -110,7 +110,7 @@ describe('Solana Status Route', () => {
 
       const result = await getSolanaStatus(fastify, 'mainnet-beta');
 
-      expect(result.rpcUrl).toBe('https://solana-mainnet.infura.io/v3/***');
+      expect(result.rpcUrl).toBe('https://solana-mainnet.infura.io');
     });
 
     it('should fallback to nodeURL when rpcProvider service is not available', async () => {

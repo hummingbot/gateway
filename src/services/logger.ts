@@ -28,39 +28,20 @@ export const getLocalDate = () => {
   return dayjs().utcOffset(offsetMinutes, false).format('YYYY-MM-DD HH:mm:ss');
 };
 
+// A URL anywhere in a piece of text: scheme, optional userinfo, host[:port], then the rest up
+// to whitespace or a quote.
+const URL_IN_TEXT = /\b((?:https?|wss?):\/\/)(?:[^/\s"'`@]*@)?([A-Za-z0-9.\-[\]:]+)[^\s"'`]*/gi;
+
 /**
- * Redact sensitive information (API keys) from URLs for logging
- * @param url - The URL that may contain sensitive information
- * @returns URL with API keys redacted
+ * Cut every http(s)/ws(s) URL in a piece of text down to its scheme and host.
+ *
+ * RPC providers put the access key in the userinfo, the path or the query, each in their own
+ * way, so a list of known key shapes lets through every provider it has not heard of. The
+ * host alone never carries the key and still says which endpoint is in use.
  */
 export const redactUrl = (url: string | null | undefined): string => {
   if (!url) return url ?? '';
-
-  let redacted = url;
-
-  // Redact basic-auth userinfo in URLs (e.g., https://user:secret@host)
-  redacted = redacted.replace(/(\/\/[^/\s"']+?@)/g, '//***@');
-
-  // Redact query parameter API keys (e.g., ?api-key=XXX, ?apiKey=XXX, ?apikey=XXX)
-  redacted = redacted.replace(/([?&]api[-_]?key=)[^&\s"',)]+/gi, '$1***');
-
-  // Redact Infura-style path API keys (e.g., /v3/API_KEY)
-  // Match 32 characters of alphanumeric after /v3/ whether standalone or embedded in error strings
-  redacted = redacted.replace(/(\/v3\/)([a-zA-Z0-9]{32})(?=$|[^a-zA-Z0-9])/gi, '$1***');
-
-  // Redact Alchemy-style path API keys (e.g., https://eth-mainnet.g.alchemy.com/v2/API_KEY)
-  redacted = redacted.replace(/(alchemy\.com\/v2\/)[^/\s?"',)]+/gi, '$1***');
-
-  // Redact Chainstack-style path tokens (e.g.,
-  //   https://<network>.core.chainstack.com/<token>
-  //   https://<network>.p2pify.com/<token>
-  // ). The path segment IS the per-node access credential.
-  redacted = redacted.replace(/(core\.chainstack\.com|p2pify\.com)\/[A-Za-z0-9]+/gi, '$1/***');
-
-  // Redact QuickNode-style path tokens (e.g., https://<name>.quiknode.pro/<token>/)
-  redacted = redacted.replace(/(quiknode\.pro)\/[A-Za-z0-9]+/gi, '$1/***');
-
-  return redacted;
+  return url.replace(URL_IN_TEXT, '$1$2');
 };
 
 const logFileFormat = winston.format.combine(

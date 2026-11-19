@@ -199,6 +199,8 @@ wallet. Essentials:
   (`GATEWAY_REQUIRE_AUTH=true`, then send `Authorization: Bearer <conf/api-key>` from your
   client), and ideally reach it over a VPN/Tailscale rather than a public port. Never run
   `--dev` (HTTP) on an untrusted network (e.g. public WiFi).
+  A `GATEWAY_API_KEY` shorter than 16 characters is refused at startup: a correct token is
+  always accepted, so the key's length is what stops it being guessed.
 - **Use a strong passphrase.** The Gateway passphrase encrypts your wallet keys at rest
   (scrypt + AES-256-GCM). A weak passphrase (e.g. `a`) can be brute-forced in seconds if a key
   file ever leaks — defeating the encryption. Use a long, random passphrase (24+ random

@@ -84,7 +84,7 @@ describe('createRateLimitAwareEthereumProvider', () => {
     const stub = providerWhoseCallFails(badResponse, 99);
     const wrapped = createRateLimitAwareEthereumProvider(stub, `https://solana-mainnet.infura.io/v3/${key}`);
     const call = wrapped.call({} as any);
-    await expect(call).rejects.toThrow('https://solana-mainnet.infura.io/v3/***');
+    await expect(call).rejects.toThrow('https://solana-mainnet.infura.io');
     await expect(call).rejects.not.toThrow(key);
   });
 
