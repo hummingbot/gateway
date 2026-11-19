@@ -10,6 +10,21 @@ import { logger } from '../../../services/logger';
 import { Raydium, RaydiumAmmPool } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 
+/**
+ * A constant-product trade's price impact, as a fraction: how far the price paid, net of
+ * the pool's fee, is from the spot price. For x*y=k that is exactly the share of the output
+ * reserve the trade takes out.
+ *
+ * Computed here because the SDK's two figures agree with neither each other nor this
+ * field. Its exact-in figure is already a percent, which the response then multiplied by
+ * 100 again. Its exact-out figure multiplies a decimal-adjusted price by a raw amount, so
+ * between tokens of different decimals it is off by the difference in powers of ten: a
+ * 0.02 SOL buy from a $16M SOL/USDC pool reported an impact of 99,650%.
+ */
+function constantProductPriceImpact(amountOut: BN, reserveOut: BN): number {
+  return new Decimal(amountOut.toString()).div(reserveOut.toString()).toNumber();
+}
+
 async function quoteAmmSwap(
   raydium: Raydium,
   pool: Extract<RaydiumAmmPool, { poolType: 'amm' }>,
@@ -29,6 +44,8 @@ async function quoteAmmSwap(
 
   const baseIn = inputMint === poolInfo.mintA.address;
   const [mintIn, mintOut] = baseIn ? [poolInfo.mintA, poolInfo.mintB] : [poolInfo.mintB, poolInfo.mintA];
+
+  const reserveOut = baseIn ? poolInfo.quoteReserve : poolInfo.baseReserve;
 
   const effectiveSlippage = slippagePct / 100;
 
@@ -51,7 +68,7 @@ async function quoteAmmSwap(
       minAmountOut: out.minAmountOut,
       maxAmountIn: new BN(amountIn),
       fee: out.fee,
-      priceImpact: out.priceImpact,
+      priceImpact: constantProductPriceImpact(out.amountOut, reserveOut),
     };
   } else if (amountOut) {
     const out = raydium.raydiumSDK.liquidity.computeAmountIn({
@@ -71,7 +88,7 @@ async function quoteAmmSwap(
       amountOut: new BN(amountOut),
       minAmountOut: new BN(amountOut),
       maxAmountIn: out.maxAmountIn,
-      priceImpact: out.priceImpact,
+      priceImpact: constantProductPriceImpact(new BN(amountOut), reserveOut),
     };
   }
 
