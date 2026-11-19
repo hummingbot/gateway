@@ -154,9 +154,19 @@ export async function closePosition(
     wallet,
   );
 
-  // Execute the transaction to remove liquidity and burn the position
-  const txParams = await ethereum.prepareGasOptions(undefined, CLMM_CLOSE_POSITION_GAS_LIMIT);
-  txParams.value = BigNumber.from(value.toString());
+  // Execute the transaction to remove liquidity and burn the position. The fixed limit is a
+  // floor: a close that collects on both sides and burns the token can need more (#629). A
+  // close the node cannot estimate is refused here, before any fee is paid.
+  const txValue = BigNumber.from(value.toString());
+  const gasLimit = await ethereum.gasLimitWithMargin(
+    positionManagerWithSigner,
+    'multicall',
+    [[calldata]],
+    { value: txValue },
+    CLMM_CLOSE_POSITION_GAS_LIMIT,
+  );
+  const txParams = await ethereum.prepareGasOptions(undefined, gasLimit);
+  txParams.value = txValue;
 
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
