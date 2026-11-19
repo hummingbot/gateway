@@ -52,6 +52,7 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { httpErrors, HttpError } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
+import { ReportBalance, WalletTokenBalance, balancesByKey } from '../wallet-balances';
 import { encryptSecret, decryptSecret, isLegacyKeystore } from '../../services/secure-keystore';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
@@ -849,7 +850,7 @@ export class Solana {
    * @returns Map of token symbol to balance (only includes tokens in network's token list)
    */
   public async getBalances(address: string, tokens?: string[]): Promise<Record<string, number>> {
-    return this.getBalancesFromRPC(address, tokens);
+    return balancesByKey(await this.getTokenBalances(address, tokens));
   }
 
   /**
@@ -941,36 +942,37 @@ export class Solana {
   }
 
   /**
-   * Get balances for a given address directly from RPC (bypasses cache)
-   * @param address Wallet address
-   * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches tokens from token list
-   * @returns Map of token symbol to balance (only includes tokens in network's token list)
+   * A wallet's balances, read from the RPC, each with the name it is reported under and the
+   * token it is.
+   *
+   * The name follows the request: a token asked for by its mint is reported under that
+   * mint, exactly as sent, and one asked for by symbol under the token list's symbol. With
+   * no tokens named, every listed token the wallet holds is reported under its symbol.
+   *
+   * Native and wrapped SOL are two balances, as ETH and WETH are: 'SOL' is the native
+   * balance, and 'WSOL' or the wrapped-SOL mint is the wallet's wrapped-SOL token account.
    */
-  private async getBalancesFromRPC(address: string, tokens?: string[]): Promise<Record<string, number>> {
+  public async getTokenBalances(address: string, tokens?: string[]): Promise<WalletTokenBalance[]> {
     let publicKey: PublicKey;
     try {
       publicKey = new PublicKey(address);
     } catch {
       throw httpErrors.badRequest(`Invalid Solana address: ${address}`);
     }
-    const balances: Record<string, number> = {};
+    const found = new Map<string, WalletTokenBalance>();
+    const report: ReportBalance = (key, symbol, address, balance) => found.set(key, { key, symbol, address, balance });
 
     // Treat empty array as if no tokens were specified
     const effectiveSymbols = tokens && tokens.length === 0 ? undefined : tokens;
 
     // Always fetch SOL balance if no specific tokens or SOL is requested
-    const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
-    if (!effectiveSymbols || effectiveSymbols.some((s) => s.toUpperCase() === 'SOL' || s === SOL_NATIVE_MINT)) {
-      balances['SOL'] = await this.getSolBalance(publicKey);
+    if (!effectiveSymbols || effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')) {
+      report('SOL', 'SOL', null, await this.getSolBalance(publicKey));
     }
 
     // Return early if only SOL was requested
-    if (
-      effectiveSymbols &&
-      effectiveSymbols.length === 1 &&
-      (effectiveSymbols[0].toUpperCase() === 'SOL' || effectiveSymbols[0] === SOL_NATIVE_MINT)
-    ) {
-      return balances;
+    if (effectiveSymbols && effectiveSymbols.every((s) => s.toUpperCase() === 'SOL')) {
+      return [...found.values()];
     }
 
     // Fetch all token accounts
@@ -981,27 +983,27 @@ export class Solana {
     // Process tokens based on request type
     if (effectiveSymbols) {
       // Specific tokens requested
-      await this.processSpecificTokens(tokenAccounts, effectiveSymbols, balances);
+      await this.processSpecificTokens(tokenAccounts, effectiveSymbols, report);
     } else {
       // Default: only tokens in token list
-      await this.processTokenListOnly(tokenAccounts, balances);
+      await this.processTokenListOnly(tokenAccounts, report);
     }
 
     // Wrapped SOL is a token balance of its own. The list names its mint 'SOL', and that
-    // key is the native balance, so the wrapped balance is reported as 'WSOL': whenever
-    // the wallet holds some, and always when asked for by that name.
-    const wrappedAsked = effectiveSymbols?.some((s) => s.toUpperCase() === 'WSOL');
-    if (!effectiveSymbols || wrappedAsked) {
-      const wrapped = this.getTokenBalance(tokenAccounts.get(NATIVE_MINT.toBase58()), 9);
-      if (wrapped > 0 || wrappedAsked) balances['WSOL'] = wrapped;
-    }
-
-    // Filter results if no specific tokens were requested
+    // key is the native balance, so the wrapped balance is 'WSOL': reported whenever the
+    // wallet holds some, and always when asked for, by that name or by the mint.
+    const wrappedMint = NATIVE_MINT.toBase58();
+    const wrapped = this.getTokenBalance(tokenAccounts.get(wrappedMint), 9);
     if (!effectiveSymbols) {
-      return this.filterZeroBalances(balances);
+      if (wrapped > 0) report('WSOL', 'WSOL', wrappedMint, wrapped);
+    } else {
+      if (effectiveSymbols.some((s) => s.toUpperCase() === 'WSOL')) report('WSOL', 'WSOL', wrappedMint, wrapped);
+      if (effectiveSymbols.includes(wrappedMint)) report(wrappedMint, 'WSOL', wrappedMint, wrapped);
     }
 
-    return balances;
+    // With no tokens named, an empty balance is left out; SOL is always reported.
+    const balances = [...found.values()];
+    return effectiveSymbols ? balances : balances.filter((entry) => entry.key === 'SOL' || entry.balance > 0);
   }
 
   /**
@@ -1169,43 +1171,34 @@ export class Solana {
   private async processSpecificTokens(
     tokenAccounts: Map<string, TokenAccount>,
     symbols: string[],
-    balances: Record<string, number>,
+    report: ReportBalance,
   ): Promise<void> {
-    const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
     const tokenList = await this.getTokenList();
 
     for (const symbol of symbols) {
-      if (symbol.toUpperCase() === 'SOL' || symbol === SOL_NATIVE_MINT) continue;
-      // Wrapped SOL is reported by the caller, from the wallet's wrapped-SOL account.
-      if (symbol.toUpperCase() === 'WSOL') continue;
+      // Native and wrapped SOL are reported by the caller.
+      if (['SOL', 'WSOL'].includes(symbol.toUpperCase()) || symbol === NATIVE_MINT.toBase58()) continue;
 
-      // A listed token, asked for by symbol or by mint, is reported under its symbol so
-      // the caller can name and price it.
-      const tokenInfo = tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase() || t.address === symbol);
+      // The balance goes under what the caller asked with: a client stores it under the
+      // key in the answer and looks it up under the name it sent, so a mint answered under
+      // a symbol is a balance it never finds.
+      const bySymbol = tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase());
+      const byMint = bySymbol ? undefined : tokenList.find((t) => t.address === symbol);
 
-      if (tokenInfo) {
-        // 'SOL' is the native balance's key. A listed token of another mint under that
-        // symbol would overwrite it, so the list is refused instead.
-        if (tokenInfo.symbol.toUpperCase() === 'SOL') {
-          throw new Error(
-            `Token list entry ${tokenInfo.address} has the symbol ${tokenInfo.symbol}, which names native SOL ` +
-              `(${SOL_NATIVE_MINT}); give it another symbol`,
-          );
-        }
-        const balance = this.getTokenBalance(tokenAccounts.get(tokenInfo.address), tokenInfo.decimals);
-        balances[tokenInfo.symbol] = balance;
+      if (bySymbol) {
+        const balance = this.getTokenBalance(tokenAccounts.get(bySymbol.address), bySymbol.decimals);
+        report(bySymbol.symbol, bySymbol.symbol, bySymbol.address, balance);
+      } else if (byMint) {
+        const balance = this.getTokenBalance(tokenAccounts.get(byMint.address), byMint.decimals);
+        report(symbol, byMint.symbol, byMint.address, balance);
       } else if (this.isValidSolanaAddress(symbol)) {
-        // Try as mint address
+        // An unlisted mint
         const tokenAccount = tokenAccounts.get(symbol);
-        if (tokenAccount) {
-          const balance = await this.getTokenBalanceWithMintInfo(tokenAccount, symbol);
-          balances[symbol] = balance;
-        } else {
-          balances[symbol] = 0;
-        }
+        const balance = tokenAccount ? await this.getTokenBalanceWithMintInfo(tokenAccount, symbol) : 0;
+        report(symbol, null, symbol, balance);
       } else {
         logger.warn(`Token not recognized: ${symbol}`);
-        balances[symbol] = 0;
+        report(symbol, null, null, 0);
       }
     }
   }
@@ -1244,10 +1237,7 @@ export class Solana {
   /**
    * Process only tokens that are in the token list (default behavior)
    */
-  private async processTokenListOnly(
-    tokenAccounts: Map<string, TokenAccount>,
-    balances: Record<string, number>,
-  ): Promise<void> {
+  private async processTokenListOnly(tokenAccounts: Map<string, TokenAccount>, report: ReportBalance): Promise<void> {
     const tokenList = await this.getTokenList();
     logger.info(`Checking balances for ${tokenList.length} tokens in token list`);
 
@@ -1258,7 +1248,7 @@ export class Solana {
       if (tokenAccount) {
         const balance = this.getTokenBalance(tokenAccount, tokenInfo.decimals);
         if (balance > 0) {
-          balances[tokenInfo.symbol] = balance;
+          report(tokenInfo.symbol, tokenInfo.symbol, tokenInfo.address, balance);
         }
       }
     }
@@ -1307,27 +1297,6 @@ export class Solana {
     } catch {
       return false;
     }
-  }
-
-  /**
-   * Filter out zero balances (except SOL)
-   */
-  private filterZeroBalances(balances: Record<string, number>): Record<string, number> {
-    const filtered: Record<string, number> = {};
-
-    // Always include SOL
-    if ('SOL' in balances) {
-      filtered['SOL'] = balances['SOL'];
-    }
-
-    // Add non-zero balances
-    for (const [key, value] of Object.entries(balances)) {
-      if (key !== 'SOL' && value > 0) {
-        filtered[key] = value;
-      }
-    }
-
-    return filtered;
   }
 
   // returns a Solana TransactionResponse for a txHash.

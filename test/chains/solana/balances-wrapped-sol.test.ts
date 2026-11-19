@@ -1,7 +1,8 @@
 /**
  * Wrapped SOL is a token balance the wallet can spend, but the token list names its mint
  * 'SOL' and that key is the native balance. It is reported as 'WSOL': in the default
- * view when the wallet holds some, and always when asked for by name.
+ * view when the wallet holds some, and always when asked for by name. Asked for by its
+ * mint it is reported under the mint (see balances-by-mint.test.ts).
  */
 import { NATIVE_MINT } from '@solana/spl-token';
 import { Keypair } from '@solana/web3.js';

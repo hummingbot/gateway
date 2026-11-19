@@ -27,7 +27,7 @@ describe('Solana Balances Route - Rate Limit Handling', () => {
 
     // Create mock Solana instance
     mockSolanaInstance = {
-      getBalances: jest.fn(),
+      getTokenBalances: jest.fn(),
       network: 'mainnet-beta',
       nativeTokenSymbol: 'SOL',
       rpcUrl: 'https://api.mainnet-beta.solana.com',
@@ -45,7 +45,7 @@ describe('Solana Balances Route - Rate Limit Handling', () => {
       (error429 as any).statusCode = 429;
       (error429 as any).name = 'TooManyRequestsError';
 
-      mockSolanaInstance.getBalances.mockRejectedValue(error429);
+      mockSolanaInstance.getTokenBalances.mockRejectedValue(error429);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -70,7 +70,7 @@ describe('Solana Balances Route - Rate Limit Handling', () => {
     it('should return 500 for non-rate-limit errors', async () => {
       const networkError = new Error('Network connection failed');
 
-      mockSolanaInstance.getBalances.mockRejectedValue(networkError);
+      mockSolanaInstance.getTokenBalances.mockRejectedValue(networkError);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -94,10 +94,11 @@ describe('Solana Balances Route - Rate Limit Handling', () => {
     });
 
     it('should return 200 with balances when no rate limit', async () => {
-      mockSolanaInstance.getBalances.mockResolvedValue({
-        SOL: 2.5,
-        USDC: 100.0,
-      });
+      const usdc = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+      mockSolanaInstance.getTokenBalances.mockResolvedValue([
+        { key: 'SOL', symbol: 'SOL', address: null, balance: 2.5 },
+        { key: 'USDC', symbol: 'USDC', address: usdc, balance: 100.0 },
+      ]);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -117,6 +118,10 @@ describe('Solana Balances Route - Rate Limit Handling', () => {
           SOL: 2.5,
           USDC: 100.0,
         },
+        tokens: [
+          { key: 'SOL', symbol: 'SOL', address: null, balance: 2.5 },
+          { key: 'USDC', symbol: 'USDC', address: usdc, balance: 100.0 },
+        ],
       });
     });
   });

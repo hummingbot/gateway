@@ -90,7 +90,25 @@ export type BalanceRequestType = Static<typeof BalanceRequestSchema>;
 
 export const BalanceResponseSchema = Type.Object(
   {
-    balances: Type.Record(Type.String(), Type.Number()),
+    balances: Type.Record(Type.String(), Type.Number(), {
+      description:
+        'Balance by name. The name follows the request: a token asked for by its address is under that ' +
+        'address exactly as sent, one asked for by symbol under the token list symbol. With no tokens ' +
+        'named, each is under its symbol.',
+    }),
+    tokens: Type.Array(
+      Type.Object({
+        key: Type.String({ description: 'the name this balance has in `balances`' }),
+        symbol: Type.Union([Type.String(), Type.Null()], {
+          description: 'token list symbol; null for a token outside the token list',
+        }),
+        address: Type.Union([Type.String(), Type.Null()], {
+          description: 'token address; null for the native currency',
+        }),
+        balance: Type.Number(),
+      }),
+      { description: 'The same balances with the token each one is, whichever way it was asked for' },
+    ),
   },
   { $id: 'BalanceResponse' },
 );

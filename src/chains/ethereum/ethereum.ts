@@ -12,6 +12,7 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { badRequest, serviceUnavailable, transactionFailed } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
+import { ReportBalance, WalletTokenBalance, balancesByKey } from '../wallet-balances';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
@@ -1349,7 +1350,20 @@ export class Ethereum {
    * @returns Map of token symbol to balance
    */
   public async getBalances(address: string, tokens?: string[]): Promise<Record<string, number>> {
-    const balances: Record<string, number> = {};
+    return balancesByKey(await this.getTokenBalances(address, tokens));
+  }
+
+  /**
+   * A wallet's balances, each with the name it is reported under and the token it is.
+   *
+   * The name follows the request: a token asked for by its address is reported under that
+   * address, exactly as sent, and one asked for by symbol under the token list's symbol.
+   * With no tokens named, every listed token the wallet holds is reported under its symbol.
+   * The native currency is always included.
+   */
+  public async getTokenBalances(address: string, tokens?: string[]): Promise<WalletTokenBalance[]> {
+    const found = new Map<string, WalletTokenBalance>();
+    const report: ReportBalance = (key, symbol, address, balance) => found.set(key, { key, symbol, address, balance });
 
     // Treat empty array as if no tokens were specified
     const effectiveTokens = tokens && tokens.length === 0 ? undefined : tokens;
@@ -1366,17 +1380,17 @@ export class Ethereum {
     const nativeBalance = isHardware
       ? await this.getNativeBalanceByAddress(address)
       : await this.getNativeBalance(wallet!);
-    balances[this.nativeTokenSymbol] = parseFloat(tokenValueToString(nativeBalance));
+    report(this.nativeTokenSymbol, this.nativeTokenSymbol, null, parseFloat(tokenValueToString(nativeBalance)));
 
     if (!effectiveTokens) {
       // No tokens specified, check all tokens in token list
-      await this.getAllTokenBalances(address, wallet, isHardware, balances);
+      await this.getAllTokenBalances(address, wallet, isHardware, report);
     } else {
       // Get specific token balances
-      await this.getSpecificTokenBalances(effectiveTokens, address, wallet, isHardware, balances);
+      await this.getSpecificTokenBalances(effectiveTokens, address, wallet, isHardware, report);
     }
 
-    return balances;
+    return [...found.values()];
   }
 
   /**
@@ -1387,7 +1401,7 @@ export class Ethereum {
     address: string,
     wallet: Wallet | null,
     isHardware: boolean,
-    balances: Record<string, number>,
+    report: ReportBalance,
   ): Promise<void> {
     const tokenList = await this.getTokenList();
     logger.info(`Checking balances for all ${tokenList.length} tokens in the token list`);
@@ -1403,7 +1417,7 @@ export class Ethereum {
 
         // Only add tokens with non-zero balances
         if (balanceNum > 0) {
-          balances[token.symbol] = balanceNum;
+          report(token.symbol, token.symbol, token.address, balanceNum);
           logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
         }
       } catch (err) {
@@ -1423,7 +1437,7 @@ export class Ethereum {
     address: string,
     wallet: Wallet | null,
     isHardware: boolean,
-    balances: Record<string, number>,
+    report: ReportBalance,
   ): Promise<void> {
     await Promise.all(
       tokens.map(async (symbolOrAddress) => {
@@ -1434,23 +1448,27 @@ export class Ethereum {
 
         const token = await this.getToken(symbolOrAddress);
         if (token) {
+          // The balance goes under what the caller asked with: a client stores it under the
+          // key in the answer and looks it up under the name it sent.
+          const askedBySymbol = token.symbol.toUpperCase() === symbolOrAddress.toUpperCase();
+          const key = askedBySymbol ? token.symbol : symbolOrAddress;
           try {
             const contract = this.getContract(token.address, this.provider);
             const balance = isHardware
               ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000, token.symbol)
               : await this.getERC20Balance(contract, wallet!, token.decimals, 5000, token.symbol);
 
-            balances[token.symbol] = parseFloat(tokenValueToString(balance));
+            report(key, token.symbol, token.address, parseFloat(tokenValueToString(balance)));
           } catch (err) {
             if ((err as any).statusCode === 429) {
               throw err;
             }
             logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
-            balances[token.symbol] = 0;
+            report(key, token.symbol, token.address, 0);
           }
         } else {
           logger.warn(`Token not recognized: ${symbolOrAddress}`);
-          balances[symbolOrAddress] = 0;
+          report(symbolOrAddress, null, null, 0);
         }
       }),
     );

@@ -73,18 +73,17 @@ export async function addLiquidity(
   const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
-  // Check balances with transaction buffer. Balances are asked for by the pool's mints: a
-  // token outside the token list has no symbol getBalances knows. A listed mint is
-  // reported under its list symbol, an unlisted one under the mint, and the native side
-  // is funded from the SOL balance (the SDK wraps it).
-  const tokenList = await solana.getTokenList();
+  // Check balances with transaction buffer. Each side is asked for by the pool's mint (a
+  // token outside the token list has no symbol) and reported under it. The native side is
+  // funded from the SOL balance (the SDK wraps it), so that one is asked for as 'SOL'.
+  const balanceKey = (mint: PublicKey): string => (mint.equals(NATIVE_MINT) ? 'SOL' : mint.toBase58());
   const balances = await solana.getBalances(walletPublicKey.toBase58(), [
-    dlmmPool.tokenX.publicKey.toBase58(),
-    dlmmPool.tokenY.publicKey.toBase58(),
+    balanceKey(dlmmPool.tokenX.publicKey),
+    balanceKey(dlmmPool.tokenY.publicKey),
   ]);
   const held = (mint: PublicKey): number => {
     const address = mint.toBase58();
-    const key = mint.equals(NATIVE_MINT) ? 'SOL' : (tokenList.find((t) => t.address === address)?.symbol ?? address);
+    const key = balanceKey(mint);
     if (balances[key] === undefined) {
       throw httpErrors.internalServerError(`getBalances returned no balance for ${address} under ${key}`);
     }
