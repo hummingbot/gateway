@@ -1,4 +1,9 @@
-import { NATIVE_MINT, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
+import {
+  NATIVE_MINT,
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountIdempotentInstruction,
+  createAssociatedTokenAccountInstruction,
+} from '@solana/spl-token';
 import {
   PublicKey,
   TransactionInstruction,
@@ -181,6 +186,29 @@ export function buildUnwrapSolInstructions(
   return hasNativeSide ? [solana.unwrapSOL(walletPubkey)] : [];
 }
 
+/**
+ * The wallet's token accounts for a pool's two mints, created if they are missing.
+ *
+ * `decrease_liquidity_v2` pays into the wallet's associated token accounts and fails with
+ * AccountNotInitialized when one is not there. The wrapped-SOL one usually is not: every
+ * route here that pays out SOL closes it again to unwrap. The instruction is the
+ * idempotent one, so an account that already exists is left alone.
+ */
+export async function buildRecipientAccountSetup(
+  solana: Solana,
+  walletPubkey: PublicKey,
+  mints: string[],
+): Promise<TransactionInstruction[]> {
+  return Promise.all(
+    mints.map(async (address) => {
+      const mint = new PublicKey(address);
+      const tokenProgram = await getTokenProgramForMint(solana, mint);
+      const account = getAssociatedTokenAddressSync(mint, walletPubkey, true, tokenProgram);
+      return createAssociatedTokenAccountIdempotentInstruction(walletPubkey, account, walletPubkey, mint, tokenProgram);
+    }),
+  );
+}
+
 export async function buildTransactionWithInstructions(
   solana: Solana,
   walletPubkey: PublicKey,
@@ -234,7 +262,8 @@ export async function buildRemoveLiquidityTransaction(
   // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
 
-  // The wallet's reward accounts, which the decrease pays into, then the decrease.
+  // The wallet's token and reward accounts, which the decrease pays into, then the decrease.
+  instructions.push(...(await buildRecipientAccountSetup(solana, walletPubkey, poolMints)));
   instructions.push(...(await buildRewardAccountSetup(solana, positionNftMint, walletPubkey)));
   instructions.push(removeLiqIx);
 
