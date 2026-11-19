@@ -165,6 +165,11 @@ describe('createRateLimitAwareEthereumProvider over a provider', () => {
     ],
     ['an address', 'Account 7xKX429tgAsU2bV8wS1ZQ3fGmpP5eYd9hRc6nLk4oTjB not found'],
     ['a decimal amount', 'insufficient funds: have 0.429 SOL'],
+    ['a number of its own in the program logs', 'Program 1111 consumed 429 of 200000 compute units'],
+    [
+      'a JSON-RPC id in the request body',
+      'missing response (requestBody="{\\"method\\":\\"eth_call\\",\\"id\\":429}", code=SERVER_ERROR)',
+    ],
     [
       'calldata in an ethers revert',
       'cannot estimate gas (transaction={"data":"0x0c49ccbe000000000000000000000000000429ab"}, code=UNPREDICTABLE_GAS_LIMIT)',
@@ -175,13 +180,14 @@ describe('createRateLimitAwareEthereumProvider over a provider', () => {
     await expect(wrappedProvider.sendTransaction('0x')).rejects.toBe(refused);
   });
 
-  it.each(['429 Too Many Requests: {"error":"slow down"}', 'bad response (status=429)', 'Server responded with 429.'])(
-    'still takes %p for a rate limit',
-    async (message) => {
-      mockProvider.sendTransaction.mockRejectedValue(new Error(message));
-      await expect(wrappedProvider.sendTransaction('0x')).rejects.toMatchObject({ statusCode: 429 });
-    },
-  );
+  it.each([
+    '429 Too Many Requests: {"error":"slow down"}',
+    'bad response (status=429)',
+    'Request failed with status code 429',
+  ])('still takes %p for a rate limit', async (message) => {
+    mockProvider.sendTransaction.mockRejectedValue(new Error(message));
+    await expect(wrappedProvider.sendTransaction('0x')).rejects.toMatchObject({ statusCode: 429 });
+  });
 
   it('should not retry sendTransaction', async () => {
     const error429 = new Error('Too many requests');

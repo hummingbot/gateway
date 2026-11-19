@@ -100,7 +100,8 @@ export const BalanceResponseSchema = Type.Object(
       Type.Object({
         key: Type.String({ description: 'the name this balance has in `balances`' }),
         symbol: Type.Union([Type.String(), Type.Null()], {
-          description: 'token list symbol; null for a token outside the token list',
+          description:
+            "the token's symbol where it is known: from the token list, or on EVM chains read from the contract; null otherwise",
         }),
         address: Type.Union([Type.String(), Type.Null()], {
           description: 'token address; null for the native currency',

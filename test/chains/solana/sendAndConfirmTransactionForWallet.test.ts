@@ -299,6 +299,15 @@ describe('Solana.throwIfLandedWithError / confirmationTimeoutError', () => {
     expect(error.message).toMatch(/timeout-sig was not confirmed before its blockhash expired/);
     expect(confirmationTimeoutError.call({}, '').message).toMatch(/Transaction failed to send/);
   });
+
+  it('does not claim the blockhash expired when the wait for confirmation was cut short', () => {
+    const error = confirmationTimeoutError.call({}, 'out-sig', 'the RPC rate-limited the status checks');
+    expect(error.code).toBe('TRANSACTION_TIMEOUT');
+    expect(error.message).toBe(
+      'Transaction out-sig was broadcast, but waiting for its confirmation was cut short: the RPC ' +
+        'rate-limited the status checks. It may still land — verify the signature on-chain before retrying.',
+    );
+  });
 });
 
 describe('Solana._confirmViaPolling', () => {

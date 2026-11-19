@@ -112,7 +112,12 @@ describe('rebroadcasting a sent transaction', () => {
     const result = (solana as any)._sendAndConfirmRawTransaction(wire);
     await jest.advanceTimersByTimeAsync(10_000);
 
-    expect(await result).toEqual({ confirmed: false, signature: 'sig', txData: null });
+    expect(await result).toEqual({
+      confirmed: false,
+      signature: 'sig',
+      txData: null,
+      interruptedBy: 'the RPC rate-limited the status checks',
+    });
     expect(sent.length).toBeGreaterThanOrEqual(1);
   });
 

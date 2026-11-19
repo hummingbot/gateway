@@ -72,6 +72,26 @@ describe('redactUrl', () => {
     );
   });
 
+  it.each([
+    ['a password containing @', 'https://user:p@ss@rpc.example.com/x', 'https://rpc.example.com'],
+    ['a scheme glued to other text', 'rpc_https://rpc.example.com/KEY', 'rpc_https://rpc.example.com'],
+    ['JSON-escaped slashes', 'https:\\/\\/rpc.example.com\\/v3\\/KEY', 'https:\\/\\/rpc.example.com'],
+    ['an @ in the query, not the userinfo', 'https://rpc.example.com?email=a@b.com', 'https://rpc.example.com'],
+  ])('handles %s', (_what, url, expected) => {
+    expect(redactUrl(url)).toBe(expected);
+  });
+
+  it.each([
+    [
+      'request to mainnet.helius-rpc.com/?api-key=SECRET failed',
+      'request to mainnet.helius-rpc.com/?api-key=*** failed',
+    ],
+    ['GET /rpc?token=SECRET&x=1', 'GET /rpc?token=***&x=1'],
+    ['connect //user:secret@host:8899 refused', 'connect //***@host:8899 refused'],
+  ])('redacts a credential in text with no scheme: %s', (text, expected) => {
+    expect(redactUrl(text)).toBe(expected);
+  });
+
   it('cuts every URL in a line of text', () => {
     expect(redactUrl('tried https://a.example.com/k1 then https://b.example.com/?key=k2 and gave up')).toBe(
       'tried https://a.example.com then https://b.example.com and gave up',

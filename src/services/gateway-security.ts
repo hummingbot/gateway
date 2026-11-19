@@ -189,6 +189,11 @@ export function recordAuthFailure(ip: string | undefined, now: number = Date.now
   const key = ip ?? 'unknown';
   const rec = authFailures.get(key);
   if (!rec || now > rec.resetAt) {
+    // A source that fails once and never returns would otherwise stay for good, so every
+    // new record first drops the ones whose window has passed.
+    for (const [source, record] of authFailures) {
+      if (now > record.resetAt) authFailures.delete(source);
+    }
     authFailures.set(key, { count: 1, resetAt: now + AUTH_FAIL_WINDOW_MS });
   } else {
     rec.count += 1;

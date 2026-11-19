@@ -481,7 +481,7 @@
                   "type": "string"
                 },
                 "symbol": {
-                  "description": "token list symbol; null for a token outside the token list",
+                  "description": "the token's symbol where it is known: from the token list, or on EVM chains read from the contract; null otherwise",
                   "anyOf": [
                     {
                       "type": "string"

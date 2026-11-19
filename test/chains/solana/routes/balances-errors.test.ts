@@ -50,7 +50,9 @@ describe('POST /chains/solana/balances errors', () => {
 
   it('keeps any 4xx from the balance read a 4xx', async () => {
     const notFound = Object.assign(new Error('gone'), { statusCode: 404, name: 'NotFoundError' });
-    jest.spyOn(Solana, 'getInstance').mockResolvedValue({ getTokenBalances: jest.fn().mockRejectedValue(notFound) } as any);
+    jest
+      .spyOn(Solana, 'getInstance')
+      .mockResolvedValue({ getTokenBalances: jest.fn().mockRejectedValue(notFound) } as any);
 
     const response = await post('11111111111111111111111111111111');
 
