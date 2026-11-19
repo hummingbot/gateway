@@ -1,6 +1,5 @@
-import { Contract } from '@ethersproject/contracts';
 import { Percent } from '@uniswap/sdk-core';
-import { BigNumber } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
@@ -11,7 +10,7 @@ import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { IUniswapV2Router02ABI } from '../uniswap.contracts';
-import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
+import { getUniswapPoolInfo } from '../uniswap.utils';
 
 import { getUniswapAmmLiquidityQuote } from './quoteLiquidity';
 
@@ -88,14 +87,9 @@ async function addLiquidityInternal(
   // Get Ethereum instance
   const ethereum = await Ethereum.getInstance(networkToUse);
 
-  // Get wallet
-  const wallet = await ethereum.getWallet(walletAddress);
-  if (!wallet) {
-    throw new Error('Wallet not found');
-  }
-
-  // Get the router contract with signer
-  const router = new Contract(quote.routerAddress, IUniswapV2Router02ABI.abi, wallet);
+  const router = new utils.Interface(IUniswapV2Router02ABI.abi);
+  const requireRouterAllowance = (token: { address: string; symbol: string; decimals: number }, amount: BigNumber) =>
+    ethereum.requireAllowance(walletAddress, token, quote.routerAddress, amount, 'uniswap/amm');
 
   // Calculate slippage-adjusted amounts
   const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
@@ -113,138 +107,38 @@ async function addLiquidityInternal(
   // Prepare the transaction parameters
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
-  let tx;
+  let data: string;
+  let value = '0';
+  let gasLimit = AMM_ADD_LIQUIDITY_GAS_LIMIT;
 
-  // Check if one of the tokens is WETH
+  // A WETH side is deposited as native ETH (addLiquidityETH); every ERC-20 side needs the router's allowance.
   if (quote.baseTokenObj.symbol === 'WETH') {
-    // Check allowance for quote token
-    const tokenContract = ethereum.getContract(quote.quoteTokenObj.address, wallet);
-    const allowance = await ethereum.getERC20Allowance(
-      tokenContract,
-      wallet,
-      quote.routerAddress,
-      quote.quoteTokenObj.decimals,
-    );
-
-    const currentAllowance = BigNumber.from(allowance.value);
-    logger.info(
-      `Current allowance for ${quote.quoteTokenObj.symbol}: ${formatTokenAmount(currentAllowance.toString(), quote.quoteTokenObj.decimals)}`,
-    );
-    logger.info(
-      `Amount needed for ${quote.quoteTokenObj.symbol}: ${formatTokenAmount(quote.rawQuoteTokenAmount.toString(), quote.quoteTokenObj.decimals)}`,
-    );
-
-    // Check if allowance is sufficient
-    if (currentAllowance.lt(quote.rawQuoteTokenAmount)) {
-      throw new Error(
-        `Insufficient allowance for ${quote.quoteTokenObj.symbol}. Please approve at least ${formatTokenAmount(quote.rawQuoteTokenAmount.toString(), quote.quoteTokenObj.decimals)} ${quote.quoteTokenObj.symbol} for the Uniswap router (${quote.routerAddress})`,
-      );
-    }
-
-    // Add liquidity ETH + Token
-    tx = await router.addLiquidityETH(
+    await requireRouterAllowance(quote.quoteTokenObj, quote.rawQuoteTokenAmount);
+    data = router.encodeFunctionData('addLiquidityETH', [
       quote.quoteTokenObj.address,
       quote.rawQuoteTokenAmount,
       quoteTokenMinAmount,
       baseTokenMinAmount,
       walletAddress,
       deadline,
-      {
-        value: quote.rawBaseTokenAmount,
-        gasLimit: 300000,
-      },
-    );
+    ]);
+    value = quote.rawBaseTokenAmount.toString();
+    gasLimit = 300000;
   } else if (quote.quoteTokenObj.symbol === 'WETH') {
-    // Check allowance for base token
-    const tokenContract = ethereum.getContract(quote.baseTokenObj.address, wallet);
-    const allowance = await ethereum.getERC20Allowance(
-      tokenContract,
-      wallet,
-      quote.routerAddress,
-      quote.baseTokenObj.decimals,
-    );
-
-    const currentAllowance = BigNumber.from(allowance.value);
-    logger.info(
-      `Current allowance for ${quote.baseTokenObj.symbol}: ${formatTokenAmount(currentAllowance.toString(), quote.baseTokenObj.decimals)}`,
-    );
-    logger.info(
-      `Amount needed for ${quote.baseTokenObj.symbol}: ${formatTokenAmount(quote.rawBaseTokenAmount.toString(), quote.baseTokenObj.decimals)}`,
-    );
-
-    // Check if allowance is sufficient
-    if (currentAllowance.lt(quote.rawBaseTokenAmount)) {
-      throw new Error(
-        `Insufficient allowance for ${quote.baseTokenObj.symbol}. Please approve at least ${formatTokenAmount(quote.rawBaseTokenAmount.toString(), quote.baseTokenObj.decimals)} ${quote.baseTokenObj.symbol} for the Uniswap router (${quote.routerAddress})`,
-      );
-    }
-
-    // Add liquidity Token + ETH
-    // Convert gasPrice from wei to gwei if provided
-    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_ADD_LIQUIDITY_GAS_LIMIT);
-    gasOptions.value = quote.rawQuoteTokenAmount;
-
-    tx = await router.addLiquidityETH(
+    await requireRouterAllowance(quote.baseTokenObj, quote.rawBaseTokenAmount);
+    data = router.encodeFunctionData('addLiquidityETH', [
       quote.baseTokenObj.address,
       quote.rawBaseTokenAmount,
       baseTokenMinAmount,
       quoteTokenMinAmount,
       walletAddress,
       deadline,
-      gasOptions,
-    );
+    ]);
+    value = quote.rawQuoteTokenAmount.toString();
   } else {
-    // Both tokens are ERC20 - check allowances for both
-    const baseTokenContract = ethereum.getContract(quote.baseTokenObj.address, wallet);
-    const baseAllowance = await ethereum.getERC20Allowance(
-      baseTokenContract,
-      wallet,
-      quote.routerAddress,
-      quote.baseTokenObj.decimals,
-    );
-
-    const quoteTokenContract = ethereum.getContract(quote.quoteTokenObj.address, wallet);
-    const quoteAllowance = await ethereum.getERC20Allowance(
-      quoteTokenContract,
-      wallet,
-      quote.routerAddress,
-      quote.quoteTokenObj.decimals,
-    );
-
-    const currentBaseAllowance = BigNumber.from(baseAllowance.value);
-    const currentQuoteAllowance = BigNumber.from(quoteAllowance.value);
-
-    logger.info(
-      `Current base allowance for ${quote.baseTokenObj.symbol}: ${formatTokenAmount(currentBaseAllowance.toString(), quote.baseTokenObj.decimals)}`,
-    );
-    logger.info(
-      `Amount needed for ${quote.baseTokenObj.symbol}: ${formatTokenAmount(quote.rawBaseTokenAmount.toString(), quote.baseTokenObj.decimals)}`,
-    );
-    logger.info(
-      `Current quote allowance for ${quote.quoteTokenObj.symbol}: ${formatTokenAmount(currentQuoteAllowance.toString(), quote.quoteTokenObj.decimals)}`,
-    );
-    logger.info(
-      `Amount needed for ${quote.quoteTokenObj.symbol}: ${formatTokenAmount(quote.rawQuoteTokenAmount.toString(), quote.quoteTokenObj.decimals)}`,
-    );
-
-    // Check if both allowances are sufficient
-    if (currentBaseAllowance.lt(quote.rawBaseTokenAmount)) {
-      throw new Error(
-        `Insufficient allowance for ${quote.baseTokenObj.symbol}. Please approve at least ${formatTokenAmount(quote.rawBaseTokenAmount.toString(), quote.baseTokenObj.decimals)} ${quote.baseTokenObj.symbol} for the Uniswap router (${quote.routerAddress})`,
-      );
-    }
-
-    if (currentQuoteAllowance.lt(quote.rawQuoteTokenAmount)) {
-      throw new Error(
-        `Insufficient allowance for ${quote.quoteTokenObj.symbol}. Please approve at least ${formatTokenAmount(quote.rawQuoteTokenAmount.toString(), quote.quoteTokenObj.decimals)} ${quote.quoteTokenObj.symbol} for the Uniswap router (${quote.routerAddress})`,
-      );
-    }
-
-    // Add liquidity Token + Token
-    // Convert gasPrice from wei to gwei if provided
-    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_ADD_LIQUIDITY_GAS_LIMIT);
-
-    tx = await router.addLiquidity(
+    await requireRouterAllowance(quote.baseTokenObj, quote.rawBaseTokenAmount);
+    await requireRouterAllowance(quote.quoteTokenObj, quote.rawQuoteTokenAmount);
+    data = router.encodeFunctionData('addLiquidity', [
       quote.baseTokenObj.address,
       quote.quoteTokenObj.address,
       quote.rawBaseTokenAmount,
@@ -253,9 +147,16 @@ async function addLiquidityInternal(
       quoteTokenMinAmount,
       walletAddress,
       deadline,
-      gasOptions,
-    );
+    ]);
   }
+
+  const tx = await ethereum.sendTransactionForWallet(walletAddress, {
+    to: quote.routerAddress,
+    data,
+    value,
+    gasLimit,
+    description: `add liquidity to pool ${poolAddress}`,
+  });
 
   // Wait for transaction confirmation
   const outcome = await ethereum.handleTransactionConfirmation(tx);

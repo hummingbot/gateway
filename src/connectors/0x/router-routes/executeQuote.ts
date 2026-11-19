@@ -15,7 +15,6 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
   }
 
   const ethereum = await Ethereum.getInstance(network);
-  const wallet = await ethereum.getWallet(walletAddress);
   const zeroX = await ZeroX.getInstance(network);
 
   logger.info(`Executing quote ${quoteId} on ${network}`);
@@ -26,32 +25,23 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
     if (!sellTokenInfo) {
       throw httpErrors.badRequest(`Token ${quote.sellTokenAddress} not found`);
     }
-
-    const tokenContract = ethereum.getContract(quote.sellTokenAddress, wallet);
-    const allowance = await ethereum.getERC20Allowance(
-      tokenContract,
-      wallet,
+    await ethereum.requireAllowance(
+      walletAddress,
+      sellTokenInfo,
       quote.allowanceTarget,
-      sellTokenInfo.decimals,
+      BigNumber.from(quote.sellAmount),
+      quote.allowanceTarget,
     );
-
-    const requiredAllowance = BigNumber.from(quote.sellAmount);
-    if (BigNumber.from(allowance.value).lt(requiredAllowance)) {
-      throw httpErrors.badRequest(
-        `Insufficient allowance for ${sellTokenInfo.symbol}. Required: ${zeroX.formatTokenAmount(quote.sellAmount, sellTokenInfo.decimals)}, Current: ${zeroX.formatTokenAmount(allowance.value.toString(), sellTokenInfo.decimals)}`,
-      );
-    }
   }
 
   // Execute the swap transaction
-  const txData = {
+  const txResponse = await ethereum.sendTransactionForWallet(walletAddress, {
     to: quote.to,
     data: quote.data,
-    value: quote.value,
+    value: BigNumber.from(quote.value ?? 0).toString(),
     gasLimit: parseInt(quote.estimatedGas || quote.gas),
-  };
-
-  const txResponse = await wallet.sendTransaction(txData);
+    description: `0x swap of ${quote.sellAmount} ${quote.sellTokenAddress} -> ${quote.buyTokenAddress}`,
+  });
   const txReceipt = await ethereum.handleTransactionExecution(txResponse);
 
   // Get token info for formatting amounts
@@ -74,7 +64,7 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
     expectedAmountIn,
     expectedAmountOut,
     undefined,
-    undefined,
+    txResponse.hash,
     quoteCache.getRequest(quoteId, '0x')?.slippagePct,
   );
 

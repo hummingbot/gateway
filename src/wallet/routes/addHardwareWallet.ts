@@ -12,7 +12,7 @@ import {
   AddHardwareWalletRequestSchema,
   AddHardwareWalletResponseSchema,
 } from '../schemas';
-import { validateChainName, getHardwareWallets, saveHardwareWallets } from '../utils';
+import { upsertHardwareWallet, validateChainName } from '../utils';
 
 // Maximum number of account indices to check when searching for an address
 const MAX_ACCOUNTS_TO_CHECK = 8;
@@ -147,41 +147,17 @@ async function addHardwareWallet(
       throw fastify.httpErrors.badRequest(message);
     }
 
-    // Get existing hardware wallets
-    const existingWallets = await getHardwareWallets(req.chain);
+    const replaced = await upsertHardwareWallet(req.chain, walletInfo);
 
-    // Check if address already exists
-    const existingIndex = existingWallets.findIndex((w) => w.address === validatedAddress);
-
-    if (existingIndex >= 0) {
-      // Replace existing entry
-      existingWallets[existingIndex] = walletInfo;
-      await saveHardwareWallets(req.chain, existingWallets);
-
-      // Update default wallet if requested
-      if (req.setDefault) {
-        updateDefaultWallet(fastify, req.chain, validatedAddress);
-      }
-
-      return {
-        ...walletInfo,
-        message: `Hardware wallet ${validatedAddress} updated successfully`,
-      };
-    } else {
-      // Add new wallet
-      existingWallets.push(walletInfo);
-      await saveHardwareWallets(req.chain, existingWallets);
-
-      // Update default wallet if requested
-      if (req.setDefault) {
-        updateDefaultWallet(fastify, req.chain, validatedAddress);
-      }
-
-      return {
-        ...walletInfo,
-        message: `Hardware wallet ${validatedAddress} added successfully`,
-      };
+    // Update default wallet if requested
+    if (req.setDefault) {
+      updateDefaultWallet(fastify, req.chain, validatedAddress);
     }
+
+    return {
+      ...walletInfo,
+      message: `Hardware wallet ${validatedAddress} ${replaced ? 'updated' : 'added'} successfully`,
+    };
   } catch (error: any) {
     logger.error(`Failed to add hardware wallet: ${error.message}`);
 

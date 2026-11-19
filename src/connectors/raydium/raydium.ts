@@ -500,23 +500,4 @@ export class Raydium {
     // Pools are now managed separately, return null for dynamic pool discovery
     return null;
   }
-
-  /**
-   * Helper function to prepare wallet for transaction operations
-   * Returns the wallet/public key and whether it's a hardware wallet
-   */
-  public async prepareWallet(walletAddress: string): Promise<{
-    wallet: Keypair | PublicKey;
-    isHardwareWallet: boolean;
-  }> {
-    const isHardwareWallet = await this.solana.isHardwareWallet(walletAddress);
-    const wallet = isHardwareWallet
-      ? await this.solana.getPublicKey(walletAddress)
-      : await this.solana.getWallet(walletAddress);
-
-    // Set the owner for SDK operations
-    await this.setOwner(wallet);
-
-    return { wallet, isHardwareWallet };
-  }
 }

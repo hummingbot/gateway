@@ -1,13 +1,13 @@
 import { Contract } from '@ethersproject/contracts';
 import { Percent, CurrencyAmount } from '@uniswap/sdk-core';
 import { NonfungiblePositionManager, Position, computePoolAddress } from '@uniswap/v3-sdk';
-import { BigNumber } from 'ethers';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
+import { positionManagerCall } from '../../clmm-v3-utils';
 import { slippageBasisPoints } from '../../evm-slippage';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
@@ -31,12 +31,6 @@ export async function closePosition(
   // Get Uniswap and Ethereum instances
   const uniswap = await Uniswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
-
-  // Get the wallet
-  const wallet = await ethereum.getWallet(walletAddress);
-  if (!wallet) {
-    throw httpErrors.badRequest('Wallet not found');
-  }
 
   // Get position manager address
   const positionManagerAddress = getUniswapV3NftManagerAddress(network);
@@ -139,26 +133,16 @@ export async function closePosition(
   // Get the calldata using the SDK
   const { calldata, value } = NonfungiblePositionManager.removeCallParameters(positionSDK, removeParams);
 
-  // Initialize position manager with multicall interface
-  const positionManagerWithSigner = new Contract(
-    positionManagerAddress,
-    [
-      {
-        inputs: [{ internalType: 'bytes[]', name: 'data', type: 'bytes[]' }],
-        name: 'multicall',
-        outputs: [{ internalType: 'bytes[]', name: 'results', type: 'bytes[]' }],
-        stateMutability: 'payable',
-        type: 'function',
-      },
-    ],
-    wallet,
+  const tx = await ethereum.sendTransactionForWallet(
+    walletAddress,
+    positionManagerCall(
+      positionManagerAddress,
+      calldata,
+      value,
+      CLMM_CLOSE_POSITION_GAS_LIMIT,
+      `close position ${positionAddress}`,
+    ),
   );
-
-  // Execute the transaction to remove liquidity and burn the position
-  const txParams = await ethereum.prepareGasOptions(undefined, CLMM_CLOSE_POSITION_GAS_LIMIT);
-  txParams.value = BigNumber.from(value.toString());
-
-  const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
   // Wait for transaction confirmation
   const outcome = await ethereum.handleTransactionConfirmation(tx);

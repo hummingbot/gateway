@@ -10,7 +10,7 @@ import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { Solana } from '../../src/chains/solana/solana';
 import { HardwareWalletService } from '../../src/services/hardware-wallet-service';
 import { addHardwareWalletRoute } from '../../src/wallet/routes/addHardwareWallet';
-import { getHardwareWallets, saveHardwareWallets, validateChainName } from '../../src/wallet/utils';
+import { upsertHardwareWallet, validateChainName } from '../../src/wallet/utils';
 import { fastifyWithTypeProvider } from '../utils/testUtils';
 
 describe('Hardware Wallet Routes', () => {
@@ -31,8 +31,7 @@ describe('Hardware Wallet Routes', () => {
 
     (HardwareWalletService.getInstance as jest.Mock).mockReturnValue(mockHardwareWalletService);
 
-    (getHardwareWallets as jest.Mock).mockResolvedValue([]);
-    (saveHardwareWallets as jest.Mock).mockResolvedValue(undefined);
+    (upsertHardwareWallet as jest.Mock).mockResolvedValue(false);
     (validateChainName as jest.Mock).mockReturnValue(true);
 
     // Setup Solana and Ethereum static method mocks

@@ -1,5 +1,7 @@
 import { FastifyInstance } from 'fastify';
 
+import { UnsignedTransactionCaptured } from './solana-build-mode';
+
 /**
  * Handle common Solana transaction errors and map them to appropriate HTTP errors
  * @param fastify Fastify instance for error responses
@@ -7,6 +9,11 @@ import { FastifyInstance } from 'fastify';
  * @param operation Description of the operation that failed (e.g., 'wrap SOL to WSOL')
  */
 export function handleSolanaTransactionError(fastify: FastifyInstance, error: any, operation: string): never {
+  // The build-mode sentinel is control flow, not a failure: let it reach the capture.
+  if (error instanceof UnsignedTransactionCaptured) {
+    throw error;
+  }
+
   // Re-throw errors that already have statusCode (our custom errors)
   if (error.statusCode) {
     throw error;

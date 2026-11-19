@@ -74,7 +74,16 @@ async function fetchMarketPrice(network: string, baseToken: string, quoteToken: 
  * instruction (it does NOT sort), so we sort here. DLMM prices are always tokenY-per-tokenX, so when
  * the quote token sorts before the base token we invert initialPrice to keep the pool price correct.
  */
-export async function createPool(
+/**
+ * Everything decided before a transaction exists: validation, mint resolution,
+ * the seed price, the initial bin, and the pool's derived address.
+ *
+ * Split out of createPool so a BUILD route can report the pool address and price
+ * alongside the unsigned transaction. In build mode the capture aborts at the
+ * signing chokepoint, so anything computed after it — which is where the address
+ * used to be read from — never runs.
+ */
+export async function prepareCreatePool(
   network: string,
   walletAddress: string,
   baseToken: string,
@@ -82,7 +91,7 @@ export async function createPool(
   initialPrice?: number,
   binStep?: number,
   feeBps?: number,
-): Promise<CreatePoolResponseType> {
+): Promise<PreparedCreatePool> {
   if (initialPrice !== undefined && initialPrice <= 0) {
     throw httpErrors.badRequest('initialPrice must be greater than zero');
   }
@@ -162,9 +171,34 @@ export async function createPool(
   }
 
   logger.info(
-    `Creating Meteora DLMM pool ${poolAddress} (${baseToken}/${quoteToken}) at ${seedPrice} ` +
+    `Preparing Meteora DLMM pool ${poolAddress} (${baseToken}/${quoteToken}) at ${seedPrice} ` +
       `${quoteToken}/${baseToken} [binStep=${binStep}bps, feeBps=${feeBps}, activeId=${activeIdNum}]`,
   );
+
+  return { poolAddress, seedPrice, tokenX, tokenY, activeId, binStep, feeBps, cluster, walletPublicKey };
+}
+
+/** What prepareCreatePool resolved, and createPoolFromPrepared then signs. */
+export interface PreparedCreatePool {
+  poolAddress: string;
+  seedPrice: number;
+  tokenX: PublicKey;
+  tokenY: PublicKey;
+  activeId: BN;
+  binStep: number;
+  feeBps: number;
+  cluster: any;
+  walletPublicKey: PublicKey;
+}
+
+/** Build and sign the pool-creation transaction for an already-prepared pool. */
+export async function createPoolFromPrepared(
+  network: string,
+  walletAddress: string,
+  prepared: PreparedCreatePool,
+): Promise<CreatePoolResponseType> {
+  const solana = await Solana.getInstance(network);
+  const { poolAddress, seedPrice, tokenX, tokenY, activeId, binStep, feeBps, cluster, walletPublicKey } = prepared;
 
   let transaction: Transaction;
   try {
@@ -209,4 +243,30 @@ export async function createPool(
     };
   }
   return { signature, status: 0, poolAddress, price: seedPrice }; // PENDING
+}
+
+/**
+ * Create and initialize a Meteora DLMM pool: prepare, then sign and send. The
+ * execute route's behaviour is unchanged — this is the same code in two halves,
+ * so a build route can stop after the first.
+ */
+export async function createPool(
+  network: string,
+  walletAddress: string,
+  baseToken: string,
+  quoteToken: string,
+  initialPrice?: number,
+  binStep?: number,
+  feeBps?: number,
+): Promise<CreatePoolResponseType> {
+  const prepared = await prepareCreatePool(
+    network,
+    walletAddress,
+    baseToken,
+    quoteToken,
+    initialPrice,
+    binStep,
+    feeBps,
+  );
+  return createPoolFromPrepared(network, walletAddress, prepared);
 }

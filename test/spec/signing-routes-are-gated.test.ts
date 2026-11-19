@@ -73,9 +73,12 @@ describe('every route that signs a transaction is behind the API-token gate', ()
   it('does not gate a route that only reports on a signature it was given', () => {
     // /chains/{chain}/poll is how a bot follows a transaction it already sent. Gating it
     // would break polling for a co-located bot without protecting anything: it signs
-    // nothing.
-    expect(reportingRoutes).toEqual(['/chains/ethereum/poll']);
+    // nothing. /chains/{chain}/submit broadcasts a transaction the CALLER fully signed —
+    // Gateway signs nothing for it; anyone could broadcast the same bytes through any RPC,
+    // so like poll it stays public.
+    expect(reportingRoutes).toEqual(['/chains/ethereum/poll', '/chains/ethereum/submit']);
     expect(isSensitivePath('/chains/solana/poll')).toBe(false);
+    expect(isSensitivePath('/chains/solana/submit')).toBe(false);
   });
 
   it('does not gate a read that lists past signatures', () => {

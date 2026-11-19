@@ -108,8 +108,8 @@ describe('HardwareWalletService', () => {
     });
   });
 
-  describe('signSolanaTransaction', () => {
-    it('should sign a Solana transaction', async () => {
+  describe('signSolanaMessageBytes', () => {
+    it("should sign a Solana transaction's message bytes", async () => {
       const mockSignature = Buffer.from('mock-signature');
       const mockSolanaApp = {
         signTransaction: jest.fn().mockResolvedValue({
@@ -118,11 +118,9 @@ describe('HardwareWalletService', () => {
       };
       (SolanaApp as jest.Mock).mockImplementation(() => mockSolanaApp);
 
-      const mockTransaction = {
-        serializeMessage: jest.fn().mockReturnValue(Buffer.from('message')),
-      } as any;
+      const message = new Uint8Array(Buffer.from('message'));
 
-      const result = await service.signSolanaTransaction("44'/501'/0'", mockTransaction);
+      const result = await service.signSolanaMessageBytes("44'/501'/0'", message);
 
       expect(result).toEqual(mockSignature);
       expect(mockTransport.setExchangeTimeout).toHaveBeenCalledWith(60000);
@@ -138,11 +136,9 @@ describe('HardwareWalletService', () => {
       };
       (SolanaApp as jest.Mock).mockImplementation(() => mockSolanaApp);
 
-      const mockTransaction = {
-        serializeMessage: jest.fn().mockReturnValue(Buffer.from('message')),
-      } as any;
+      const message = new Uint8Array(Buffer.from('message'));
 
-      await expect(service.signSolanaTransaction("44'/501'/0'", mockTransaction)).rejects.toThrow(
+      await expect(service.signSolanaMessageBytes("44'/501'/0'", message)).rejects.toThrow(
         'Transaction rejected by user on Ledger device',
       );
     });
@@ -155,11 +151,9 @@ describe('HardwareWalletService', () => {
       };
       (SolanaApp as jest.Mock).mockImplementation(() => mockSolanaApp);
 
-      const mockTransaction = {
-        serializeMessage: jest.fn().mockReturnValue(Buffer.from('message')),
-      } as any;
+      const message = new Uint8Array(Buffer.from('message'));
 
-      await expect(service.signSolanaTransaction("44'/501'/0'", mockTransaction)).rejects.toThrow(
+      await expect(service.signSolanaMessageBytes("44'/501'/0'", message)).rejects.toThrow(
         'Transaction signing timed out. Please try again.',
       );
     });

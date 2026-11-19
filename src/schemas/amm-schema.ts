@@ -200,6 +200,29 @@ export const RemoveLiquidityResponse = Type.Object(
 );
 export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
 
+export const AmmCollectFeesResponse = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object(
+        {
+          fee: DecimalNumber({}),
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
+          baseFeeAmountCollected: DecimalNumber({}),
+          quoteFeeAmountCollected: DecimalNumber({}),
+        },
+        { $id: 'AmmCollectFeesResponseData' },
+      ),
+    ),
+  },
+  { $id: 'AmmCollectFeesResponse' },
+);
+export type AmmCollectFeesResponseType = Static<typeof AmmCollectFeesResponse>;
+
 // ========================================
 // Pool Creation Types
 // ========================================

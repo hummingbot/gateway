@@ -71,16 +71,24 @@ async function fetchMarketPrice(
   return quote.amountOut / quote.amountIn; // quote token per base token
 }
 
-export async function createPool(
+/**
+ * Everything decided before a transaction exists: validation, the config, the
+ * seed price, the amounts, the position NFT, and the pool's derived address.
+ *
+ * Split out of createPool so a BUILD route can report the pool address and price
+ * alongside the unsigned transaction. In build mode the capture aborts at the
+ * signing chokepoint, so anything computed after it never runs.
+ */
+export async function prepareCreatePool(
   network: string,
-  walletAddress: string,
+  _walletAddress: string,
   baseToken: string,
   quoteToken: string,
   baseTokenAmount: number,
   quoteTokenAmount?: number,
   configAddress?: string,
   initialPrice?: number,
-): Promise<CreatePoolResponseType> {
+): Promise<PreparedCreatePool> {
   if (!configAddress) {
     throw httpErrors.badRequest(
       'configAddress is required. DAMM v2 pools are created against a config account that defines the ' +
@@ -174,8 +182,64 @@ export async function createPool(
 
   const positionNft = Keypair.generate();
   logger.info(
-    `Creating Meteora DAMM v2 pool ${pool.toBase58()} (${baseToken}/${quoteToken}) with position NFT ${positionNft.publicKey.toBase58()}`,
+    `Preparing Meteora DAMM v2 pool ${pool.toBase58()} (${baseToken}/${quoteToken}) with position NFT ${positionNft.publicKey.toBase58()}`,
   );
+
+  return {
+    poolAddress: pool.toBase58(),
+    seedPrice,
+    positionNft,
+    config,
+    tokenAMint,
+    tokenBMint,
+    tokenAProgram,
+    tokenBProgram,
+    initSqrtPrice,
+    liquidityDelta,
+    tokenAAmount,
+    tokenBAmount,
+  };
+}
+
+/** What prepareCreatePool resolved, and createPoolFromPrepared then signs. */
+export interface PreparedCreatePool {
+  poolAddress: string;
+  seedPrice: number;
+  positionNft: Keypair;
+  config: PublicKey;
+  tokenAMint: PublicKey;
+  tokenBMint: PublicKey;
+  tokenAProgram: PublicKey;
+  tokenBProgram: PublicKey;
+  initSqrtPrice: BN;
+  liquidityDelta: BN;
+  tokenAAmount: BN;
+  tokenBAmount: BN;
+}
+
+/** Build and sign the pool-creation transaction for an already-prepared pool. */
+export async function createPoolFromPrepared(
+  network: string,
+  walletAddress: string,
+  prepared: PreparedCreatePool,
+): Promise<CreatePoolResponseType> {
+  const solana = await Solana.getInstance(network);
+  const meteoraDamm = await MeteoraDamm.getInstance(network);
+  const {
+    poolAddress,
+    seedPrice,
+    positionNft,
+    config,
+    tokenAMint,
+    tokenBMint,
+    tokenAProgram,
+    tokenBProgram,
+    initSqrtPrice,
+    liquidityDelta,
+    tokenAAmount,
+    tokenBAmount,
+  } = prepared;
+  const pool = new PublicKey(poolAddress);
 
   const transaction: Transaction = await meteoraDamm.cpAmm.createPool({
     creator: new PublicKey(walletAddress),
@@ -216,4 +280,32 @@ export async function createPool(
     };
   }
   return { signature, status: 0, poolAddress: pool.toBase58(), price: seedPrice }; // PENDING
+}
+
+/**
+ * Create a Meteora DAMM v2 pool and seed it: prepare, then sign and send. The
+ * execute route's behaviour is unchanged — this is the same code in two halves,
+ * so a build route can stop after the first.
+ */
+export async function createPool(
+  network: string,
+  walletAddress: string,
+  baseToken: string,
+  quoteToken: string,
+  baseTokenAmount: number,
+  quoteTokenAmount?: number,
+  configAddress?: string,
+  initialPrice?: number,
+): Promise<CreatePoolResponseType> {
+  const prepared = await prepareCreatePool(
+    network,
+    walletAddress,
+    baseToken,
+    quoteToken,
+    baseTokenAmount,
+    quoteTokenAmount,
+    configAddress,
+    initialPrice,
+  );
+  return createPoolFromPrepared(network, walletAddress, prepared);
 }

@@ -95,6 +95,8 @@ export interface RouterQuoteArgs {
    * reachable now that the per-connector 0x route is gone.
    */
   indicativePrice?: boolean;
+  /** Jupiter only: a platform fee, in bps, the quote is priced with (see trading/platform-fee). */
+  platformFeeBps?: number;
 }
 
 export interface RouterExecuteArgs extends RouterQuoteArgs {
@@ -134,7 +136,8 @@ interface RouterOps {
   chain: 'solana' | 'ethereum';
   quoteSwap: (args: RouterQuoteArgs) => Promise<any>;
   executeSwap: (args: RouterExecuteArgs) => Promise<any>;
-  executeQuote: (walletAddress: string, network: string, quoteId: string) => Promise<any>;
+  /** `feeAccount`: Jupiter only, where a quote's platform fee is paid. */
+  executeQuote: (walletAddress: string, network: string, quoteId: string, feeAccount?: string) => Promise<any>;
 }
 
 interface PoolOps {
@@ -161,6 +164,7 @@ const ROUTER_REGISTRY: Record<string, RouterOps> = {
         a.side,
         a.slippagePct,
         a.approximateIfNoExactOut,
+        a.platformFeeBps,
       ),
     executeSwap: (a) =>
       jupiterExecuteSwap(
@@ -472,6 +476,8 @@ export const LAUNCH_SWAP_CONNECTORS = Object.entries(LAUNCH_REGISTRY)
  * where the routes import their shared fields from.
  */
 export const ROUTER_CONNECTORS = Object.keys(ROUTER_REGISTRY);
+/** A router that trades on Solana (where a build can carry a platform fee). */
+export const isSolanaRouter = (connector: string): boolean => ROUTER_REGISTRY[connector]?.chain === 'solana';
 export const CLMM_CONNECTORS = Object.keys(CLMM_REGISTRY);
 export const AMM_CONNECTORS = Object.keys(AMM_REGISTRY);
 export const LAUNCH_CONNECTORS = Object.keys(LAUNCH_REGISTRY);

@@ -65,19 +65,17 @@ const primeMocks = (receipt: any, uniswapOverrides: Record<string, any> = {}) =>
 
   const ethereum: any = {
     provider: {},
-    getWallet: jest.fn().mockResolvedValue({ address: mockWallet }),
+    // The route checks its allowances and sends through the chokepoint.
+    requireAllowance: jest.fn().mockResolvedValue(undefined),
+    sendTransactionForWallet: jest.fn().mockResolvedValue({ hash: txHash }),
     getContract: jest.fn().mockReturnValue({}),
-    getERC20Allowance: jest.fn().mockResolvedValue({ value: BigNumber.from('1000000000000000000000000') }),
-    prepareGasOptions: jest.fn().mockResolvedValue({}),
     handleTransactionExecution: jest.fn().mockResolvedValue(receipt),
   };
   ethereum.handleTransactionConfirmation = RealEthereum.prototype.handleTransactionConfirmation.bind(ethereum);
   (Ethereum.getInstance as jest.Mock).mockResolvedValue(ethereum);
 
   const { Contract } = require('@ethersproject/contracts');
-  (Contract as jest.Mock).mockImplementation(() => ({
-    multicall: jest.fn().mockResolvedValue({ hash: txHash }),
-  }));
+  (Contract as jest.Mock).mockImplementation(() => ({}));
 };
 
 const open = (server: any) =>

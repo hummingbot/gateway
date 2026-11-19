@@ -1,9 +1,11 @@
 /**
- * Route-level tests for /trading/launch/create-token: dispatch to the pump
- * connector, and schema-level validation.
+ * Route-level tests for /trading/launch/create-token and /build-create-token:
+ * dispatch to the pump connector, the build variant composing mint +
+ * metadataUri onto the captured transaction, and schema-level validation.
  */
 import { Keypair } from '@solana/web3.js';
 
+import { UnsignedTransactionCaptured } from '../../../src/chains/solana/solana-build-mode';
 import { fastifyWithTypeProvider } from '../../utils/testUtils';
 
 jest.mock('../../../src/connectors/pump/launch-routes/createToken', () => ({
@@ -14,6 +16,15 @@ jest.mock('../../../src/connectors/pump/launch-routes/createToken', () => ({
 const WALLET = '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5';
 const MINT_KEYPAIR = Keypair.generate();
 const METADATA_URI = 'https://ipfs.io/ipfs/QmTest';
+
+const FAKE_BUILT = {
+  transaction: Buffer.from('unsigned-tx').toString('base64'),
+  feePayer: WALLET,
+  recentBlockhash: 'EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N',
+  lastValidBlockHeight: 424242,
+  currentBlockHeight: 424100,
+  extraSigners: [{ pubkey: MINT_KEYPAIR.publicKey.toBase58(), signature: 'c2ln' }],
+};
 
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
@@ -32,7 +43,7 @@ const basePayload = {
   metadataUri: METADATA_URI,
 };
 
-describe('POST /trading/launch/create-token', () => {
+describe('POST /trading/launch/create-token and /build-create-token', () => {
   let server: any;
   let createToken: jest.Mock;
   let prepareCreateToken: jest.Mock;
@@ -102,6 +113,21 @@ describe('POST /trading/launch/create-token', () => {
       expect.objectContaining({ devBuyAmount: 1 }),
       expect.anything(),
     );
+  });
+
+  it('build-create-token returns the captured transaction plus mint and metadataUri', async () => {
+    createToken.mockImplementation(async () => {
+      throw new UnsignedTransactionCaptured(FAKE_BUILT);
+    });
+
+    const response = await server.inject({ method: 'POST', url: '/build-create-token', payload: basePayload });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      ...FAKE_BUILT,
+      mint: MINT_KEYPAIR.publicKey.toBase58(),
+      metadataUri: METADATA_URI,
+    });
   });
 
   it('rejects a name over the schema limit before any connector code runs', async () => {

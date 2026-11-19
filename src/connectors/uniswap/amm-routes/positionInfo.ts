@@ -1,5 +1,4 @@
 import { Contract } from '@ethersproject/contracts';
-import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { PositionInfo } from '../../../schemas/amm-schema';
@@ -67,26 +66,4 @@ export async function getPositionInfo(
     quoteTokenAmount: formatTokenAmount(userQuoteTokenAmount.toString(), quoteTokenObj.decimals),
     price,
   };
-}
-
-export async function checkLPAllowance(
-  ethereum: any,
-  wallet: any,
-  poolAddress: string,
-  routerAddress: string,
-  requiredAmount: BigNumber,
-): Promise<void> {
-  const lpTokenContract = ethereum.getContract(poolAddress, wallet);
-  const lpAllowance = await ethereum.getERC20Allowance(
-    lpTokenContract,
-    wallet,
-    routerAddress,
-    18, // LP tokens typically have 18 decimals
-  );
-  const currentLpAllowance = BigNumber.from(lpAllowance.value);
-  if (currentLpAllowance.lt(requiredAmount)) {
-    throw new Error(
-      `Insufficient LP token allowance. Please approve at least ${formatTokenAmount(requiredAmount.toString(), 18)} LP tokens (${poolAddress}) for the Uniswap router (${routerAddress})`,
-    );
-  }
 }

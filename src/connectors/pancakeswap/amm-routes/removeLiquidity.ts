@@ -1,5 +1,6 @@
 import { Contract } from '@ethersproject/contracts';
 import { Percent } from '@pancakeswap/sdk';
+import { utils } from 'ethers';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
@@ -13,8 +14,6 @@ import {
   IPancakeswapV2PairABI,
 } from '../pancakeswap.contracts';
 import { formatTokenAmount, getPancakeswapPoolInfo } from '../pancakeswap.utils';
-
-import { checkLPAllowance } from './positionInfo';
 
 // Default gas limit for AMM remove liquidity operations
 const AMM_REMOVE_LIQUIDITY_GAS_LIMIT = 400000;
@@ -45,10 +44,7 @@ export async function removeLiquidity(
   const quoteTokenObj = await pancakeswap.getToken(poolInfo.quoteTokenAddress);
   if (!baseTokenObj || !quoteTokenObj) throw httpErrors.badRequest('Token information not found for pool');
 
-  const wallet = await ethereum.getWallet(walletAddress);
-  if (!wallet) throw httpErrors.badRequest('Wallet not found');
-
-  const pairContract = new Contract(poolAddress, IPancakeswapV2PairABI.abi, wallet);
+  const pairContract = new Contract(poolAddress, IPancakeswapV2PairABI.abi, ethereum.provider);
   const lpBalance = await pairContract.balanceOf(walletAddress);
   if (lpBalance.eq(0)) throw httpErrors.badRequest('No liquidity position found for this pool');
 
@@ -69,7 +65,7 @@ export async function removeLiquidity(
   const expectedQuoteTokenAmount = quoteTokenReserve.mul(liquidityToRemove).div(totalSupply);
 
   const routerAddress = getPancakeswapV2RouterAddress(network);
-  const router = new Contract(routerAddress, IPancakeswapV2Router02ABI.abi, wallet);
+  const router = new utils.Interface(IPancakeswapV2Router02ABI.abi);
 
   const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
   const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
@@ -80,34 +76,38 @@ export async function removeLiquidity(
     .mul(slippageMultiplier.numerator.toString())
     .div(slippageMultiplier.denominator.toString());
 
-  await checkLPAllowance(ethereum, wallet, poolAddress, routerAddress, liquidityToRemove);
+  // The router pulls the LP tokens (spender "pancakeswap/amm").
+  await ethereum.requireAllowance(
+    walletAddress,
+    { address: poolAddress, symbol: `${baseTokenObj.symbol}-${quoteTokenObj.symbol} LP`, decimals: 18 },
+    routerAddress,
+    liquidityToRemove,
+    'pancakeswap/amm',
+  );
 
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
-  const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_REMOVE_LIQUIDITY_GAS_LIMIT);
 
-  let tx;
+  let data: string;
   if (baseTokenObj.symbol === 'WETH') {
-    tx = await router.removeLiquidityETH(
+    data = router.encodeFunctionData('removeLiquidityETH', [
       token0IsBase ? token1 : token0,
       liquidityToRemove,
       token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount,
       token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount,
       walletAddress,
       deadline,
-      gasOptions,
-    );
+    ]);
   } else if (quoteTokenObj.symbol === 'WETH') {
-    tx = await router.removeLiquidityETH(
+    data = router.encodeFunctionData('removeLiquidityETH', [
       token0IsBase ? token0 : token1,
       liquidityToRemove,
       token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount,
       token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount,
       walletAddress,
       deadline,
-      gasOptions,
-    );
+    ]);
   } else {
-    tx = await router.removeLiquidity(
+    data = router.encodeFunctionData('removeLiquidity', [
       token0,
       token1,
       liquidityToRemove,
@@ -115,10 +115,15 @@ export async function removeLiquidity(
       token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount,
       walletAddress,
       deadline,
-      gasOptions,
-    );
+    ]);
   }
 
+  const tx = await ethereum.sendTransactionForWallet(walletAddress, {
+    to: routerAddress,
+    data,
+    gasLimit: AMM_REMOVE_LIQUIDITY_GAS_LIMIT,
+    description: `remove ${percentageToRemove}% of liquidity from pool ${poolAddress}`,
+  });
   const outcome = await ethereum.handleTransactionConfirmation(tx);
   if (!outcome.confirmed) {
     // Still pending — the expected amounts were computed before sending and have not moved.

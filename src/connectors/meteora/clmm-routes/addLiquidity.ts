@@ -5,6 +5,7 @@ import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { getBuildModeContext } from '../../../chains/solana/solana-build-mode';
 import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -117,6 +118,17 @@ export async function addLiquidity(
   });
 
   const transactions = Array.isArray(addLiquidityTxs) ? addLiquidityTxs : [addLiquidityTxs];
+
+  // Build mode answers every chunk in one response: the deposit cannot be resumed by
+  // calling again (the SDK re-splits the full amount each time, so the first slice would
+  // be deposited twice).
+  if (getBuildModeContext()) {
+    transactions.forEach((tx) => (tx.feePayer = walletPublicKey));
+    await solana.captureSequenceForExternalSigner(
+      transactions.map((transaction) => ({ transaction })),
+      address,
+    );
+  }
 
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
   // simulates internally). A narrow position is still one transaction; a wide one deposits

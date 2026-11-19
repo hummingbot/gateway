@@ -29,6 +29,15 @@ export const AddWalletResponseSchema = Type.Object({
   }),
 });
 
+export const SignerKindSchema = Type.Union(
+  [Type.Literal('local'), Type.Literal('hardware'), Type.Literal('external'), Type.Literal('privy')],
+  {
+    description:
+      'Who signs for the wallet. local: an encrypted key in Gateway. hardware: a Ledger. external: no key in ' +
+      'Gateway; use the build-* routes and POST /chains/{chain}/submit. privy: a Privy server wallet.',
+  },
+);
+
 export const GetWalletsQuerySchema = Type.Object({
   showHardware: Type.Optional(Type.Boolean({ default: true })),
 });
@@ -45,6 +54,13 @@ export const GetWalletResponseSchema = Type.Object({
     Type.Array(WalletAddressSchema, {
       description: 'List of hardware wallet addresses (Ledger)',
     }),
+  ),
+  wallets: Type.Array(
+    Type.Object({
+      address: WalletAddressSchema,
+      signer: SignerKindSchema,
+    }),
+    { description: 'Every wallet of the chain with the signer that signs for it' },
   ),
 });
 
@@ -68,15 +84,69 @@ export const RemoveWalletResponseSchema = Type.Object({
   }),
 });
 
-export const SignMessageRequestSchema = Type.Object({
-  chain: Type.String(),
-  network: Type.String(),
-  address: WalletAddressSchema,
-  message: Type.String(),
+export const AddExternalWalletRequestSchema = Type.Object(
+  {
+    chain: Type.String({
+      description: 'Blockchain of the wallet',
+      enum: ['ethereum', 'solana'],
+      examples: ['solana', 'ethereum'],
+    }),
+    address: Type.String({
+      description: 'Wallet address. Gateway stores the address only and never signs for it.',
+    }),
+    setDefault: Type.Optional(
+      Type.Boolean({
+        description: 'Set this wallet as the default for the chain',
+        default: false,
+      }),
+    ),
+  },
+  { $id: 'AddExternalWalletRequest', additionalProperties: false },
+);
+
+export const AddExternalWalletResponseSchema = Type.Object({
+  address: Type.String({ description: 'The wallet address that was added' }),
+  signer: Type.Literal('external'),
 });
 
-export const SignMessageResponseSchema = Type.Object({
-  signature: Type.String(),
+// Privy wallet schemas: Privy holds the key and signs; Gateway stores the wallet id and address.
+const PrivyChainSchema = Type.String({
+  description: 'Blockchain of the Privy wallet',
+  enum: ['ethereum', 'solana'],
+  examples: ['solana', 'ethereum'],
+});
+
+const PrivySetDefaultSchema = Type.Optional(
+  Type.Boolean({
+    description: 'Set this wallet as the default for the chain',
+    default: false,
+  }),
+);
+
+export const AddPrivyWalletRequestSchema = Type.Object(
+  {
+    chain: PrivyChainSchema,
+    privyWalletId: Type.String({
+      description: 'Privy wallet id (from the Privy dashboard or API)',
+      pattern: '^[a-z0-9]{16,64}$',
+    }),
+    setDefault: PrivySetDefaultSchema,
+  },
+  { $id: 'AddPrivyWalletRequest', additionalProperties: false },
+);
+
+export const CreatePrivyWalletRequestSchema = Type.Object(
+  {
+    chain: PrivyChainSchema,
+    setDefault: PrivySetDefaultSchema,
+  },
+  { $id: 'CreatePrivyWalletRequest', additionalProperties: false },
+);
+
+export const PrivyWalletResponseSchema = Type.Object({
+  address: Type.String({ description: 'The wallet address' }),
+  privyWalletId: Type.String({ description: 'The Privy wallet id' }),
+  signer: Type.Literal('privy'),
 });
 
 // Hardware wallet schemas
@@ -170,8 +240,11 @@ export type AddWalletRequest = Static<typeof AddWalletRequestSchema>;
 export type AddWalletResponse = Static<typeof AddWalletResponseSchema>;
 export type RemoveWalletRequest = Static<typeof RemoveWalletRequestSchema>;
 export type RemoveWalletResponse = Static<typeof RemoveWalletResponseSchema>;
-export type SignMessageRequest = Static<typeof SignMessageRequestSchema>;
-export type SignMessageResponse = Static<typeof SignMessageResponseSchema>;
+export type AddExternalWalletRequest = Static<typeof AddExternalWalletRequestSchema>;
+export type AddExternalWalletResponse = Static<typeof AddExternalWalletResponseSchema>;
+export type AddPrivyWalletRequest = Static<typeof AddPrivyWalletRequestSchema>;
+export type CreatePrivyWalletRequest = Static<typeof CreatePrivyWalletRequestSchema>;
+export type PrivyWalletResponse = Static<typeof PrivyWalletResponseSchema>;
 export type GetWalletResponse = Static<typeof GetWalletResponseSchema>;
 export type AddHardwareWalletRequest = Static<typeof AddHardwareWalletRequestSchema>;
 export type AddHardwareWalletResponse = Static<typeof AddHardwareWalletResponseSchema>;

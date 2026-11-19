@@ -336,6 +336,7 @@ describe('GET /quote-swap', () => {
       false,
       true,
       'ExactOut',
+      undefined, // no platform fee asked
     );
     // Second call is the reverse (base -> quote) ExactIn pricing probe
     expect(mockJupiterInstance.getQuote).toHaveBeenNthCalledWith(
@@ -347,6 +348,7 @@ describe('GET /quote-swap', () => {
       false,
       true,
       'ExactIn',
+      undefined, // no platform fee asked
     );
   });
 });

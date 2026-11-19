@@ -4,6 +4,7 @@ import { Decimal } from 'decimal.js';
 import { BigNumber, constants, utils } from 'ethers';
 
 import { Ethereum, TokenInfo } from '../../../chains/ethereum/ethereum';
+import { EvmCall } from '../../../chains/ethereum/evm-build-mode';
 import { CreatePoolResponseType } from '../../../schemas/amm-schema';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
@@ -16,7 +17,8 @@ import {
   getPancakeswapV2FactoryAddress,
   getPancakeswapV2RouterAddress,
 } from '../pancakeswap.contracts';
-import { formatTokenAmount } from '../pancakeswap.utils';
+
+const V2_FACTORY_CREATE_PAIR_ABI = ['function createPair(address tokenA, address tokenB) returns (address pair)'];
 
 // Default gas limit for AMM create-pool operations (pair creation + initial mint costs more than a plain add).
 // Pancakeswap V2 pools all share a fixed 0.25% swap fee — there is no fee parameter to set.
@@ -70,7 +72,24 @@ async function fetchMarketPrice(
   return quote.amountOut / quote.amountIn; // quote token per base token
 }
 
-export async function createPool(
+/** A create-pool decided but not sent: what /build-create-pool returns beside the transaction. */
+export interface PreparedCreatePool {
+  poolAddress: string;
+  seedPrice: number;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+  /** The router's allowances the seed deposit needs. */
+  allowances: { token: TokenInfo; amount: BigNumber }[];
+  routerAddress: string;
+  call: EvmCall;
+}
+
+/**
+ * Everything create-pool decides before sending: the seed price and amounts, the pair's
+ * address (known before the pair exists, from an eth_call of the factory's createPair), and
+ * the call.
+ */
+export async function prepareCreatePool(
   network: string,
   walletAddress: string,
   baseToken: string,
@@ -79,17 +98,12 @@ export async function createPool(
   quoteTokenAmount?: number,
   initialPrice?: number,
   slippagePct: number = PancakeswapConfig.config.slippagePct,
-): Promise<CreatePoolResponseType> {
+): Promise<PreparedCreatePool> {
   if (baseTokenAmount <= 0) {
     throw httpErrors.badRequest('baseTokenAmount must be greater than zero');
   }
 
   const ethereum = await Ethereum.getInstance(network);
-
-  const wallet = await ethereum.getWallet(walletAddress);
-  if (!wallet) {
-    throw httpErrors.badRequest('Wallet not found');
-  }
 
   const { token: baseTokenInfo, isEth: baseIsEth } = await resolveToken(ethereum, baseToken);
   const { token: quoteTokenInfo, isEth: quoteIsEth } = await resolveToken(ethereum, quoteToken);
@@ -168,13 +182,22 @@ export async function createPool(
     }
     logger.info(`Empty V2 pair ${existingPair} already deployed — seeding it with initial liquidity`);
   }
+  const poolAddress: string =
+    existingPair && existingPair !== constants.AddressZero
+      ? existingPair
+      : await new Contract(factoryAddress, V2_FACTORY_CREATE_PAIR_ABI, ethereum.provider).callStatic.createPair(
+          baseTokenInfo.address,
+          quoteTokenInfo.address,
+        );
 
-  // Router with signer. addLiquidity auto-creates the pair via the factory if it does not yet exist.
-  const router = new Contract(routerAddress, IPancakeswapV2Router02ABI.abi, wallet);
+  // addLiquidity auto-creates the pair via the factory if it does not yet exist.
+  const router = new utils.Interface(IPancakeswapV2Router02ABI.abi);
+  const allowances: { token: TokenInfo; amount: BigNumber }[] = [];
 
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
-  let tx;
+  let data: string;
+  let value = '0';
   if (baseIsEth || quoteIsEth) {
     // One side is ETH/WETH → addLiquidityETH. The ERC20 side needs an allowance to the router; the
     // ETH side is supplied as native value (the router wraps it to WETH), matching addLiquidity.ts.
@@ -185,64 +208,20 @@ export async function createPool(
     const erc20RawAmount = baseIsEth ? rawQuoteAmount : rawBaseAmount;
     const erc20RawMinAmount = baseIsEth ? rawQuoteMinAmount : rawBaseMinAmount;
 
-    const tokenContract = ethereum.getContract(erc20TokenInfo.address, wallet);
-    const allowance = await ethereum.getERC20Allowance(tokenContract, wallet, routerAddress, erc20TokenInfo.decimals);
-    const currentAllowance = BigNumber.from(allowance.value);
-    if (currentAllowance.lt(erc20RawAmount)) {
-      throw new Error(
-        `Insufficient allowance for ${erc20TokenInfo.symbol}. Please approve at least ` +
-          `${formatTokenAmount(erc20RawAmount.toString(), erc20TokenInfo.decimals)} ${erc20TokenInfo.symbol} ` +
-          `for the Pancakeswap router (${routerAddress})`,
-      );
-    }
-
-    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_CREATE_POOL_GAS_LIMIT);
-    gasOptions.value = ethRawAmount;
-
-    tx = await router.addLiquidityETH(
+    allowances.push({ token: erc20TokenInfo, amount: erc20RawAmount });
+    data = router.encodeFunctionData('addLiquidityETH', [
       erc20TokenInfo.address,
       erc20RawAmount,
       erc20RawMinAmount,
       ethRawMinAmount,
       walletAddress,
       deadline,
-      gasOptions,
-    );
+    ]);
+    value = ethRawAmount.toString();
   } else {
     // Both sides are ERC20 → addLiquidity. Both need an allowance to the router.
-    const baseTokenContract = ethereum.getContract(baseTokenInfo.address, wallet);
-    const baseAllowance = await ethereum.getERC20Allowance(
-      baseTokenContract,
-      wallet,
-      routerAddress,
-      baseTokenInfo.decimals,
-    );
-    const quoteTokenContract = ethereum.getContract(quoteTokenInfo.address, wallet);
-    const quoteAllowance = await ethereum.getERC20Allowance(
-      quoteTokenContract,
-      wallet,
-      routerAddress,
-      quoteTokenInfo.decimals,
-    );
-
-    if (BigNumber.from(baseAllowance.value).lt(rawBaseAmount)) {
-      throw new Error(
-        `Insufficient allowance for ${baseTokenInfo.symbol}. Please approve at least ` +
-          `${formatTokenAmount(rawBaseAmount.toString(), baseTokenInfo.decimals)} ${baseTokenInfo.symbol} ` +
-          `for the Pancakeswap router (${routerAddress})`,
-      );
-    }
-    if (BigNumber.from(quoteAllowance.value).lt(rawQuoteAmount)) {
-      throw new Error(
-        `Insufficient allowance for ${quoteTokenInfo.symbol}. Please approve at least ` +
-          `${formatTokenAmount(rawQuoteAmount.toString(), quoteTokenInfo.decimals)} ${quoteTokenInfo.symbol} ` +
-          `for the Pancakeswap router (${routerAddress})`,
-      );
-    }
-
-    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_CREATE_POOL_GAS_LIMIT);
-
-    tx = await router.addLiquidity(
+    allowances.push({ token: baseTokenInfo, amount: rawBaseAmount }, { token: quoteTokenInfo, amount: rawQuoteAmount });
+    data = router.encodeFunctionData('addLiquidity', [
       baseTokenInfo.address,
       quoteTokenInfo.address,
       rawBaseAmount,
@@ -251,17 +230,46 @@ export async function createPool(
       rawQuoteMinAmount,
       walletAddress,
       deadline,
-      gasOptions,
-    );
+    ]);
   }
 
-  logger.info(`Creating Pancakeswap V2 pool ${baseTokenInfo.symbol}/${quoteTokenInfo.symbol} via tx ${tx.hash}`);
+  const call: EvmCall = {
+    to: routerAddress,
+    data,
+    value,
+    gasLimit: AMM_CREATE_POOL_GAS_LIMIT,
+    description: `create Pancakeswap V2 pool ${baseTokenInfo.symbol}/${quoteTokenInfo.symbol}`,
+  };
+
+  return {
+    poolAddress,
+    seedPrice,
+    baseTokenAmount,
+    quoteTokenAmount: effectiveQuoteAmount,
+    allowances,
+    routerAddress,
+    call,
+  };
+}
+
+/** Send a prepared create-pool and report it. */
+export async function createPoolFromPrepared(
+  network: string,
+  walletAddress: string,
+  prepared: PreparedCreatePool,
+): Promise<CreatePoolResponseType> {
+  const ethereum = await Ethereum.getInstance(network);
+  const { poolAddress, seedPrice, baseTokenAmount } = prepared;
+  const effectiveQuoteAmount = prepared.quoteTokenAmount;
+  for (const { token, amount } of prepared.allowances) {
+    await ethereum.requireAllowance(walletAddress, token, prepared.routerAddress, amount, 'pancakeswap/amm');
+  }
+  const tx = await ethereum.sendTransactionForWallet(walletAddress, prepared.call);
+
+  logger.info(`Creating Pancakeswap V2 pool ${poolAddress} via tx ${tx.hash}`);
 
   // A revert throws out of here (400 TRANSACTION_FAILED) — it is never reported as PENDING.
   const outcome = await ethereum.handleTransactionConfirmation(tx);
-
-  // Read the (now-created) pair address from the factory — authoritative source of the pool address.
-  const pairAddress: string = await factory.getPair(baseTokenInfo.address, quoteTokenInfo.address);
 
   if (!outcome.confirmed) {
     // Timed out but still broadcasting — report PENDING with the tx hash so the caller can
@@ -269,7 +277,7 @@ export async function createPool(
     return {
       signature: outcome.signature,
       status: TransactionStatus.PENDING,
-      poolAddress: pairAddress,
+      poolAddress,
       price: seedPrice,
     };
   }
@@ -277,7 +285,7 @@ export async function createPool(
   return {
     signature: outcome.signature,
     status: TransactionStatus.CONFIRMED,
-    poolAddress: pairAddress,
+    poolAddress,
     price: seedPrice,
     data: {
       fee: outcome.fee,
@@ -285,4 +293,27 @@ export async function createPool(
       quoteTokenAmountAdded: effectiveQuoteAmount,
     },
   };
+}
+
+export async function createPool(
+  network: string,
+  walletAddress: string,
+  baseToken: string,
+  quoteToken: string,
+  baseTokenAmount: number,
+  quoteTokenAmount?: number,
+  initialPrice?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
+): Promise<CreatePoolResponseType> {
+  const prepared = await prepareCreatePool(
+    network,
+    walletAddress,
+    baseToken,
+    quoteToken,
+    baseTokenAmount,
+    quoteTokenAmount,
+    initialPrice,
+    slippagePct,
+  );
+  return createPoolFromPrepared(network, walletAddress, prepared);
 }

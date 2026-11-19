@@ -1,6 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { getBuildModeContext } from '../../../chains/solana/solana-build-mode';
 import { CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -52,6 +53,14 @@ export async function collectFees(
   transactions.forEach((tx) => {
     tx.feePayer = walletPublicKey;
   });
+
+  // Build mode: every claim transaction in one response.
+  if (getBuildModeContext()) {
+    await solana.captureSequenceForExternalSigner(
+      transactions.map((transaction) => ({ transaction })),
+      address,
+    );
+  }
 
   // Send all transactions
   let totalFee = 0;

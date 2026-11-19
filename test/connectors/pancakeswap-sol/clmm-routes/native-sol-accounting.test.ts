@@ -146,11 +146,10 @@ const parsedCloseTx = (feeBase: number, feeQuote: number, principalBase: number,
 const solanaMock = (txData: any, parsedTx: any = { meta: {} }) => ({
   connection: { getAccountInfo: jest.fn().mockResolvedValue({ data: Buffer.alloc(200) }) },
   getToken: jest.fn((t: string) => Promise.resolve(t === SOL.address ? SOL : t === USDC.address ? USDC : null)),
-  getWallet: jest.fn().mockResolvedValue({ publicKey: WALLET }),
   estimateGasPrice: jest.fn().mockResolvedValue(0.001),
-  simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
   throwIfLandedWithError: jest.fn().mockResolvedValue(undefined),
-  sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({ confirmed: true, signature: 'close-sig', txData }),
+  sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({ signature: 'close-sig', fee: 0 }),
+  getConfirmedTransactionData: jest.fn().mockResolvedValue(txData),
   extractBalanceChangesAndFee: jest
     .fn()
     .mockResolvedValue({ balanceChanges: [nativeChange, USDC_FROM_THE_POOL], txDetails: parsedTx }),

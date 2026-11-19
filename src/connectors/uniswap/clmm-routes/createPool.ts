@@ -1,10 +1,11 @@
 import { Contract } from '@ethersproject/contracts';
 import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk';
 import { Decimal } from 'decimal.js';
-import { BigNumber, constants } from 'ethers';
+import { BigNumber, constants, utils } from 'ethers';
 import JSBI from 'jsbi';
 
 import { Ethereum, TokenInfo } from '../../../chains/ethereum/ethereum';
+import { EvmCall } from '../../../chains/ethereum/evm-build-mode';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { CreatePoolResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
@@ -19,6 +20,10 @@ import {
 
 // Uniswap V3 supported fee tiers (hundredths of a bip). 100=0.01%, 500=0.05%, 3000=0.30%, 10000=1.00%.
 const VALID_FEE_TIERS = [100, 500, 3000, 10000];
+
+const V3_FACTORY_CREATE_POOL_ABI = [
+  'function createPool(address tokenA, address tokenB, uint24 fee) returns (address pool)',
+];
 
 // Default gas limit for CLMM create-pool. Deploying + initializing a V3 pool via the NFT manager
 // costs more than a plain swap; a pool deployment is ~4-5M gas on mainnet.
@@ -67,14 +72,24 @@ async function fetchMarketPrice(
   return quote.amountOut / quote.amountIn; // quote token per base token
 }
 
-export async function createPool(
+/** A create-pool decided but not sent: what /build-create-pool returns beside the transaction. */
+export interface PreparedCreatePool {
+  poolAddress: string;
+  seedPrice: number;
+  call: EvmCall;
+}
+
+/**
+ * Everything create-pool decides before sending: the seed price, the pool's address (known
+ * before the pool exists, from an eth_call of the factory's createPool), and the call.
+ */
+export async function prepareCreatePool(
   network: string,
-  walletAddress: string,
   baseToken: string,
   quoteToken: string,
   initialPrice?: number,
   fee?: number,
-): Promise<CreatePoolResponseType> {
+): Promise<PreparedCreatePool> {
   // Validate the fee tier — V3 only accepts a fixed set of tiers, each mapped to a tick spacing.
   if (fee === undefined) {
     throw httpErrors.badRequest('fee tier is required (one of 100, 500, 3000, 10000)');
@@ -86,11 +101,6 @@ export async function createPool(
   }
 
   const ethereum = await Ethereum.getInstance(network);
-
-  const wallet = await ethereum.getWallet(walletAddress);
-  if (!wallet) {
-    throw httpErrors.badRequest('Wallet not found');
-  }
 
   const baseTokenInfo = await resolveToken(ethereum, baseToken);
   const quoteTokenInfo = await resolveToken(ethereum, quoteToken);
@@ -164,30 +174,48 @@ export async function createPool(
     }
     logger.info(`Pool ${existingPool} deployed but uninitialized — initializing it at the seed price`);
   }
+  const poolAddress: string =
+    existingPool && existingPool !== constants.AddressZero
+      ? existingPool
+      : await new Contract(factoryAddress, V3_FACTORY_CREATE_POOL_ABI, ethereum.provider).callStatic.createPool(
+          token0.address,
+          token1.address,
+          fee,
+        );
 
   // Create + initialize in a single idempotent call via the NonfungiblePositionManager. This deploys the
   // pool through the factory (if needed) and initializes it at sqrtPriceX96 (if needed) — preferred over
   // the two-tx Factory.createPool + Pool.initialize path. It is available on every V3 NFT manager.
   const nftManagerAddress = getUniswapV3NftManagerAddress(network);
-  const nftManager = new Contract(nftManagerAddress, INftManagerCreatePoolABI, wallet);
+  const call: EvmCall = {
+    to: nftManagerAddress,
+    data: new utils.Interface(INftManagerCreatePoolABI).encodeFunctionData('createAndInitializePoolIfNecessary', [
+      token0.address,
+      token1.address,
+      fee,
+      sqrtPriceX96Str,
+    ]),
+    gasLimit: CLMM_CREATE_POOL_GAS_LIMIT,
+    description: `create Uniswap V3 pool ${baseTokenInfo.symbol}/${quoteTokenInfo.symbol} (fee ${fee})`,
+  };
 
-  const gasOptions = await ethereum.prepareGasOptions(undefined, CLMM_CREATE_POOL_GAS_LIMIT);
+  return { poolAddress, seedPrice, call };
+}
 
-  const tx = await nftManager.createAndInitializePoolIfNecessary(
-    token0.address,
-    token1.address,
-    fee,
-    sqrtPriceX96Str,
-    gasOptions,
-  );
+/** Send a prepared create-pool and report it. */
+export async function createPoolFromPrepared(
+  network: string,
+  walletAddress: string,
+  prepared: PreparedCreatePool,
+): Promise<CreatePoolResponseType> {
+  const ethereum = await Ethereum.getInstance(network);
+  const { poolAddress, seedPrice } = prepared;
+  const tx = await ethereum.sendTransactionForWallet(walletAddress, prepared.call);
 
   logger.info(`Creating Uniswap V3 pool via tx ${tx.hash}`);
 
   // A revert throws out of here (400 TRANSACTION_FAILED) — it is never reported as PENDING.
   const outcome = await ethereum.handleTransactionConfirmation(tx);
-
-  // Read the (now-created) pool address from the factory — the authoritative source.
-  const poolAddress: string = await factory.getPool(token0.address, token1.address, fee);
 
   if (!outcome.confirmed) {
     // Timed out but still broadcasting — report PENDING with the tx hash so the caller can reconcile it.
@@ -208,4 +236,16 @@ export async function createPool(
       fee: outcome.fee,
     },
   };
+}
+
+export async function createPool(
+  network: string,
+  walletAddress: string,
+  baseToken: string,
+  quoteToken: string,
+  initialPrice?: number,
+  fee?: number,
+): Promise<CreatePoolResponseType> {
+  const prepared = await prepareCreatePool(network, baseToken, quoteToken, initialPrice, fee);
+  return createPoolFromPrepared(network, walletAddress, prepared);
 }

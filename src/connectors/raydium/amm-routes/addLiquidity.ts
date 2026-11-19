@@ -34,20 +34,23 @@ async function createAddLiquidityTransaction(
   userQuoteAmount: number,
 ): Promise<VersionedTransaction | Transaction> {
   if (ammPoolInfo.poolType === 'amm') {
-    // Use user's provided amounts as the maximum they're willing to spend
-    const amountInA = new TokenAmount(
-      toToken(poolInfo.mintA),
-      new Decimal(userBaseAmount).mul(10 ** poolInfo.mintA.decimals).toFixed(0),
-    );
-    const amountInB = new TokenAmount(
-      toToken(poolInfo.mintB),
-      new Decimal(userQuoteAmount).mul(10 ** poolInfo.mintB.decimals).toFixed(0),
-    );
-
-    // Calculate otherAmountMin based on the quoted amounts and slippage
     // Convert Percent to decimal (e.g., 1% = 0.01)
     const slippageDecimal = slippage.numerator.toNumber() / slippage.denominator.toNumber();
     const slippageMultiplier = new Decimal(1).minus(slippageDecimal);
+    const maxMultiplier = new Decimal(1).plus(slippageDecimal);
+
+    // The fixed side is exactly what the user gave. The OTHER side's max is the quoted
+    // amount plus the slippage tolerance — the same `…AmountMax` the quote reported.
+    // The program computes that side from live vault reserves, which sit slightly
+    // off the API reserves the quote used; capping it at the user's raw figure (or the
+    // bare quote) leaves no headroom and the deposit fails with "Exceeded desired
+    // slippage limit" (0x1e) whenever the quote side is the limiting one.
+    const baseMax = baseLimited ? new Decimal(userBaseAmount) : new Decimal(baseTokenAmountAdded).mul(maxMultiplier);
+    const quoteMax = baseLimited ? new Decimal(quoteTokenAmountAdded).mul(maxMultiplier) : new Decimal(userQuoteAmount);
+    const amountInA = new TokenAmount(toToken(poolInfo.mintA), baseMax.mul(10 ** poolInfo.mintA.decimals).toFixed(0));
+    const amountInB = new TokenAmount(toToken(poolInfo.mintB), quoteMax.mul(10 ** poolInfo.mintB.decimals).toFixed(0));
+
+    // Calculate otherAmountMin based on the quoted amounts and slippage
 
     // For minimum amounts, we use the quoted amounts (exact pool ratio) with slippage
     const otherAmountMin = baseLimited

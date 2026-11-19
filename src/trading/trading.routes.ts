@@ -5,15 +5,17 @@ import { poolsRoute } from './clmm/pools';
 import { positionsRoute } from './clmm/positions';
 import { positionsOwnedRoute } from './clmm/positions-owned';
 import { quoteLiquidityRoute } from './clmm/quote-liquidity';
-import { makeExecuteSwapRoute, makeQuoteSwapRoute } from './pool-swap-routes';
+import { makeBuildSwapRoute, makeExecuteSwapRoute, makeQuoteSwapRoute } from './pool-swap-routes';
 import {
   createPoolRoute,
+  buildCreatePoolRoute as ammBuildCreatePoolRoute,
   poolInfoRoute as ammPoolInfoRoute,
   positionInfoRoute as ammPositionInfoRoute,
   positionsOwnedRoute as ammPositionsOwnedRoute,
   quoteLiquidityRoute as ammQuoteLiquidityRoute,
   addLiquidityRoute as ammAddLiquidityRoute,
   removeLiquidityRoute as ammRemoveLiquidityRoute,
+  collectFeesRoute as ammCollectFeesRoute,
 } from './trading-amm-routes';
 import {
   openPositionRoute,
@@ -22,6 +24,7 @@ import {
   collectFeesRoute,
   closePositionRoute,
   createPoolRoute as clmmCreatePoolRoute,
+  buildCreatePoolRoute as clmmBuildCreatePoolRoute,
   fetchPoolsRoute,
 } from './trading-clmm-routes';
 import {
@@ -30,10 +33,18 @@ import {
   quoteSwapRoute as launchQuoteSwapRoute,
   executeSwapRoute as launchExecuteSwapRoute,
   executeQuoteRoute as launchExecuteQuoteRoute,
+  buildSwapRoute as launchBuildSwapRoute,
+  buildQuoteRoute as launchBuildQuoteRoute,
   creatorFeesRoute as launchCreatorFeesRoute,
   launchHistoryRoute,
 } from './trading-launch-routes';
-import { quoteSwapRoute, executeQuoteRoute, executeSwapRoute } from './trading-router-routes';
+import {
+  quoteSwapRoute,
+  executeQuoteRoute,
+  executeSwapRoute,
+  buildSwapRoute,
+  buildQuoteRoute,
+} from './trading-router-routes';
 
 /**
  * Router connectors (Jupiter, 0x, ...): quote-swap / execute-quote / execute-swap.
@@ -46,6 +57,8 @@ export const tradingRouterRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(quoteSwapRoute);
   fastify.register(executeQuoteRoute);
   fastify.register(executeSwapRoute);
+  fastify.register(buildSwapRoute);
+  fastify.register(buildQuoteRoute);
 };
 
 export const tradingClmmRoutes: FastifyPluginAsync = async (fastify) => {
@@ -60,6 +73,7 @@ export const tradingClmmRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Swap routes (single-pool swaps; execute-quote is router-only)
   fastify.register(makeQuoteSwapRoute('clmm'));
+  fastify.register(makeBuildSwapRoute('clmm'));
   fastify.register(makeExecuteSwapRoute('clmm'));
 
   // Liquidity transaction routes
@@ -69,6 +83,7 @@ export const tradingClmmRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(collectFeesRoute);
   fastify.register(closePositionRoute);
   fastify.register(clmmCreatePoolRoute);
+  fastify.register(clmmBuildCreatePoolRoute);
 };
 
 /**
@@ -94,6 +109,8 @@ export const tradingLaunchRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(launchQuoteSwapRoute);
   fastify.register(launchExecuteSwapRoute);
   fastify.register(launchExecuteQuoteRoute);
+  fastify.register(launchBuildSwapRoute);
+  fastify.register(launchBuildQuoteRoute);
 
   // A creator's fees, read and claimed (pump: per creator, across its coins).
   fastify.register(launchCreatorFeesRoute);
@@ -113,10 +130,13 @@ export const tradingAmmRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Swap routes (single-pool swaps; execute-quote is router-only)
   fastify.register(makeQuoteSwapRoute('amm'));
+  fastify.register(makeBuildSwapRoute('amm'));
   fastify.register(makeExecuteSwapRoute('amm'));
 
   // Liquidity transaction routes
   fastify.register(ammAddLiquidityRoute);
   fastify.register(ammRemoveLiquidityRoute);
+  fastify.register(ammCollectFeesRoute);
   fastify.register(createPoolRoute);
+  fastify.register(ammBuildCreatePoolRoute);
 };

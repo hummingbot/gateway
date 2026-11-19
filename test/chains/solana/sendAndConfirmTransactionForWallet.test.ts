@@ -2,12 +2,13 @@
  * Unit tests for the wallet-type-agnostic chokepoint
  * Solana.sendAndConfirmTransactionForWallet.
  *
- * The method is exercised via Function.prototype.call against a hand-built `this`, so we can
- * assert its branching (local vs hardware) and the fee-payer defaulting without standing up
- * the full Solana singleton / RPC.
+ * The method is exercised via Function.prototype.call against a hand-built `this`: the
+ * real preparation and signing, with RPC and broadcast stubbed and the wallet's signer
+ * supplied by the registry mock.
  */
 
 import {
+  ComputeBudgetProgram,
   Keypair,
   PublicKey,
   SystemProgram,
@@ -15,10 +16,16 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js';
+import nacl from 'tweetnacl';
 
 import { Solana } from '../../../src/chains/solana/solana';
 
-const WALLET = 'AabEVCB1sWgCPxbn6hFYM4Ukj7UubpBRbbYqRnqRXnZD';
+const mockGetSolanaSigner = jest.fn();
+jest.mock('../../../src/wallet/signers/registry', () => ({
+  ...jest.requireActual('../../../src/wallet/signers/registry'),
+  getSolanaSigner: (address: string) => mockGetSolanaSigner(address),
+}));
+
 const BLOCKHASH = 'EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N';
 
 const chokepoint = (Solana.prototype as any).sendAndConfirmTransactionForWallet as (
@@ -29,33 +36,197 @@ const chokepoint = (Solana.prototype as any).sendAndConfirmTransactionForWallet 
   priorityFeePerCU?: number,
 ) => Promise<{ signature: string; fee: number }>;
 
-function legacyTx(): Transaction {
-  const tx = new Transaction();
-  tx.add(SystemProgram.transfer({ fromPubkey: new PublicKey(WALLET), toPubkey: new PublicKey(WALLET), lamports: 1 }));
-  return tx;
+/** A signer backed by a keypair, standing in for any backend that holds the key. */
+function keypairSigner(keypair: Keypair, kind: 'local' | 'hardware' = 'local') {
+  return {
+    kind,
+    address: keypair.publicKey.toBase58(),
+    signTransactionMessage: jest.fn(async (message: Uint8Array) => ({
+      kind: 'signed' as const,
+      value: nacl.sign.detached(message, keypair.secretKey),
+    })),
+  };
 }
 
-function versionedTx(): VersionedTransaction {
-  const payer = new PublicKey(WALLET);
-  const message = new TransactionMessage({
-    payerKey: payer,
-    recentBlockhash: BLOCKHASH,
-    instructions: [SystemProgram.transfer({ fromPubkey: payer, toPubkey: payer, lamports: 1 })],
-  }).compileToV0Message();
-  return new VersionedTransaction(message);
+/** A `this` for the chokepoint: the real preparation and signing, RPC and broadcast stubbed. */
+function chokepointThis(overrides: Record<string, unknown> = {}) {
+  return {
+    simulateWithErrorHandling: jest.fn(),
+    estimateGasPrice: jest.fn(async () => 0.00001),
+    prepareVersionedTx: (Solana.prototype as any).prepareVersionedTx,
+    signThroughSeam: (Solana.prototype as any).signThroughSeam,
+    _sendAndConfirmRawTransaction: jest.fn(async () => ({
+      confirmed: true,
+      signature: 'sig',
+      txData: { meta: { fee: 5000 } },
+    })),
+    getFee: jest.fn(() => 0.000005),
+    config: { defaultComputeUnits: 200000 },
+    connection: {
+      simulateTransaction: jest.fn(async () => ({ value: { err: null, unitsConsumed: 100000 } })),
+      getLatestBlockhashAndContext: jest.fn(async () => ({
+        value: { lastValidBlockHeight: 100, blockhash: BLOCKHASH },
+      })),
+    },
+    ...overrides,
+  };
 }
 
-describe('Solana.sendAndConfirmTransaction compute simulation', () => {
-  const sendAndConfirm = (Solana.prototype as any).sendAndConfirmTransaction as (
-    this: unknown,
-    tx: Transaction,
-  ) => Promise<{ signature: string; fee: number }>;
+/** The wire transaction the chokepoint broadcast. */
+function broadcast(fakeThis: { _sendAndConfirmRawTransaction: jest.Mock }): Transaction {
+  const [raw] = fakeThis._sendAndConfirmRawTransaction.mock.calls[0] as [Uint8Array];
+  return Transaction.from(raw);
+}
+
+function createAccountTx(payer: PublicKey, account: PublicKey): Transaction {
+  return new Transaction().add(
+    SystemProgram.createAccount({
+      fromPubkey: payer,
+      newAccountPubkey: account,
+      lamports: 1,
+      space: 82,
+      programId: SystemProgram.programId,
+    }),
+  );
+}
+
+describe('Solana.sendAndConfirmTransactionForWallet (the signer seam)', () => {
+  const wallet = Keypair.generate();
+  const walletAddress = wallet.publicKey.toBase58();
+
+  afterEach(() => mockGetSolanaSigner.mockReset());
+
+  it("signs the prepared message through the wallet's signer and sends a transaction that verifies", async () => {
+    const signer = keypairSigner(wallet, 'hardware');
+    mockGetSolanaSigner.mockResolvedValue(signer);
+    const nftMint = Keypair.generate();
+    const fakeThis = chokepointThis();
+
+    const result = await chokepoint.call(
+      fakeThis,
+      createAccountTx(wallet.publicKey, nftMint.publicKey),
+      walletAddress,
+      [nftMint],
+    );
+
+    expect(result).toEqual({ signature: 'sig', fee: 0.000005 });
+    expect(signer.signTransactionMessage).toHaveBeenCalledTimes(1);
+    const sent = broadcast(fakeThis);
+    // Gateway's compute budget is in the message the wallet signed.
+    expect(sent.instructions.filter((ix) => ix.programId.toBase58().startsWith('ComputeBudget'))).toHaveLength(2);
+    // The wallet and the ephemeral co-signer both signed, over the final message.
+    expect(sent.verifySignatures()).toBe(true);
+    expect(sent.signatures.map((s) => s.publicKey.toBase58()).sort()).toEqual(
+      [walletAddress, nftMint.publicKey.toBase58()].sort(),
+    );
+  });
+
+  it('replaces stale CU price/limit on a legacy tx but preserves RequestHeapFrame', async () => {
+    // Titan's programs need a 256KB heap and crash on-chain if RequestHeapFrame is stripped.
+    mockGetSolanaSigner.mockResolvedValue(keypairSigner(wallet));
+    const fakeThis = chokepointThis();
+    const tx = new Transaction().add(
+      ComputeBudgetProgram.requestHeapFrame({ bytes: 256 * 1024 }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 99 }),
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 1234 }),
+      SystemProgram.transfer({ fromPubkey: wallet.publicKey, toPubkey: wallet.publicKey, lamports: 1 }),
+    );
+
+    await chokepoint.call(fakeThis, tx, walletAddress);
+
+    const sent = broadcast(fakeThis);
+    const cbData = sent.instructions
+      .filter((ix) => ix.programId.equals(ComputeBudgetProgram.programId))
+      .map((ix) => ix.data[0])
+      .sort();
+    expect(cbData).toEqual([1, 2, 3]);
+    expect(sent.instructions).toHaveLength(4);
+  });
+
+  it('drops extra signers that carry the wallet pubkey (SDK dummy owner signers)', async () => {
+    // Raydium's TxBuilder appends `owner.signer` to the signers it returns: a dummy
+    // keypair whose publicKey is the wallet's. Signing with it would corrupt the
+    // wallet's slot.
+    mockGetSolanaSigner.mockResolvedValue(keypairSigner(wallet));
+    const dummyOwner = Keypair.generate();
+    Object.defineProperty(dummyOwner, 'publicKey', { get: () => wallet.publicKey, configurable: true });
+    const nftMint = Keypair.generate();
+    const fakeThis = chokepointThis();
+
+    await chokepoint.call(fakeThis, createAccountTx(wallet.publicKey, nftMint.publicKey), walletAddress, [
+      dummyOwner,
+      nftMint,
+    ]);
+
+    expect(broadcast(fakeThis).verifySignatures()).toBe(true);
+  });
+
+  it('defaults a missing fee payer to the wallet before simulating a legacy tx (regression)', async () => {
+    mockGetSolanaSigner.mockResolvedValue(keypairSigner(wallet));
+    const fakeThis = chokepointThis();
+    const tx = new Transaction().add(
+      SystemProgram.transfer({ fromPubkey: wallet.publicKey, toPubkey: wallet.publicKey, lamports: 1 }),
+    );
+    expect(tx.feePayer).toBeUndefined();
+
+    await chokepoint.call(fakeThis, tx, walletAddress);
+
+    expect(fakeThis.simulateWithErrorHandling).toHaveBeenCalledWith(tx);
+    expect(broadcast(fakeThis).feePayer?.toBase58()).toBe(walletAddress);
+  });
+
+  it('signs a versioned transaction without moving its fee payer', async () => {
+    mockGetSolanaSigner.mockResolvedValue(keypairSigner(wallet));
+    const fakeThis = chokepointThis();
+    const message = new TransactionMessage({
+      payerKey: wallet.publicKey,
+      recentBlockhash: BLOCKHASH,
+      instructions: [SystemProgram.transfer({ fromPubkey: wallet.publicKey, toPubkey: wallet.publicKey, lamports: 1 })],
+    }).compileToV0Message();
+
+    await chokepoint.call(fakeThis, new VersionedTransaction(message), walletAddress);
+
+    const [raw] = fakeThis._sendAndConfirmRawTransaction.mock.calls[0] as unknown as [Uint8Array];
+    const sent = VersionedTransaction.deserialize(raw);
+    expect(sent.message.staticAccountKeys[0].toBase58()).toBe(walletAddress);
+    expect(
+      nacl.sign.detached.verify(
+        new Uint8Array(sent.message.serialize()),
+        sent.signatures[0],
+        wallet.publicKey.toBytes(),
+      ),
+    ).toBe(true);
+  });
+
+  it('refuses an external wallet before any RPC work', async () => {
+    mockGetSolanaSigner.mockResolvedValue({
+      kind: 'external',
+      address: walletAddress,
+      signTransactionMessage: jest.fn(),
+    });
+    const fakeThis = chokepointThis();
+
+    await expect(
+      chokepoint.call(fakeThis, createAccountTx(wallet.publicKey, Keypair.generate().publicKey), walletAddress),
+    ).rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('is an external wallet') });
+    expect(fakeThis.simulateWithErrorHandling).not.toHaveBeenCalled();
+    expect(fakeThis._sendAndConfirmRawTransaction).not.toHaveBeenCalled();
+  });
+
+  it('does not send a signature that does not verify against the message', async () => {
+    const signer = keypairSigner(Keypair.generate());
+    mockGetSolanaSigner.mockResolvedValue({ ...signer, address: walletAddress });
+    const fakeThis = chokepointThis();
+
+    await expect(
+      chokepoint.call(fakeThis, createAccountTx(wallet.publicKey, Keypair.generate().publicKey), walletAddress),
+    ).rejects.toThrow(/does not verify against the transaction/);
+    expect(fakeThis._sendAndConfirmRawTransaction).not.toHaveBeenCalled();
+  });
 
   it('does not broadcast when the compute-estimation simulation returned an error', async () => {
-    const _sendAndConfirmRawTransaction = jest.fn();
-    const fakeThis = {
-      config: { defaultComputeUnits: 200000 },
-      estimateGasPrice: jest.fn(async () => 0.1),
+    mockGetSolanaSigner.mockResolvedValue(keypairSigner(wallet));
+    const fakeThis = chokepointThis({
       connection: {
         simulateTransaction: jest.fn(async () => ({
           value: {
@@ -68,143 +239,12 @@ describe('Solana.sendAndConfirmTransaction compute simulation', () => {
           },
         })),
       },
-      _sendAndConfirmRawTransaction,
-    };
-
-    await expect(sendAndConfirm.call(fakeThis, legacyTx())).rejects.toMatchObject({
-      code: 'SLIPPAGE_EXCEEDED',
     });
-    expect(_sendAndConfirmRawTransaction).not.toHaveBeenCalled();
-  });
-});
 
-describe('Solana.sendAndConfirmTransactionForWallet', () => {
-  it('drops extra signers that carry the wallet pubkey (SDK dummy owner signers)', async () => {
-    // Raydium's TxBuilder appends `owner.signer` to the signers it returns. For non-local
-    // wallets that is a dummy keypair whose publicKey getter returns the wallet's address;
-    // signing with it corrupts the wallet's signature slot.
-    const walletKeypair = Keypair.generate();
-    const sendAndConfirmTransaction = jest.fn(async () => ({ signature: 'sig', fee: 0.0001 }));
-    const fakeThis = {
-      simulateWithErrorHandling: jest.fn(),
-      prepareWallet: jest.fn(async () => ({ wallet: walletKeypair, walletType: 'local' })),
-      sendAndConfirmTransaction,
-      estimateGasPrice: jest.fn(async () => 0.00001),
-      config: { confirmRetryCount: 3 },
-    };
-
-    const dummyOwner = Keypair.generate();
-    Object.defineProperty(dummyOwner, 'publicKey', { get: () => new PublicKey(WALLET), configurable: true });
-    const nftMint = Keypair.generate();
-
-    await chokepoint.call(fakeThis, legacyTx(), WALLET, [dummyOwner, nftMint], 0.00001);
-
-    const [, signers] = sendAndConfirmTransaction.mock.calls[0] as any[];
-    expect(signers).toEqual([walletKeypair, nftMint]);
-  });
-
-  it('defaults a missing fee payer to the wallet before simulating a legacy tx (regression)', async () => {
-    const simulateWithErrorHandling = jest.fn();
-    const sendAndConfirmTransaction = jest.fn(async () => ({ signature: 'local-sig', fee: 0.0001 }));
-    const fakeThis = {
-      simulateWithErrorHandling,
-      prepareWallet: jest.fn(async () => ({ wallet: Keypair.generate(), walletType: 'local' })),
-      sendAndConfirmTransaction,
-      estimateGasPrice: jest.fn(async () => 0.00001),
-      config: { confirmRetryCount: 3 },
-    };
-
-    const tx = legacyTx();
-    expect(tx.feePayer).toBeUndefined();
-
-    const result = await chokepoint.call(fakeThis, tx, WALLET);
-
-    // The fix: fee payer is set to the wallet so simulate can compile the message.
-    expect(tx.feePayer?.toBase58()).toBe(WALLET);
-    // simulate happens, and with a compilable tx (the bug was a throw here).
-    expect(simulateWithErrorHandling).toHaveBeenCalledWith(tx);
-    expect(simulateWithErrorHandling).toHaveBeenCalledTimes(1);
-    expect(sendAndConfirmTransaction).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ signature: 'local-sig', fee: 0.0001 });
-  });
-
-  it('signs via signTransactionByType for hardware wallets and re-applies extra signers', async () => {
-    // The hardware wallet is represented by a keypair so the test can produce a
-    // verifiable signature; in production the Ledger signs this slot.
-    const walletKeypair = Keypair.generate();
-    const walletAddress = walletKeypair.publicKey.toBase58();
-    const nftMint = Keypair.generate();
-
-    const signTransactionByType = jest.fn(async (tx: Transaction, _address?: string, _walletType?: string) => {
-      tx.partialSign(walletKeypair);
-      return tx;
-    });
-    const _sendAndConfirmRawTransaction = jest.fn(async () => ({
-      confirmed: true,
-      signature: 'hw-sig',
-      txData: { meta: { fee: 5000 } },
-    }));
-    const fakeThis = {
-      simulateWithErrorHandling: jest.fn(),
-      prepareWallet: jest.fn(async () => ({ wallet: walletKeypair.publicKey, walletType: 'hardware' })),
-      signTransactionByType,
-      _sendAndConfirmRawTransaction,
-      getFee: jest.fn(() => 0.000005),
-      estimateGasPrice: jest.fn(async () => 0.00001),
-      config: { confirmRetryCount: 3, defaultComputeUnits: 200000 },
-      connection: {
-        simulateTransaction: jest.fn(async () => ({ value: { unitsConsumed: 100000 } })),
-        getLatestBlockhashAndContext: jest.fn(async () => ({
-          value: { lastValidBlockHeight: 100, blockhash: BLOCKHASH },
-        })),
-      },
-    };
-
-    // Like a real openPosition tx: the ephemeral mint account is itself a required signer.
-    const tx = new Transaction();
-    tx.add(
-      SystemProgram.createAccount({
-        fromPubkey: walletKeypair.publicKey,
-        newAccountPubkey: nftMint.publicKey,
-        lamports: 1,
-        space: 82,
-        programId: SystemProgram.programId,
-      }),
-    );
-
-    const result = await chokepoint.call(fakeThis, tx, walletAddress, [nftMint], 0.00001);
-
-    expect(result).toEqual({ signature: 'hw-sig', fee: 0.000005 });
-    // Signed through the wallet-type-specific signer, not a local keypair path.
-    expect(signTransactionByType).toHaveBeenCalledTimes(1);
-    expect(signTransactionByType.mock.calls[0][2]).toBe('hardware');
-    // The prepared tx got Gateway's compute budget instructions before signing.
-    const preparedTx = signTransactionByType.mock.calls[0][0] as Transaction;
-    const cbCount = preparedTx.instructions.filter((ix) => ix.programId.toBase58().startsWith('ComputeBudget')).length;
-    expect(cbCount).toBe(2); // CU price + CU limit
-    // Both the wallet and the ephemeral extra signer ended up signed.
-    const signedPubkeys = preparedTx.signatures.filter((s) => s.signature !== null).map((s) => s.publicKey.toBase58());
-    expect(signedPubkeys).toContain(walletKeypair.publicKey.toBase58());
-    expect(signedPubkeys).toContain(nftMint.publicKey.toBase58());
-    expect(_sendAndConfirmRawTransaction).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not touch the fee payer of a versioned tx (it is baked into the message)', async () => {
-    const simulateWithErrorHandling = jest.fn();
-    const sendAndConfirmTransaction = jest.fn(async () => ({ signature: 'v0-sig', fee: 0.0002 }));
-    const fakeThis = {
-      simulateWithErrorHandling,
-      prepareWallet: jest.fn(async () => ({ wallet: Keypair.generate(), walletType: 'local' })),
-      sendAndConfirmTransaction,
-      estimateGasPrice: jest.fn(async () => 0.00001),
-      config: { confirmRetryCount: 3 },
-    };
-
-    const tx = versionedTx();
-    const result = await chokepoint.call(fakeThis, tx, WALLET);
-
-    expect(simulateWithErrorHandling).toHaveBeenCalledWith(tx);
-    expect(result).toEqual({ signature: 'v0-sig', fee: 0.0002 });
+    await expect(
+      chokepoint.call(fakeThis, createAccountTx(wallet.publicKey, Keypair.generate().publicKey), walletAddress),
+    ).rejects.toMatchObject({ code: 'SLIPPAGE_EXCEEDED' });
+    expect(fakeThis._sendAndConfirmRawTransaction).not.toHaveBeenCalled();
   });
 });
 

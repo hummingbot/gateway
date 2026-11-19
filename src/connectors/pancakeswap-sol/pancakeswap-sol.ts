@@ -1,9 +1,8 @@
 import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
-import { Keypair, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
 import { Solana } from '../../chains/solana/solana';
-import { SolanaLedger } from '../../chains/solana/solana-ledger';
 import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
@@ -594,46 +593,5 @@ export class PancakeswapSol {
       // rewardTokenAddress: cakeRewardAmount > 0 ? CAKE_ADDRESS : undefined,
       // rewardAmount: cakeRewardAmount > 0 ? cakeRewardAmount : undefined,
     };
-  }
-
-  /**
-   * Helper function to prepare wallet for transaction operations
-   */
-  public async prepareWallet(walletAddress: string): Promise<{
-    wallet: Keypair | PublicKey;
-    isHardwareWallet: boolean;
-  }> {
-    const isHardwareWallet = await this.solana.isHardwareWallet(walletAddress);
-    const wallet = isHardwareWallet
-      ? await this.solana.getPublicKey(walletAddress)
-      : await this.solana.getWallet(walletAddress);
-
-    await this.setOwner(wallet);
-
-    return { wallet, isHardwareWallet };
-  }
-
-  /**
-   * Helper function to sign transaction with hardware or regular wallet
-   */
-  public async signTransaction(
-    transaction: VersionedTransaction | Transaction,
-    walletAddress: string,
-    isHardwareWallet: boolean,
-    wallet: Keypair | PublicKey,
-  ): Promise<VersionedTransaction | Transaction> {
-    if (isHardwareWallet) {
-      logger.info(`Hardware wallet detected for ${walletAddress}. Signing transaction with Ledger.`);
-      const ledger = new SolanaLedger();
-      return await ledger.signTransaction(walletAddress, transaction);
-    } else {
-      // Regular wallet - sign normally
-      if (transaction instanceof VersionedTransaction) {
-        transaction.sign([wallet as Keypair]);
-      } else {
-        (transaction as Transaction).sign(wallet as Keypair);
-      }
-      return transaction;
-    }
   }
 }

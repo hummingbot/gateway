@@ -51,8 +51,9 @@ const primeMocks = (receipt: any) => {
 
   const ethereum: any = {
     provider: {},
-    getWallet: jest.fn().mockResolvedValue({ address: mockWallet }),
-    prepareGasOptions: jest.fn().mockResolvedValue({}),
+    // The route checks its allowances and sends through the chokepoint.
+    requireAllowance: jest.fn().mockResolvedValue(undefined),
+    sendTransactionForWallet: jest.fn().mockResolvedValue({ hash: txHash }),
     handleTransactionExecution: jest.fn().mockResolvedValue(receipt),
   };
   ethereum.handleTransactionConfirmation = RealEthereum.prototype.handleTransactionConfirmation.bind(ethereum);
@@ -70,7 +71,6 @@ const primeMocks = (receipt: any) => {
       tokensOwed0: BigNumber.from('1000000000000000'), // 0.001 WETH
       tokensOwed1: BigNumber.from('2000000'), // 2 USDC
     }),
-    multicall: jest.fn().mockResolvedValue({ hash: txHash }),
   }));
 };
 

@@ -17,6 +17,7 @@ import {
   ROUTER_CONNECTORS,
   getRouterOps,
 } from '../connector-registry';
+import { assertRouterPlatformFee, recordRouterFeeQuote } from '../platform-fee';
 
 export const RouterQuoteSwapRequestSchema = Type.Object(
   {
@@ -66,6 +67,16 @@ export const RouterQuoteSwapRequestSchema = Type.Object(
         'x-connectors': INDICATIVE_PRICE_CONNECTORS,
       } as any),
     ),
+    platformFeeBps: Type.Optional(
+      Type.Integer({
+        minimum: 1,
+        maximum: 10_000,
+        description:
+          'A platform fee, in bps of the input (Solana routers). Jupiter prices it into its route; any other ' +
+          'router is charged by a transfer after the trade. The quote must then be built with ' +
+          '/trading/router/build-quote and platformFee of the same bps, which names the recipient.',
+      }),
+    ),
   },
   { $id: 'RouterQuoteSwapRequest', additionalProperties: false },
 );
@@ -95,11 +106,13 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         walletAddress,
         approximateIfNoExactOut,
         indicativePrice,
+        platformFeeBps,
       } = request.query as RouterQuoteSwapRequest;
 
       try {
         const { chain, network } = parseChainNetwork(chainNetwork);
         const name = resolveSwapConnector(chain, network, 'router', connector);
+        if (platformFeeBps !== undefined) assertRouterPlatformFee(name);
 
         logger.info(`[trading/router] quote ${baseToken}-${quoteToken} on ${chain}/${network} via ${name}`);
 
@@ -113,7 +126,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           approximateIfNoExactOut,
           indicativePrice,
           walletAddress,
+          platformFeeBps,
         });
+        if (platformFeeBps !== undefined) recordRouterFeeQuote(name, result, platformFeeBps);
 
         return reply.code(200).send(result);
       } catch (e: any) {

@@ -21,6 +21,10 @@ const VALID_SIGNATURE = '5'.repeat(88);
 describe('pollSolanaTransaction', () => {
   const mockSolanaInstance = {
     getCurrentBlockNumber: jest.fn(),
+    // poll reports the block HEIGHT alongside the slot, because
+    // lastValidBlockHeight is a height and comparing it to a slot expires a
+    // transaction that is still perfectly valid.
+    getCurrentBlockHeight: jest.fn(),
     getTransaction: jest.fn(),
     getTransactionStatusCode: jest.fn(),
     getSignatureStatus: jest.fn(),
@@ -30,6 +34,9 @@ describe('pollSolanaTransaction', () => {
     jest.clearAllMocks();
     mockSolana.getInstance.mockResolvedValue(mockSolanaInstance as any);
     mockSolanaInstance.getCurrentBlockNumber.mockResolvedValue(365795000);
+    // A height is far below its slot: the chain skips slots, so the two numbers
+    // diverge and the fixture keeps them apart deliberately.
+    mockSolanaInstance.getCurrentBlockHeight.mockResolvedValue(343000000);
   });
 
   it('returns CONFIRMED with fee when the transaction landed without error', async () => {

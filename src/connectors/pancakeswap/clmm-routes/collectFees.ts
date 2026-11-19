@@ -1,13 +1,13 @@
 import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount } from '@pancakeswap/sdk';
 import { NonfungiblePositionManager, computePoolAddress } from '@pancakeswap/v3-sdk';
-import { BigNumber } from 'ethers';
 import { Address } from 'viem';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
+import { positionManagerCall } from '../../clmm-v3-utils';
 import { Pancakeswap } from '../pancakeswap';
 import {
   POSITION_MANAGER_ABI,
@@ -30,11 +30,6 @@ export async function collectFees(
 
   const pancakeswap = await Pancakeswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
-  const wallet = await ethereum.getWallet(walletAddress);
-  if (!wallet) {
-    throw httpErrors.badRequest('Wallet not found');
-  }
-
   const positionManagerAddress = getPancakeswapV3NftManagerAddress(network);
 
   try {
@@ -85,23 +80,16 @@ export async function collectFees(
 
   const { calldata, value } = NonfungiblePositionManager.collectCallParameters(collectParams);
 
-  const positionManagerWithSigner = new Contract(
-    positionManagerAddress,
-    [
-      {
-        inputs: [{ internalType: 'bytes[]', name: 'data', type: 'bytes[]' }],
-        name: 'multicall',
-        outputs: [{ internalType: 'bytes[]', name: 'results', type: 'bytes[]' }],
-        stateMutability: 'payable',
-        type: 'function',
-      },
-    ],
-    wallet,
+  const tx = await ethereum.sendTransactionForWallet(
+    walletAddress,
+    positionManagerCall(
+      positionManagerAddress,
+      calldata,
+      value,
+      CLMM_COLLECT_FEES_GAS_LIMIT,
+      `collect fees of position ${positionAddress}`,
+    ),
   );
-
-  const txParams = await ethereum.prepareGasOptions(undefined, CLMM_COLLECT_FEES_GAS_LIMIT);
-  txParams.value = BigNumber.from(value.toString());
-  const tx = await positionManagerWithSigner.multicall([calldata], txParams);
   const outcome = await ethereum.handleTransactionConfirmation(tx);
   if (!outcome.confirmed) {
     // Still pending — the fee amounts below were read before sending and have not moved.
