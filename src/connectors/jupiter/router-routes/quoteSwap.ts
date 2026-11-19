@@ -64,7 +64,8 @@ export async function quoteSwap(
     // relabelling it NO_ROUTE_FOUND (which reads as "this token is untradable"
     // and has caused callers to blacklist perfectly good pools). Also skip the
     // ExactIn fallback below - it would just burn another rate-limited request.
-    if (error?.code === 'RATE_LIMITED' || error?.statusCode === 429) {
+    // A 401/403 is the API key, not the route, and the fallback would fail the same way.
+    if (error?.code === 'RATE_LIMITED' || [429, 401, 403].includes(error?.statusCode)) {
       throw error;
     }
 
