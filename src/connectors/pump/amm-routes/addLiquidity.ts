@@ -1,6 +1,7 @@
 import { PublicKey, Transaction } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { AddLiquidityResponseType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Pump } from '../pump';
@@ -51,13 +52,17 @@ export async function addLiquidity(
       state.pool.baseMint.toBase58(),
       state.pool.quoteMint.toBase58(),
     ]);
+    // A SOL side's balance change also carries the rent of the accounts this transaction
+    // opened (the pool's own, or the wallet's LP account), which is not a deposit. The
+    // rent share only: a pool vault opens holding the deposit itself.
+    const { rentLocked } = accountLifecycleSol(txData);
     return {
       signature,
       status: 1, // CONFIRMED
       data: {
         fee: txData.meta.fee / 1e9,
-        baseTokenAmountAdded: Math.abs(balanceChanges[0]),
-        quoteTokenAmountAdded: Math.abs(balanceChanges[1]),
+        baseTokenAmountAdded: liquidityWithoutRent(balanceChanges[0], state.pool.baseMint, rentLocked),
+        quoteTokenAmountAdded: liquidityWithoutRent(balanceChanges[1], state.pool.quoteMint, rentLocked),
       },
     };
   }

@@ -46,11 +46,21 @@ export async function claimCreatorFees(
   const solana = pump.solana;
   const wallet = creatorKey(walletAddress);
   const online = new OnlinePumpSdk(solana.connection);
-  const lamports = await online.getCreatorVaultBalanceBothPrograms(wallet);
+  const curveFees = await online.getCreatorVaultBalance(wallet);
+  const swapFees = await pump.onlineAmm.getCoinCreatorVaultBalance(wallet);
+  const lamports = curveFees.add(swapFees);
   if (lamports.isZero()) {
     throw httpErrors.badRequest(sanitizeErrorMessage('No pump creator fees to claim for {}', walletAddress));
   }
-  const transaction = new Transaction().add(...(await online.collectCoinCreatorFeeInstructions(wallet, wallet)));
+  // The SDK's collect is the pump program's instruction followed by PumpSwap's, and
+  // PumpSwap's opens a wrapped-SOL account at the creator's cost (~0.0015 SOL of rent).
+  // Each vault is collected only when it holds something: with PumpSwap's empty, that
+  // rent bought nothing and a small first claim netted less than it cost.
+  const [curveCollect, ...swapCollect] = await online.collectCoinCreatorFeeInstructions(wallet, wallet);
+  const transaction = new Transaction().add(
+    ...(curveFees.isZero() ? [] : [curveCollect]),
+    ...(swapFees.isZero() ? [] : swapCollect),
+  );
   transaction.feePayer = wallet;
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
   const txData = await solana.getConfirmedTransactionData(signature);

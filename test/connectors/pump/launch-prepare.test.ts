@@ -13,7 +13,7 @@ describe('prepareCreateToken', () => {
     });
 
     expect(prepared.metadataUri).toBe('https://ipfs.io/ipfs/QmSomething');
-    expect(prepared.mintKeypair.publicKey.toBase58()).toHaveLength(44);
+    expect(prepared.mintKeypair.publicKey.toBase58()).toMatch(/^[1-9A-HJ-NP-Za-km-z]{43,44}$/);
   });
 
   it('enforces the on-chain byte limits', async () => {

@@ -2,6 +2,7 @@ import { CANONICAL_POOL_INDEX, poolPda } from '@pump-fun/pump-swap-sdk';
 import { PublicKey, Transaction } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { CreatePoolResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -58,6 +59,10 @@ export async function createPool(
       baseTokenInfo.address,
       quoteTokenInfo.address,
     ]);
+    // A SOL side's balance change also carries the rent of the accounts this transaction
+    // opened (the pool's own, or the wallet's LP account), which is not a deposit. The
+    // rent share only: a pool vault opens holding the deposit itself.
+    const { rentLocked } = accountLifecycleSol(txData);
     return {
       signature,
       status: 1, // CONFIRMED
@@ -65,8 +70,8 @@ export async function createPool(
       price: quoteAmount / baseTokenAmount,
       data: {
         fee: txData.meta.fee / 1e9,
-        baseTokenAmountAdded: Math.abs(balanceChanges[0]),
-        quoteTokenAmountAdded: Math.abs(balanceChanges[1]),
+        baseTokenAmountAdded: liquidityWithoutRent(balanceChanges[0], baseMint, rentLocked),
+        quoteTokenAmountAdded: liquidityWithoutRent(balanceChanges[1], quoteMint, rentLocked),
       },
     };
   }
