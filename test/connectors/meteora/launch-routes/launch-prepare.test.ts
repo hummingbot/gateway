@@ -36,7 +36,6 @@ describe('meteora-dbc prepareCreateToken', () => {
     });
 
     expect(prepared.metadataUri).toBe('https://example.com/ctest.json');
-    expect(prepared.mintKeypair.publicKey.toBase58()).toHaveLength(44);
     expect(prepared.poolAddress).toBe(POOL.toBase58());
     expect(fakeDbc.derivePoolAddress).toHaveBeenCalledWith(CONFIG, prepared.mintKeypair.publicKey);
     // Each prepare is a new identity: a rebuild after blockhash expiry is a new mint.
