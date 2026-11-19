@@ -45,6 +45,15 @@ export function rateLimitAwareConnection(url: string): utils.ConnectionInfo {
 }
 
 /**
+ * `429` standing as a number of its own ("429 Too Many Requests", "status=429"), not three
+ * digits inside something longer. An error message carries whatever the node or the program
+ * said: a refused Solana send quotes the program logs ("insufficient lamports 135904296"), an
+ * ethers revert quotes the calldata and addresses, and any of those can contain the digits
+ * 429. Matching them reported a transaction the chain had refused as a throttled RPC.
+ */
+const STANDALONE_429 = /(?<![0-9A-Za-z.,])429(?![0-9A-Za-z]|[.,][0-9])/;
+
+/**
  * Detect if an error is a 429 rate limit error
  */
 function is429Error(error: any): boolean {
@@ -54,7 +63,7 @@ function is429Error(error: any): boolean {
 
   // Check various ways 429 might appear in RPC errors
   return (
-    error?.message?.includes('429') ||
+    STANDALONE_429.test(error?.message ?? '') ||
     error?.message?.toLowerCase().includes('too many requests') ||
     error?.message?.toLowerCase().includes('rate limit') ||
     error?.code === 429 ||
