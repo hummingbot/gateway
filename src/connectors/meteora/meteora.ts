@@ -382,12 +382,14 @@ export class Meteora {
     try {
       allPositions = await DLMM.getAllLbPairPositionsByUser(this.solana.connection, wallet);
     } catch (error) {
-      logger.error(`Meteora SDK getAllLbPairPositionsByUser failed: ${error.message}`);
-      logger.error('This is a known SDK bug where it tries to access fee properties that may not be initialized.');
-      logger.info('GitHub issue: https://github.com/MeteoraAg/dlmm-sdk/issues/245');
-
+      // A rate limit stays a 429, so the route reports it as one.
+      if (error.statusCode === 429) throw error;
+      // The cause as the RPC gave it. This used to be replaced, whatever it was, by a
+      // message blaming an SDK bug, which hid the usual one: a node that does not serve
+      // getProgramAccounts, the call this listing is made with.
       throw new Error(
-        'Unable to fetch Meteora positions due to a known SDK bug. The SDK fails when trying to compute fees on positions with uninitialized state. Please see https://github.com/MeteoraAg/dlmm-sdk/issues/245 for updates.',
+        `Failed to list Meteora positions for ${wallet.toBase58()}: ${error.message}. ` +
+          `The listing reads the DLMM program's accounts with getProgramAccounts, which some RPC nodes do not serve.`,
       );
     }
 
