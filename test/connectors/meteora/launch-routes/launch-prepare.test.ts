@@ -11,7 +11,8 @@ jest.mock('../../../../src/connectors/meteora/meteora-dbc', () => {
   return { MeteoraDbc: { getInstance: jest.fn(), prototype: actual.MeteoraDbc.prototype } };
 });
 
-import { prepareCreateToken } from '../../../../src/connectors/meteora/launch-routes/createToken';
+import { Solana } from '../../../../src/chains/solana/solana';
+import { createToken, prepareCreateToken } from '../../../../src/connectors/meteora/launch-routes/createToken';
 import { MeteoraDbc } from '../../../../src/connectors/meteora/meteora-dbc';
 
 const CONFIG = PublicKey.unique();
@@ -66,6 +67,25 @@ describe('meteora-dbc prepareCreateToken', () => {
     await expect(
       prepareCreateToken('mainnet-beta', { name: 'T', symbol: 'T', metadataUri: 'https://a', configAddress: 'nope' }),
     ).rejects.toThrow(/configAddress is not a base58 address/);
+  });
+
+  it('refuses a firstBuySol against a config that is not quoted in SOL', async () => {
+    // The first buy spends the config's quote token: 0.1 "SOL" of raw units is 100 USDC.
+    const usdc = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+    jest.spyOn(Solana, 'getInstance').mockResolvedValue({} as any);
+    const createPoolWithFirstBuy = jest.fn();
+    (MeteoraDbc.getInstance as jest.Mock).mockResolvedValue({
+      ...fakeDbc,
+      getPoolConfig: jest.fn(async () => ({ quoteMint: usdc })),
+      client: { creator: { createPoolWithFirstBuy } },
+    });
+    const params = { name: 'T', symbol: 'T', metadataUri: 'https://a', firstBuySol: 0.1 };
+    const prepared = await prepareCreateToken('mainnet-beta', params);
+
+    await expect(createToken('mainnet-beta', PublicKey.unique().toBase58(), params, prepared)).rejects.toThrow(
+      `firstBuySol needs a DBC config quoted in SOL; ${CONFIG.toBase58()} is quoted in ${usdc.toBase58()}`,
+    );
+    expect(createPoolWithFirstBuy).not.toHaveBeenCalled();
   });
 
   it('enforces the on-chain URI byte limit', async () => {

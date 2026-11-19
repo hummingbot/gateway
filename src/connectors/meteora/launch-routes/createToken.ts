@@ -104,6 +104,14 @@ export async function createToken(
   let transaction;
   if (firstBuy) {
     const config = await dbc.getPoolConfig(configAddress);
+    // The first buy spends the config's quote token. Against a USDC config, 0.1 "SOL"
+    // of raw units would be 100 USDC.
+    if (!config.quoteMint.equals(NATIVE_MINT)) {
+      throw httpErrors.badRequest(
+        `firstBuySol needs a DBC config quoted in SOL; ${configAddress.toBase58()} is quoted in ` +
+          `${config.quoteMint.toBase58()}`,
+      );
+    }
     const buyAmount = toRawAmount(params.firstBuySol, 9);
     // The pool is created in this same transaction, so the buy executes at the curve's
     // start price; the quote is against that fresh curve, with the configured slippage
