@@ -1,4 +1,5 @@
 import { PoolUtils } from '@raydium-io/raydium-sdk-v2';
+import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
@@ -191,6 +192,43 @@ describe('GET /quote-swap (Raydium CLMM)', () => {
     expect(callArgs.baseMint.toBase58()).toBe(mockSOL.address);
     // Slippage reaches the SDK as a fraction (1% -> 0.01).
     expect(callArgs.slippage).toBe(0.01);
+  });
+
+  it('hands the exact-out computation a tick cache keyed by address', async () => {
+    // fetchMultiplePoolTickArrays keys its cache by start tick index, and the SDK's
+    // exact-out path does new PublicKey(key) on every key: "-22500" is not base58,
+    // so every CLMM BUY failed before it reached a quote.
+    const address = new PublicKey('3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv');
+    const tickArray = { startTickIndex: -22500, address };
+    (PoolUtils.fetchMultiplePoolTickArrays as jest.Mock).mockResolvedValue({
+      [mockPoolAddress]: { '-22500': tickArray },
+    });
+    (PoolUtils.computeAmountIn as jest.Mock).mockResolvedValue({
+      amountIn: { amount: bn(13_000_000) },
+      maxAmountIn: { amount: bn(13_130_000) },
+      realAmountOut: { amount: bn(200_000_000) },
+      priceImpact: percent('0.09'),
+      remainingAccounts: [],
+    });
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/quote-swap',
+      query: {
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
+        poolAddress: mockPoolAddress,
+        baseToken: 'SOL',
+        quoteToken: 'USDC',
+        amount: '0.2',
+        side: 'BUY',
+        slippagePct: '1',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const { tickArrayCache } = (PoolUtils.computeAmountIn as jest.Mock).mock.calls[0][0];
+    expect(tickArrayCache).toEqual({ [address.toBase58()]: tickArray });
   });
 
   it('returns 404 when the pool is not found', async () => {
