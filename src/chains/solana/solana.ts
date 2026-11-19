@@ -987,6 +987,15 @@ export class Solana {
       await this.processTokenListOnly(tokenAccounts, balances);
     }
 
+    // Wrapped SOL is a token balance of its own. The list names its mint 'SOL', and that
+    // key is the native balance, so the wrapped balance is reported as 'WSOL': whenever
+    // the wallet holds some, and always when asked for by that name.
+    const wrappedAsked = effectiveSymbols?.some((s) => s.toUpperCase() === 'WSOL');
+    if (!effectiveSymbols || wrappedAsked) {
+      const wrapped = this.getTokenBalance(tokenAccounts.get(NATIVE_MINT.toBase58()), 9);
+      if (wrapped > 0 || wrappedAsked) balances['WSOL'] = wrapped;
+    }
+
     // Filter results if no specific tokens were requested
     if (!effectiveSymbols) {
       return this.filterZeroBalances(balances);
@@ -1167,6 +1176,8 @@ export class Solana {
 
     for (const symbol of symbols) {
       if (symbol.toUpperCase() === 'SOL' || symbol === SOL_NATIVE_MINT) continue;
+      // Wrapped SOL is reported by the caller, from the wallet's wrapped-SOL account.
+      if (symbol.toUpperCase() === 'WSOL') continue;
 
       // A listed token, asked for by symbol or by mint, is reported under its symbol so
       // the caller can name and price it.
