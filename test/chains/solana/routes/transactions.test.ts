@@ -20,10 +20,10 @@ const MINT = Keypair.generate().publicKey.toBase58();
 const swapTx = {
   transaction: {
     message: {
-      accountKeys: [{ pubkey: WALLET }],
+      accountKeys: [{ pubkey: WALLET.toBase58() }],
       instructions: [
         {
-          programId: CP_AMM_PROGRAM_ID,
+          programId: CP_AMM_PROGRAM_ID.toBase58(),
           accounts: [],
           data: bs58.encode(Uint8Array.from([...Buffer.from(discriminatorOf('swap'), 'hex'), ...Buffer.alloc(8)])),
         },
@@ -57,10 +57,13 @@ describe('GET /chains/:chain/transactions', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it("names a swap and reports what the wallet's balances did", async () => {
+    // A version-1 transaction, which web3.js's own getParsedTransaction rejects:
+    // the read goes to the RPC directly and asks for versions up to 1.
+    const rpcRequest = jest.fn().mockResolvedValue({ result: { ...swapTx, version: 1 } });
     jest.spyOn(Solana, 'getInstance').mockResolvedValue({
       connection: {
         getSignaturesForAddress: jest.fn().mockResolvedValue([{ signature: 'sig1', slot: 7, blockTime: 9, err: null }]),
-        getParsedTransaction: jest.fn().mockResolvedValue(swapTx),
+        _rpcRequest: rpcRequest,
       },
       getToken: jest.fn().mockResolvedValue({ symbol: 'TKN' }),
     } as any);
@@ -71,6 +74,10 @@ describe('GET /chains/:chain/transactions', () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(rpcRequest).toHaveBeenCalledWith('getTransaction', [
+      'sig1',
+      { encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 1 },
+    ]);
     expect(JSON.parse(response.body)).toEqual({
       network: 'mainnet-beta',
       address: WALLET.toBase58(),

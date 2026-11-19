@@ -35,14 +35,7 @@ import { LBCLMM_PROGRAM_IDS } from '@meteora-ag/dlmm';
 import { WHIRLPOOL_PROGRAM_ADDRESS } from '@orca-so/whirlpools-client';
 import { AMM_V4, CLMM_PROGRAM_ID, CREATE_CPMM_POOL_PROGRAM } from '@raydium-io/raydium-sdk-v2';
 import { NATIVE_MINT } from '@solana/spl-token';
-import {
-  ConfirmedSignatureInfo,
-  Connection,
-  ParsedInstruction,
-  ParsedTransactionWithMeta,
-  PartiallyDecodedInstruction,
-  PublicKey,
-} from '@solana/web3.js';
+import { ConfirmedSignatureInfo, Connection, PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
 
 import { PANCAKESWAP_CLMM_PROGRAM_ID } from '../../connectors/pancakeswap-sol/pancakeswap-sol';
@@ -209,11 +202,53 @@ const RAYDIUM_AMM_V4: Record<number, [ActivityKind, string]> = {
 export const discriminatorOf = anchor;
 export const KNOWN_PROGRAMS = [...Object.keys(ANCHOR_VENUES), AMM_V4.toBase58()];
 
-type AnyInstruction = ParsedInstruction | PartiallyDecodedInstruction;
+/** An instruction as `jsonParsed` returns it: `data` is present only when the
+ *  node has no parser for the program, which is every venue here. */
+interface RawInstruction {
+  programId: string;
+  data?: string;
+}
 
-function classify(ix: AnyInstruction): ActivityAction | null {
-  const program = ix.programId.toBase58();
-  const raw = (ix as PartiallyDecodedInstruction).data;
+interface RawTokenBalance {
+  mint: string;
+  owner?: string;
+  uiTokenAmount: { amount: string; decimals: number };
+}
+
+/**
+ * The parts of a `jsonParsed` transaction this reader uses, as the RPC sends
+ * them. Read from the RPC directly rather than through web3.js, whose response
+ * validator accepts only `legacy` and version 0 and rejects a version-1
+ * transaction outright.
+ */
+export interface RawParsedTransaction {
+  transaction: { message: { accountKeys: { pubkey: string }[]; instructions: RawInstruction[] } };
+  meta: {
+    fee: number;
+    preBalances: number[];
+    postBalances: number[];
+    preTokenBalances?: RawTokenBalance[] | null;
+    postTokenBalances?: RawTokenBalance[] | null;
+    innerInstructions?: { instructions: RawInstruction[] }[] | null;
+  } | null;
+}
+
+/** The newest transaction version this reader has been checked against. */
+const MAX_TRANSACTION_VERSION = 1;
+
+async function fetchParsedTransaction(connection: Connection, signature: string): Promise<RawParsedTransaction | null> {
+  // web3.js has no public method for a raw JSON-RPC request.
+  const res = await (connection as any)._rpcRequest('getTransaction', [
+    signature,
+    { encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: MAX_TRANSACTION_VERSION },
+  ]);
+  if (res.error) throw new Error(`failed to get transaction ${signature}: ${res.error.message}`);
+  return res.result;
+}
+
+function classify(ix: RawInstruction): ActivityAction | null {
+  const program = ix.programId;
+  const raw = ix.data;
   if (typeof raw !== 'string') return null;
   let data: Buffer;
   try {
@@ -233,7 +268,7 @@ function classify(ix: AnyInstruction): ActivityAction | null {
   return hit ? { kind: hit[0], protocol: v.protocol, program, instruction: hit[1] } : null;
 }
 
-function* everyInstruction(tx: ParsedTransactionWithMeta): Generator<AnyInstruction> {
+function* everyInstruction(tx: RawParsedTransaction): Generator<RawInstruction> {
   for (const ix of tx.transaction.message.instructions) yield ix;
   for (const inner of tx.meta?.innerInstructions ?? []) for (const ix of inner.instructions) yield ix;
 }
@@ -251,10 +286,7 @@ function units(raw: bigint, decimals: number): string {
 }
 
 /** What the wallet's own balances did, token by token, SOL included. */
-function balanceChanges(
-  tx: ParsedTransactionWithMeta,
-  wallet: string,
-): { mint: string; decimals: number; raw: bigint }[] {
+function balanceChanges(tx: RawParsedTransaction, wallet: string): { mint: string; decimals: number; raw: bigint }[] {
   const meta = tx.meta!;
   const keys = tx.transaction.message.accountKeys;
   const byMint = new Map<string, { decimals: number; raw: bigint }>();
@@ -271,7 +303,7 @@ function balanceChanges(
   for (const p of meta.preTokenBalances ?? []) {
     if (p.owner === wallet) bump(p.mint, p.uiTokenAmount.decimals, -BigInt(p.uiTokenAmount.amount));
   }
-  const index = keys.findIndex((k) => k.pubkey.toBase58() === wallet);
+  const index = keys.findIndex((k) => k.pubkey === wallet);
   if (index >= 0) {
     let lamports = BigInt(meta.postBalances[index]) - BigInt(meta.preBalances[index]);
     // The fee is reported on its own; counted here, a fee-only transaction
@@ -306,7 +338,7 @@ function transferKind(raw: { mint: string; raw: bigint }[]): ActivityKind {
 }
 
 export function readActivity(
-  tx: ParsedTransactionWithMeta,
+  tx: RawParsedTransaction,
   wallet: string,
   signature: ConfirmedSignatureInfo,
 ): Omit<ActivityEntry, 'changes'> & { raw: { mint: string; decimals: number; raw: bigint }[] } {
@@ -369,14 +401,10 @@ export async function walletActivity(
   // One read per signature, a few at a time. Not the batched call: not every
   // RPC honours a JSON-RPC batch (some local validators do not), and a page of
   // twenty-five is small enough that five in flight is quick everywhere.
-  const txs: (ParsedTransactionWithMeta | null)[] = [];
+  const txs: (RawParsedTransaction | null)[] = [];
   for (let i = 0; i < signatures.length; i += 5) {
     const chunk = signatures.slice(i, i + 5);
-    txs.push(
-      ...(await Promise.all(
-        chunk.map((s) => connection.getParsedTransaction(s.signature, { maxSupportedTransactionVersion: 0 })),
-      )),
-    );
+    txs.push(...(await Promise.all(chunk.map((s) => fetchParsedTransaction(connection, s.signature)))));
   }
   const symbols = new Map<string, string | null>();
   const symbol = async (mint: string) => {

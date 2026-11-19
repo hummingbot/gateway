@@ -32,7 +32,7 @@ const UNKNOWN_PROGRAM = Keypair.generate().publicKey;
 const MINT = Keypair.generate().publicKey.toBase58();
 
 const ix = (programId: typeof WALLET, name: string) => ({
-  programId,
+  programId: programId.toBase58(),
   accounts: [],
   data: bs58.encode(Uint8Array.from([...Buffer.from(discriminatorOf(name), 'hex'), ...Buffer.alloc(8)])),
 });
@@ -52,7 +52,9 @@ function tx(opts: {
       uiTokenAmount: { amount: r.amount, decimals: r.decimals, uiAmount: null, uiAmountString: '' },
     }));
   return {
-    transaction: { message: { accountKeys: [{ pubkey: WALLET }, { pubkey: OTHER }], instructions: opts.outer } },
+    transaction: {
+      message: { accountKeys: [{ pubkey: WALLET.toBase58() }, { pubkey: OTHER.toBase58() }], instructions: opts.outer },
+    },
     meta: {
       fee: 5000,
       preBalances: [opts.lamports?.[0] ?? 10_000_000, 0],
