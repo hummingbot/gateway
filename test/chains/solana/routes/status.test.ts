@@ -90,7 +90,8 @@ describe('Solana Status Route', () => {
       expect(result).toEqual({
         chain: 'solana',
         network: 'mainnet-beta',
-        rpcUrl: 'https://mainnet.helius-rpc.com/?api-key=test-key',
+        // The route is not behind the API token, so the key does not leave with the URL.
+        rpcUrl: 'https://mainnet.helius-rpc.com/?api-key=***',
         rpcProvider: 'helius',
         currentBlockNumber: 365795000,
         nativeCurrency: 'SOL',
@@ -98,6 +99,18 @@ describe('Solana Status Route', () => {
       });
 
       expect(mockRpcProviderService.getHttpUrl).toHaveBeenCalled();
+    });
+
+    it('redacts the Infura key in the provider URL', async () => {
+      getSolanaChainConfig.mockReturnValue({ defaultNetwork: 'mainnet-beta', rpcProvider: 'infura' });
+      mockSolanaInstance.getRpcProviderService.mockReturnValue(mockRpcProviderService);
+      mockRpcProviderService.getHttpUrl.mockReturnValue(
+        'https://solana-mainnet.infura.io/v3/0123456789abcdef0123456789abcdef',
+      );
+
+      const result = await getSolanaStatus(fastify, 'mainnet-beta');
+
+      expect(result.rpcUrl).toBe('https://solana-mainnet.infura.io/v3/***');
     });
 
     it('should fallback to nodeURL when rpcProvider service is not available', async () => {

@@ -14,6 +14,7 @@ import {
   isSensitivePath,
   isTrustedLocalAddress,
   isWeakApiKey,
+  lockoutSetting,
   loadOrCreateApiKey,
   recordAuthFailure,
 } from '../../src/services/gateway-security';
@@ -188,6 +189,27 @@ describe('gateway-security', () => {
         expect(loadOrCreateApiKey(dir)).toBe(key);
       } finally {
         rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('lockoutSetting', () => {
+    afterEach(() => delete process.env.GATEWAY_TEST_LOCKOUT);
+
+    it('uses the fallback when unset, and the value, floored at the minimum, when set', () => {
+      expect(lockoutSetting('GATEWAY_TEST_LOCKOUT', 10, 1)).toBe(10);
+      process.env.GATEWAY_TEST_LOCKOUT = '25';
+      expect(lockoutSetting('GATEWAY_TEST_LOCKOUT', 10, 1)).toBe(25);
+      process.env.GATEWAY_TEST_LOCKOUT = '0';
+      expect(lockoutSetting('GATEWAY_TEST_LOCKOUT', 10, 1)).toBe(1);
+    });
+
+    it('refuses a value that is not a number instead of comparing against NaN', () => {
+      for (const bad of ['abc', '', 'Infinity']) {
+        process.env.GATEWAY_TEST_LOCKOUT = bad;
+        expect(() => lockoutSetting('GATEWAY_TEST_LOCKOUT', 10, 1)).toThrow(
+          `GATEWAY_TEST_LOCKOUT must be a number, got '${bad}'`,
+        );
       }
     });
   });

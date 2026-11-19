@@ -102,6 +102,28 @@ describe('rebroadcasting a sent transaction', () => {
     expect(sent).toHaveLength(2);
   });
 
+  it('reports a rate limit that arrives after the broadcast as an unconfirmed send, with its signature', async () => {
+    // RATE_LIMITED tells a client nothing is in flight and a plain retry is safe. Once the
+    // transaction is out that is false: it may land, and the retry would be a second trade.
+    const { sent } = stubRpc(solana, Infinity);
+    const rateLimited = Object.assign(new Error('Solana RPC rate limit exceeded'), { statusCode: 429 });
+    (solana.connection as any).getSignatureStatuses = jest.fn().mockRejectedValue(rateLimited);
+
+    const result = (solana as any)._sendAndConfirmRawTransaction(wire);
+    await jest.advanceTimersByTimeAsync(10_000);
+
+    expect(await result).toEqual({ confirmed: false, signature: 'sig', txData: null });
+    expect(sent.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('passes a rate limit on the send itself up as a 429: nothing was broadcast', async () => {
+    stubRpc(solana, Infinity);
+    const rateLimited = Object.assign(new Error('Solana RPC rate limit exceeded'), { statusCode: 429 });
+    (solana.connection as any).sendRawTransaction = jest.fn().mockRejectedValue(rateLimited);
+
+    await expect((solana as any)._sendAndConfirmRawTransaction(wire)).rejects.toMatchObject({ statusCode: 429 });
+  });
+
   it('stops rebroadcasting when the blockhash expires', async () => {
     const { sent } = stubRpc(solana, Infinity);
 

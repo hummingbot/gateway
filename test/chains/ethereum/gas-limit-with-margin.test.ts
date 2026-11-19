@@ -35,7 +35,10 @@ describe('Ethereum.gasLimitWithMargin', () => {
   it('refuses the call, naming the reason, when the node cannot estimate', async () => {
     await expect(
       gasLimit(async () => {
-        throw Object.assign(new Error('cannot estimate gas'), { reason: 'execution reverted: Not approved' });
+        throw Object.assign(new Error('cannot estimate gas'), {
+          code: 'UNPREDICTABLE_GAS_LIMIT',
+          reason: 'execution reverted: Not approved',
+        });
       }),
     ).rejects.toMatchObject({
       statusCode: 400,
@@ -61,6 +64,22 @@ describe('Ethereum.gasLimitWithMargin', () => {
         'Could not estimate gas for multicall: the node did not answer (SERVER_ERROR). The transaction was not sent; retry.',
     });
     await expect(refusal).rejects.not.toMatchObject({ message: expect.stringContaining('0123456789abcdef') });
+  });
+
+  it('answers 503, not 400, for a transport error that carries a reason', async () => {
+    // ethers sets `reason` on every error it makes; a timeout is not the contract refusing.
+    await expect(
+      gasLimit(async () => {
+        throw Object.assign(new Error('timeout (requestBody=..., code=TIMEOUT)'), {
+          code: 'TIMEOUT',
+          reason: 'timeout',
+        });
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 503,
+      message:
+        'Could not estimate gas for multicall: the node did not answer (TIMEOUT). The transaction was not sent; retry.',
+    });
   });
 
   it('passes a throttled RPC up as the 429 RATE_LIMITED the provider already classified', async () => {

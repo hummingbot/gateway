@@ -147,7 +147,10 @@ describe('POST /close (Uniswap V3 CLMM) — gas limit', () => {
 
   it('refuses the close, with the reason, and sends nothing when the estimate fails', async () => {
     const { ethereum, multicall } = primeMocks(async () => {
-      throw Object.assign(new Error('cannot estimate gas'), { reason: 'execution reverted: Not approved' });
+      throw Object.assign(new Error('cannot estimate gas'), {
+        code: 'UNPREDICTABLE_GAS_LIMIT',
+        reason: 'execution reverted: Not approved',
+      });
     });
 
     const response = await close(server);

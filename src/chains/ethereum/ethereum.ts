@@ -365,8 +365,11 @@ export class Ethereum {
       // can carry the RPC URL, and an Infura or Chainstack URL carries the credential, so
       // the caller gets the error code only and the log gets the redacted text.
       logger.warn(`Gas estimate for ${method} failed: ${redactUrl(error?.message ?? String(error))}`);
-      const revertReason = error?.reason ?? error?.error?.reason;
-      if (typeof revertReason === 'string') {
+      // ethers puts a `reason` on every error it makes, transport errors included ("timeout",
+      // "missing response"), so the code decides which this is, not the presence of a reason.
+      const revertReason = error?.error?.reason ?? error?.reason;
+      const reverted = error?.code === 'UNPREDICTABLE_GAS_LIMIT' || error?.code === 'CALL_EXCEPTION';
+      if (reverted && typeof revertReason === 'string') {
         // the contract refused the call: a 400, the request itself is wrong
         throw badRequest(`Could not estimate gas for ${method}: ${revertReason}. The transaction was not sent.`);
       }
