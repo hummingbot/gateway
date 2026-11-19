@@ -5,6 +5,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
+import { toRawAmount } from '../../../services/raw-amount';
 import { sanitizeErrorMessage, sanitizeString } from '../../../services/sanitize';
 import { approximateBuyViaSellLeg, attemptedRoute } from '../../router-utils';
 import { Okx, OkxRouterResult } from '../okx';
@@ -41,7 +42,7 @@ export async function quoteSwap(
   logger.info(`Getting OKX quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol} (${side})`);
 
   // The amount is denominated in base token for both sides
-  const baseAmountRaw = Math.floor(amount * Math.pow(10, baseTokenInfo.decimals)).toString();
+  const baseAmountRaw = toRawAmount(amount, baseTokenInfo.decimals);
 
   let routerResult: OkxRouterResult;
   let isApproximation = false;
