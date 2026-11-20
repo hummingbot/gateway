@@ -65,8 +65,9 @@ async function displaySolanaConfig(): Promise<void> {
     try {
       const solana = await Solana.getInstance(defaultNetwork);
 
-      // Chainstack discovers its URL asynchronously during getInstance(); pick it up now.
-      if (rpcProvider === 'chainstack') {
+      // Chainstack discovers its URL asynchronously during getInstance(); Infura builds it from
+      // apiKeys.infura. Pick up the provider URL now.
+      if (rpcProvider === 'chainstack' || rpcProvider === 'infura') {
         try {
           nodeURL = solana.getRpcProviderService()?.getHttpUrl() ?? nodeURL;
         } catch (error: any) {

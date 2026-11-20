@@ -141,6 +141,101 @@ export function loadOrCreateApiKey(confDir: string): string {
 }
 
 /**
+ * Weak-key check for the Gateway API key. The auto-generated key is 256-bit (64 hex chars);
+ * a short, human-chosen value can be guessed, and nothing else stops the guessing: the
+ * general rate limiter allow-lists private-network sources (see isTrustedLocalAddress) and
+ * the failed-auth lockout never refuses a correct token. Startup refuses a weak key.
+ */
+export function isWeakApiKey(key: string): boolean {
+  return key.trim().length < 16;
+}
+
+/**
+ * In-memory count of failed token checks per source IP (hummingbot/gateway#660 §2). After
+ * GATEWAY_AUTH_FAIL_MAX failures within GATEWAY_AUTH_FAIL_WINDOW_MS, further FAILED attempts
+ * from that source are answered with 429 instead of 401.
+ *
+ * A correct token is always accepted, locked out or not. Clients behind one NAT or Docker
+ * bridge share a source IP, so refusing the correct token during a lockout would let one
+ * misconfigured client shut out every other. The lockout therefore does not stop guessing;
+ * the key's entropy does, which is why a weak key is refused at startup (isWeakApiKey).
+ */
+/** A lockout setting from the environment. A value that is not a number would compare as
+ *  NaN and switch the lockout off (or make it permanent) without a word, so it is refused. */
+export function lockoutSetting(name: string, fallback: number, minimum: number): number {
+  const raw = process.env[name];
+  if (raw === undefined) return fallback;
+  const value = Number(raw);
+  if (raw.trim() === '' || !Number.isFinite(value)) throw new Error(`${name} must be a number, got '${raw}'`);
+  return Math.max(minimum, value);
+}
+
+const AUTH_FAIL_MAX = lockoutSetting('GATEWAY_AUTH_FAIL_MAX', 10, 1);
+const AUTH_FAIL_WINDOW_MS = lockoutSetting('GATEWAY_AUTH_FAIL_WINDOW_MS', 15 * 60 * 1000, 1000);
+const authFailures = new Map<string, { count: number; resetAt: number }>();
+
+export function isAuthLockedOut(ip: string | undefined, now: number = Date.now()): boolean {
+  const key = ip ?? 'unknown';
+  const rec = authFailures.get(key);
+  if (!rec) return false;
+  if (now > rec.resetAt) {
+    authFailures.delete(key);
+    return false;
+  }
+  return rec.count >= AUTH_FAIL_MAX;
+}
+
+export function recordAuthFailure(ip: string | undefined, now: number = Date.now()): void {
+  const key = ip ?? 'unknown';
+  const rec = authFailures.get(key);
+  if (!rec || now > rec.resetAt) {
+    // A source that fails once and never returns would otherwise stay for good, so every
+    // new record first drops the ones whose window has passed.
+    for (const [source, record] of authFailures) {
+      if (now > record.resetAt) authFailures.delete(source);
+    }
+    authFailures.set(key, { count: 1, resetAt: now + AUTH_FAIL_WINDOW_MS });
+  } else {
+    rec.count += 1;
+  }
+}
+
+/** Clear failed-auth state — on a successful auth for that source, or globally in tests. */
+export function clearAuthFailures(ip?: string): void {
+  if (ip === undefined) authFailures.clear();
+  else authFailures.delete(ip);
+}
+
+/**
+ * Decide a non-loopback request to a sensitive route. The token is checked before the
+ * lockout, so a correct token is accepted even from a locked-out source.
+ */
+export function checkApiToken(
+  ip: string | undefined,
+  token: string,
+  apiKey: string,
+  now: number = Date.now(),
+): 'accepted' | 'rejected' | 'locked-out' {
+  if (constantTimeEqual(token, apiKey)) {
+    clearAuthFailures(ip ?? 'unknown');
+    return 'accepted';
+  }
+  if (isAuthLockedOut(ip, now)) return 'locked-out';
+  recordAuthFailure(ip, now);
+  return 'rejected';
+}
+
+/** Refuse a weak API key outright: see isWeakApiKey for why nothing else covers for one. */
+export function assertStrongApiKey(key: string): void {
+  if (!isWeakApiKey(key)) return;
+  throw new Error(
+    'The Gateway API key is shorter than 16 characters. The key is the only thing that stops a ' +
+      'network client guessing its way onto the fund-moving routes, so a short one is refused. ' +
+      'Set GATEWAY_API_KEY to a high-entropy value, or unset it to have a 256-bit key generated.',
+  );
+}
+
+/**
  * True when Gateway is running inside a container (Docker/Podman). Uses the same markers the
  * Hummingbot API relies on, so the two stay in agreement about the deployment shape.
  */

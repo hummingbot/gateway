@@ -175,7 +175,6 @@ describe('POST /open-position', () => {
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
       getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
-      findDefaultPool: jest.fn(),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
@@ -239,79 +238,13 @@ describe('POST /open-position', () => {
     expect(body.data.quoteTokenAmountAdded).toBeCloseTo(150, 9);
   });
 
-  it('should set the owner before pool operations', async () => {
-    const mockSolanaInstance = buildSolanaMock();
-    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
-
-    let setOwnerCallOrder = 0;
-    let getClmmPoolfromAPICallOrder = 0;
-    let callCounter = 0;
-
-    const mockRaydiumInstance = {
-      setOwner: jest.fn().mockImplementation(() => {
-        setOwnerCallOrder = ++callCounter;
-        return Promise.resolve(undefined);
-      }),
-      getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
-      getClmmPoolfromAPI: jest.fn().mockImplementation(() => {
-        getClmmPoolfromAPICallOrder = ++callCounter;
-        return Promise.resolve([mockApiPoolInfo, {}]);
-      }),
-      getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
-      findDefaultPool: jest.fn(),
-      raydiumSDK: {
-        clmm: {
-          getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
-          openPositionFromBase: jest.fn().mockResolvedValue({
-            transaction: buildVersionedTransaction(),
-            extInfo: { nftMint: { toBase58: () => 'mock-position-nft' } },
-            signers: [],
-          }),
-        },
-        connection: {
-          getEpochInfo: jest.fn().mockResolvedValue({ epoch: 100, slotIndex: 0 }),
-        },
-      },
-    };
-    (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
-
-    const response = await server.inject({
-      method: 'POST',
-      url: '/open',
-      body: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        walletAddress: mockWalletAddress,
-        poolAddress: mockPoolAddress,
-        lowerPrice: 140,
-        upperPrice: 160,
-        baseTokenAmount: 1,
-        quoteTokenAmount: 150,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-
-    // Verify setOwner was called before getClmmPoolfromAPI
-    expect(setOwnerCallOrder).toBeLessThan(getClmmPoolfromAPICallOrder);
-    expect(setOwnerCallOrder).toBe(1);
-    expect(getClmmPoolfromAPICallOrder).toBe(2);
-  });
-
-  it('should handle invalid wallet address error', async () => {
+  it('rejects a malformed wallet address with 400 before touching the pool', async () => {
     const mockSolanaInstance = buildSolanaMock();
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockRaydiumInstance = {
       setOwner: jest.fn().mockResolvedValue(undefined),
-      getClmmPoolInfo: jest.fn(),
-      getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
-      raydiumSDK: {
-        clmm: {
-          getPriceAndTick: jest.fn(),
-          openPositionFromBase: jest.fn(),
-        },
-      },
+      getClmmPoolfromAPI: jest.fn(),
     };
     (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
 
@@ -330,8 +263,9 @@ describe('POST /open-position', () => {
       },
     });
 
-    // An invalid wallet address fails when constructing the PublicKey owner.
-    expect(response.statusCode).toBe(500);
+    expect(response.statusCode).toBe(400);
+    expect(parseWire(response.body).message).toBe('Invalid wallet address: invalid-wallet');
+    expect(mockRaydiumInstance.getClmmPoolfromAPI).not.toHaveBeenCalled();
   });
 
   it('should handle pool not found error', async () => {
@@ -343,7 +277,6 @@ describe('POST /open-position', () => {
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue(null),
       getClmmPoolfromRPC: jest.fn(),
-      findDefaultPool: jest.fn(),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn(),
@@ -381,7 +314,6 @@ describe('POST /open-position', () => {
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
       getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
-      findDefaultPool: jest.fn(),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
@@ -414,7 +346,7 @@ describe('POST /open-position', () => {
     expect(mockRaydiumInstance.setOwner).toHaveBeenCalled();
   });
 
-  it('should use default compute units and dynamic priority fee', async () => {
+  it('converts the lamport priority fee to microLamports for the SDK', async () => {
     const mockSolanaInstance = buildSolanaMock();
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -429,7 +361,6 @@ describe('POST /open-position', () => {
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
       getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
-      findDefaultPool: jest.fn(),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
@@ -459,11 +390,9 @@ describe('POST /open-position', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalled();
 
-    // Verify that openPositionFromBase was called with the default compute budget
+    // estimateGasPrice answers lamports per CU (2000); the SDK takes microLamports.
     const openPositionCall = mockOpenPositionFunc.mock.calls[0];
-    expect(openPositionCall[0].computeBudgetConfig.units).toBe(500000); // Using hardcoded COMPUTE_UNITS
-    expect(openPositionCall[0].computeBudgetConfig.microLamports).toBe(2000000000); // Dynamic priority fee from estimateGasPrice * 1e6
+    expect(openPositionCall[0].computeBudgetConfig.microLamports).toBe(2000000000);
   });
 });

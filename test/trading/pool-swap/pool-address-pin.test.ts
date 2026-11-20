@@ -135,27 +135,7 @@ describe('Pool-scoped swap quote — poolAddress pin', () => {
     expect(response.json().message).toContain('poolAddress');
   });
 
-  // The type now lives in the path, so `connector` is a bare, enum-constrained name.
-  // The old "connector/type" form is rejected at the schema rather than tolerated:
-  // an enum keeps the accepted set in the spec, which is what a generated client reads.
-  it.each(['meteora/clmm', 'jupiter/router'])('rejects the old connector/type form (%s)', async (connector) => {
-    const response = await app.inject({
-      method: 'GET',
-      url: clmmQuote({
-        chainNetwork: 'solana-mainnet-beta',
-        connector,
-        baseToken: 'SOL',
-        quoteToken: 'USDC',
-        amount: '1',
-        side: 'SELL',
-        poolAddress: PINNED_POOL,
-      }),
-    });
-
-    expect(response.statusCode).toBe(400);
-    expect(response.json().message).toContain('connector');
-  });
-
+  // `connector` is a bare, enum-constrained name, so the rejection is the schema's.
   it('rejects a connector that is not a CLMM connector', async () => {
     const response = await app.inject({
       method: 'GET',
@@ -170,6 +150,7 @@ describe('Pool-scoped swap quote — poolAddress pin', () => {
     });
 
     expect(response.statusCode).toBe(400);
+    expect(response.json().message).toContain('connector');
   });
 
   it('routes through the router surface without ever consulting the pool list', async () => {

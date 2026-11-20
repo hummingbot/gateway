@@ -72,6 +72,7 @@ jest.mock('../../src/services/config-manager-v2', () => ({
         return namespaces[namespace] || null;
       }),
       set: mockSetFn,
+      getSupportedChainNetworks: () => ['solana-mainnet-beta', 'solana-devnet', 'ethereum-mainnet'],
       allConfigurations: {
         solana: mockSolanaChainConfig.configuration,
         'solana-mainnet-beta': mockSolanaNetworkConfig.configuration,
@@ -84,6 +85,7 @@ jest.mock('../../src/services/config-manager-v2', () => ({
 }));
 
 // Import after mocking
+import sensible from '@fastify/sensible';
 import { FastifyInstance } from 'fastify';
 
 import { getConfig, updateConfig } from '../../src/config/utils';
@@ -95,6 +97,7 @@ describe('Config Utils - Chain-Network Merge', () => {
 
   beforeEach(async () => {
     fastify = fastifyWithTypeProvider();
+    await fastify.register(sensible);
     jest.clearAllMocks();
   });
 
@@ -177,13 +180,14 @@ describe('Config Utils - Chain-Network Merge', () => {
     });
 
     it('should let network config override chain config if keys conflict', () => {
-      // Network config takes precedence over chain config for conflicts
-      const config = getConfig(fastify, 'solana-mainnet-beta');
-
-      // Both chain and network might have overlapping keys in the future
-      // The spread operator gives network config precedence: {...chain, ...network}
-      // This test ensures the merge order is correct
-      expect(config).toBeDefined();
+      const chainConfig = mockEthereumChainConfig.configuration as Record<string, unknown>;
+      chainConfig.nodeURL = 'https://chain-level.example';
+      try {
+        const config = getConfig(fastify, 'ethereum-mainnet');
+        expect(config).toHaveProperty('nodeURL', mockEthereumNetworkConfig.configuration.nodeURL);
+      } finally {
+        delete chainConfig.nodeURL;
+      }
     });
   });
 
@@ -240,12 +244,62 @@ describe('Config Utils - Chain-Network Merge', () => {
       expect(mockSetFn).toHaveBeenCalledWith('solana.defaultWallet', 'directUpdate');
     });
 
-    it('should handle nested paths correctly for chain-level fields', () => {
-      // If someone tries to update a nested path like defaultWallet.something
-      // it should still route to the chain namespace
-      updateConfig(fastify, 'solana-mainnet-beta.defaultWallet', 'value');
+    it('should reject a defaultNetworks list that names a network the chain has no config for', () => {
+      expect(() => updateConfig(fastify, 'ethereum.defaultNetworks', ['mainnet', 'ralphhandsome'])).toThrow(
+        expect.objectContaining({
+          statusCode: 400,
+          message: 'Unknown ethereum network: ralphhandsome. Configured networks: mainnet',
+        }),
+      );
 
-      expect(mockSetFn).toHaveBeenCalledWith('solana.defaultWallet', 'value');
+      expect(mockSetFn).not.toHaveBeenCalled();
+    });
+
+    it('should reject a defaultNetwork that the chain has no config for, also when routed from a network namespace', () => {
+      expect(() => updateConfig(fastify, 'solana-mainnet-beta.defaultNetwork', 'testnet')).toThrow(
+        expect.objectContaining({ statusCode: 400 }),
+      );
+
+      expect(mockSetFn).not.toHaveBeenCalled();
+    });
+
+    it('should reject an unknown network written to one entry of the defaultNetworks list', () => {
+      expect(() => updateConfig(fastify, 'ethereum.defaultNetworks.0', 'ralphhandsome')).toThrow(
+        expect.objectContaining({
+          statusCode: 400,
+          message: 'Unknown ethereum network: ralphhandsome. Configured networks: mainnet',
+        }),
+      );
+      expect(mockSetFn).not.toHaveBeenCalled();
+    });
+
+    it('should accept a configured network written to one entry of the defaultNetworks list', () => {
+      updateConfig(fastify, 'ethereum.defaultNetworks.0', 'mainnet');
+
+      expect(mockSetFn).toHaveBeenCalledWith('ethereum.defaultNetworks.0', 'mainnet');
+    });
+
+    it('should accept a defaultNetworks list made of configured networks', () => {
+      updateConfig(fastify, 'solana.defaultNetworks', ['mainnet-beta', 'devnet']);
+
+      expect(mockSetFn).toHaveBeenCalledWith('solana.defaultNetworks', ['mainnet-beta', 'devnet']);
+    });
+
+    it('should leave a wrongly typed defaultNetworks value to the JSON schema', () => {
+      updateConfig(fastify, 'solana.defaultNetworks', 'mainnet-beta,devnet');
+
+      expect(mockSetFn).toHaveBeenCalledWith('solana.defaultNetworks', 'mainnet-beta,devnet');
+    });
+
+    it('answers 500 with the cause when the config manager refuses the write', async () => {
+      await fastify.ready();
+      mockSetFn.mockImplementationOnce(() => {
+        throw new Error('Configuration error');
+      });
+
+      expect(() => updateConfig(fastify, 'solana-mainnet-beta.nodeURL', 'https://new-rpc.com')).toThrow(
+        expect.objectContaining({ statusCode: 500, message: 'Failed to update configuration: Configuration error' }),
+      );
     });
   });
 });

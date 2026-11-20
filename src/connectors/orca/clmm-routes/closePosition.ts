@@ -68,7 +68,7 @@ export async function closePosition(
     const positionTokenAccount = getAssociatedTokenAddressSync(
       positionMintPubkey,
       new PublicKey(walletAddress),
-      false,
+      true, // the owner may be a PDA
       new PublicKey(positionMint.programAddress),
     );
     const rentAccounts = [positionMintPubkey, positionPubkey, positionTokenAccount];

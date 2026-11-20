@@ -6,6 +6,7 @@ import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { QuoteSwapResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
+import { toRawAmount } from '../../../services/raw-amount';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { formatTokenAmount } from '../uniswap.utils';
@@ -39,17 +40,11 @@ async function quoteAmmSwap(
     let trade;
     if (exactIn) {
       // For SELL (exactIn), we use the input amount and EXACT_INPUT trade type
-      const inputAmount = CurrencyAmount.fromRawAmount(
-        inputToken,
-        Math.floor(amount * Math.pow(10, inputToken.decimals)).toString(),
-      );
+      const inputAmount = CurrencyAmount.fromRawAmount(inputToken, toRawAmount(amount, inputToken.decimals));
       trade = new V2Trade(route, inputAmount, TradeType.EXACT_INPUT);
     } else {
       // For BUY (exactOut), we use the output amount and EXACT_OUTPUT trade type
-      const outputAmount = CurrencyAmount.fromRawAmount(
-        outputToken,
-        Math.floor(amount * Math.pow(10, outputToken.decimals)).toString(),
-      );
+      const outputAmount = CurrencyAmount.fromRawAmount(outputToken, toRawAmount(amount, outputToken.decimals));
       trade = new V2Trade(route, outputAmount, TradeType.EXACT_OUTPUT);
     }
 

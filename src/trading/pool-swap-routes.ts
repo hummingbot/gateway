@@ -26,7 +26,7 @@ import {
   slippagePctField,
   walletAddressField,
 } from './common';
-import { AMM_CONNECTORS, CLMM_CONNECTORS, getPoolOps } from './connector-registry';
+import { AMM_CONNECTORS, assertConnectorOnChain, CLMM_CONNECTORS, getPoolOps } from './connector-registry';
 import { learnPool, PoolType } from './learn-pool';
 
 /**
@@ -132,6 +132,7 @@ export const makeQuoteSwapRoute = (type: PoolType): FastifyPluginAsync => {
         try {
           const { chain, network } = parseChainNetwork(chainNetwork);
           const name = resolveSwapConnector(chain, network, type, connector);
+          assertConnectorOnChain(name, chain, type);
           const pool = await resolvePoolAddress(chain, network, type, name, baseToken, quoteToken, poolAddress);
 
           logger.info(
@@ -187,6 +188,7 @@ export const makeExecuteSwapRoute = (type: PoolType): FastifyPluginAsync => {
           const { chain, network } = parseChainNetwork(chainNetwork);
           const walletAddress = resolveWalletAddress(chain, requestedWallet);
           const name = resolveSwapConnector(chain, network, type, connector);
+          assertConnectorOnChain(name, chain, type);
           const pool = await resolvePoolAddress(chain, network, type, name, baseToken, quoteToken, poolAddress);
 
           logger.info(

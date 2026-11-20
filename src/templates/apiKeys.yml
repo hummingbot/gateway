@@ -6,9 +6,9 @@
 # Enables WebSocket transaction monitoring and optimized RPC
 helius: ''
 
-# Infura - Ethereum/EVM RPC provider
+# Infura - Ethereum/EVM and Solana RPC provider
 # Get your API key from https://infura.io
-# Supports 30+ networks including mainnet, Polygon, Arbitrum, etc.
+# Supports 30+ EVM networks plus Solana mainnet-beta and devnet
 infura: ''
 
 # Chainstack - Multi-chain RPC provider (Solana + EVM)

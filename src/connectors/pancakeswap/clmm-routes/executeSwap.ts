@@ -1,4 +1,3 @@
-import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk';
 import { BigNumber, Contract, utils } from 'ethers';
 
 import { Ethereum, EthereumTransactionOutcome } from '../../../chains/ethereum/ethereum';
@@ -102,10 +101,12 @@ export async function executeClmmSwap(
     amountOut: 0,
     amountInMaximum: 0,
     amountOutMinimum: 0,
-    sqrtPriceLimitX96: encodeSqrtRatioX96(
-      quote.trade.executionPrice.numerator,
-      quote.trade.executionPrice.denominator,
-    ).toString(),
+    // No price limit: slippage protection comes from amountOutMinimum / amountInMaximum
+    // (set from the quote below), as in the Uniswap CLMM route. The trade's average
+    // execution price is not a valid limit: the pool's price crosses it partway through
+    // the swap. It also cannot be encoded here: PancakeSwap prices hold native bigints,
+    // which the Uniswap SDK's JSBI encoder rejects ("Cannot convert ... to a BigInt").
+    sqrtPriceLimitX96: '0',
   };
 
   let outcome: EthereumTransactionOutcome;

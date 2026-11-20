@@ -75,8 +75,8 @@ describe('every route addresses a chain-network one way', () => {
       .filter(({ route }) => route.startsWith('/pools/') || route.startsWith('/tokens/'))
       .map(({ label, op }) => [label, op]),
   )('%s makes the caller name the chain-network', (_label, op) => {
-    const schemas = [
-      ...(op.parameters ?? []).map((p: any) => p.schema),
+    const chainNetworks = [
+      ...(op.parameters ?? []).filter((p: any) => p.name === 'chainNetwork').map((p: any) => p.schema),
       ...Object.entries(
         (() => {
           let body = op.requestBody?.content?.['application/json']?.schema ?? {};
@@ -88,9 +88,7 @@ describe('every route addresses a chain-network one way', () => {
         .map(([, schema]) => schema),
     ].filter(Boolean);
 
-    const chainNetwork = schemas.find(
-      (s: any) => Array.isArray(s?.enum) && s.enum.some((v: string) => v.includes('-')),
-    );
-    if (chainNetwork) expect(chainNetwork.default).toBeUndefined();
+    expect(chainNetworks).not.toHaveLength(0);
+    for (const chainNetwork of chainNetworks) expect(chainNetwork.default).toBeUndefined();
   });
 });

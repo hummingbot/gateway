@@ -149,7 +149,7 @@ async function quoteSwap(
     },
   };
 
-  quoteCache.set(quoteId, cachedQuote);
+  quoteCache.set(quoteId, 'uniswap', cachedQuote);
 
   logger.info(
     `[quoteSwap] Quote ${quoteId}: ${estimatedAmountIn} ${inputToken.symbol} -> ${estimatedAmountOut} ${outputToken.symbol}`,

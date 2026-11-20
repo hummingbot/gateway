@@ -190,25 +190,15 @@ export async function createPool(
   logger.info(`Creating PancakeSwap CLMM pool ${poolAddress} (${baseToken}/${quoteToken})`);
 
   const walletPubkey = new PublicKey(walletAddress);
-  const wallet = await solana.getWallet(walletAddress);
 
-  const priorityFeeInLamports = await solana.estimateGasPrice();
-  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
+  const transaction = await buildTransactionWithInstructions(solana, walletPubkey, [instruction], 600000);
+  // The wallet chokepoint simulates, sets the compute budget and priority fee, and signs
+  // for the wallet's type (local keypair or Ledger).
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  // Retrying re-fetch; throws the shared landed-but-failed error, so txData means confirmed.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
-  const transaction = await buildTransactionWithInstructions(
-    solana,
-    walletPubkey,
-    [instruction],
-    600000,
-    priorityFeePerCU,
-  );
-  transaction.sign([wallet]);
-
-  await solana.simulateWithErrorHandling(transaction);
-
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-  if (confirmed && txData) {
+  if (txData) {
     return {
       signature,
       status: 1, // CONFIRMED
@@ -220,9 +210,6 @@ export async function createPool(
     };
   }
 
-  // A landed-but-failed transaction is terminal: fail loudly instead of returning
-  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
-  await solana.throwIfLandedWithError(signature, txData);
-
+  // Confirmed, but not yet visible to the re-fetch: report it pending.
   return { signature, status: 0, poolAddress, price: seedPrice }; // PENDING
 }

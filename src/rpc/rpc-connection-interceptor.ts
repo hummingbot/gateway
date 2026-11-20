@@ -6,7 +6,7 @@
 import { Connection } from '@solana/web3.js';
 import { providers, utils } from 'ethers';
 
-import { logger } from '../services/logger';
+import { logger, redactUrl } from '../services/logger';
 
 // Read RPC retry policy, applied to both chains. This Proxy is the single
 // retry layer: ethers and web3.js built-in 429 retries are disabled, so use
@@ -45,12 +45,15 @@ export function rateLimitAwareConnection(url: string): utils.ConnectionInfo {
 }
 
 /**
- * Redact sensitive parts of RPC URL (API keys, tokens)
+ * `429` where a message means the HTTP status: leading it ("429 Too Many Requests"), or named
+ * as a status ("status=429", "status code 429", "HTTP 429"). Not the digits anywhere: an
+ * error message carries whatever the node or the program said. A refused Solana send quotes
+ * the program logs ("insufficient lamports 135904296", "consumed 429 of 200000 compute
+ * units"), and an ethers error quotes the calldata, the addresses and the request body with
+ * its JSON-RPC id. Matching those reported a transaction the chain had refused as a throttled
+ * RPC.
  */
-function redactUrl(url: string): string {
-  if (!url) return url;
-  return url.replace(/([?&]api[-_]key=)[^&]+/gi, '$1[REDACTED]').replace(/(\/\/[^/]+@)/g, '//[REDACTED]@');
-}
+const STATUS_429 = /^\s*429\b|\b(?:status(?:\s*code)?|http(?:\s+error)?)\s*[=:]?\s*429\b/i;
 
 /**
  * Detect if an error is a 429 rate limit error
@@ -62,7 +65,7 @@ function is429Error(error: any): boolean {
 
   // Check various ways 429 might appear in RPC errors
   return (
-    error?.message?.includes('429') ||
+    STATUS_429.test(error?.message ?? '') ||
     error?.message?.toLowerCase().includes('too many requests') ||
     error?.message?.toLowerCase().includes('rate limit') ||
     error?.code === 429 ||
@@ -142,6 +145,9 @@ export function createRateLimitAwareSolanaConnection(connection: Connection, rpc
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return await (value as (...args: any[]) => any).apply(target, args);
           } catch (error: any) {
+            if (typeof error?.message === 'string') {
+              error.message = redactUrl(error.message);
+            }
             if (!is429Error(error)) {
               throw error;
             }
@@ -197,6 +203,9 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return await (value as (...args: any[]) => any).apply(target, args);
           } catch (error: any) {
+            if (typeof error?.message === 'string') {
+              error.message = redactUrl(error.message);
+            }
             if (!is429Error(error)) {
               throw error;
             }
@@ -221,6 +230,3 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
     },
   }) as T;
 }
-
-// Legacy export for backward compatibility
-export { createRateLimitAwareSolanaConnection as createRateLimitAwareConnection };

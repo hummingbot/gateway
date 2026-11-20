@@ -13,7 +13,7 @@ const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 
 async function executeQuote(walletAddress: string, network: string, quoteId: string): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote
-  const cached = quoteCache.get(quoteId);
+  const cached = quoteCache.get(quoteId, 'uniswap');
   if (!cached) {
     throw httpErrors.badRequest('Quote not found or expired');
   }
