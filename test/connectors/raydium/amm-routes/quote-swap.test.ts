@@ -1,4 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
+import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
@@ -74,7 +75,9 @@ const mockSwapResponse = {
   amountOut: 14850000,
   minAmountOut: 14700000,
   fee: 250000, // 0.25 SOL fee
-  priceImpact: 0.01,
+  priceImpact: 1,
+  currentPrice: new Decimal(150),
+  executionPrice: new Decimal(148.5),
   remainingAccounts: [],
   routeType: 'amm',
   poolKey: [],

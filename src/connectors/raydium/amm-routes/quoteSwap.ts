@@ -1,7 +1,7 @@
 import { ApiV3PoolInfoStandardItem, ApiV3PoolInfoStandardItemCpmm, CurveCalculator } from '@raydium-io/raydium-sdk-v2';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import Decimal from 'decimal.js';
+import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
 import { QuoteSwapResponseType } from '../../../schemas/amm-schema';
@@ -10,6 +10,14 @@ import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
+
+// SDK exact-input and exact-output priceImpact fields use different units.
+// Both expose spot/execution prices in the same human token units instead.
+function ammPriceImpact(currentPrice: Decimal, executionPrice: Decimal | null): Decimal {
+  return executionPrice === null || currentPrice.isZero()
+    ? new Decimal(0)
+    : currentPrice.sub(executionPrice).abs().div(currentPrice);
+}
 
 async function quoteAmmSwap(
   raydium: Raydium,
@@ -75,7 +83,7 @@ async function quoteAmmSwap(
       minAmountOut: out.minAmountOut,
       maxAmountIn: new BN(amountIn),
       fee: out.fee,
-      priceImpact: out.priceImpact,
+      priceImpact: ammPriceImpact(out.currentPrice, out.executionPrice),
     };
   } else if (amountOut) {
     const out = raydium.raydiumSDK.liquidity.computeAmountIn({
@@ -100,7 +108,7 @@ async function quoteAmmSwap(
       amountOut: new BN(amountOut),
       minAmountOut: new BN(amountOut),
       maxAmountIn: out.maxAmountIn,
-      priceImpact: out.priceImpact,
+      priceImpact: ammPriceImpact(out.currentPrice, out.executionPrice),
     };
   }
 
