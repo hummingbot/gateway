@@ -95,13 +95,23 @@ describe('GET /positions-owned', () => {
     await app.close();
   });
 
-  it('should return all positions for a wallet across all pools', async () => {
-    // Mock Solana.getInstance - needs to handle TWO calls to getParsedTokenAccountsByOwner
+  it('looks up only the NFT accounts, from both token programs', async () => {
+    const tokenAccount = (mint: string, decimals: number, uiAmount: number) => ({
+      account: { data: { parsed: { info: { tokenAmount: { decimals, uiAmount }, mint } } } },
+    });
     const mockConnection = {
       getParsedTokenAccountsByOwner: jest
         .fn()
-        .mockResolvedValueOnce(mockTokenAccounts) // SPL Token program
-        .mockResolvedValueOnce({ value: [] }), // Token2022 program
+        // SPL Token: one position NFT, one USDC balance of exactly 1 and one of 150.
+        .mockResolvedValueOnce({
+          value: [
+            tokenAccount('nftmint1', 0, 1),
+            tokenAccount('usdc-mint-balance-one', 6, 1),
+            tokenAccount('usdc-mint-balance', 6, 150),
+          ],
+        })
+        // Token2022: where PancakeSwap mints its position NFTs.
+        .mockResolvedValueOnce({ value: [tokenAccount('nftmint2', 0, 1)] }),
     };
     const mockSolana = {
       connection: mockConnection,
@@ -113,8 +123,9 @@ describe('GET /positions-owned', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
 
     // Mock PancakeswapSol.getInstance
+    const positionsByMint: Record<string, any> = { nftmint1: mockPositions[0], nftmint2: mockPositions[1] };
     const mockPancakeswapSol = {
-      getPositionInfo: jest.fn().mockResolvedValueOnce(mockPositions[0]).mockResolvedValueOnce(mockPositions[1]),
+      getPositionInfo: jest.fn(async (mint: string) => positionsByMint[mint] ?? null),
     };
     (PancakeswapSol.getInstance as jest.Mock).mockResolvedValue(mockPancakeswapSol);
 
@@ -129,12 +140,9 @@ describe('GET /positions-owned', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBe(2);
-    expect(body[0]).toHaveProperty('address', 'nftmint1');
-    expect(body[0]).toHaveProperty('poolAddress');
-    expect(body[1]).toHaveProperty('address', 'nftmint2');
+    expect(JSON.parse(response.body).map((p: any) => p.address)).toEqual(['nftmint1', 'nftmint2']);
+    // The fungible balances never reach the position lookup, whatever their amount.
+    expect(mockPancakeswapSol.getPositionInfo.mock.calls.map(([mint]) => mint)).toEqual(['nftmint1', 'nftmint2']);
   });
 
   it('should return empty array when wallet has no NFT positions', async () => {

@@ -1,4 +1,5 @@
 import { DecimalUtil } from '@orca-so/common-sdk';
+import { NATIVE_MINT } from '@solana/spl-token';
 import { Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -221,10 +222,55 @@ export async function openPosition(
         logger.error(
           `Chunk ${i + 1}/${plan.addLiquidityIxs.length} failed for ${positionKeypair.publicKey.toBase58()}`,
         );
+        const reason = error instanceof Error ? error.message : String(error);
+        if (i === 0) {
+          // No deposit was confirmed, so the position should be an empty account. Close it
+          // rather than leave it behind: an empty position still holds rent and still
+          // counts as a position. A send can fail after the chunk was broadcast and still
+          // land, so the position is read first and closed only if it holds nothing.
+          const created = positionKeypair.publicKey.toBase58();
+          let position: Awaited<ReturnType<typeof dlmmPool.getPosition>>;
+          try {
+            position = await dlmmPool.getPosition(positionKeypair.publicKey);
+          } catch (readError) {
+            throw httpErrors.internalServerError(
+              `The first liquidity chunk failed (${reason}), and reading position ${created} failed too: ` +
+                `${readError instanceof Error ? readError.message : String(readError)}. Check what it holds, ` +
+                `and close it with close-position if it is empty. Transactions: ${signatures.join(', ')}`,
+            );
+          }
+          const heldX = position.positionData.totalXAmount;
+          const heldY = position.positionData.totalYAmount;
+          if (!new Decimal(heldX).isZero() || !new Decimal(heldY).isZero()) {
+            throw httpErrors.internalServerError(
+              `The first liquidity chunk reported a failure (${reason}), but position ${created} holds ` +
+                `${heldX} X and ${heldY} Y (raw units), so it was left open. Of ` +
+                `${plan.addLiquidityIxs.length} chunks, at least the first landed — add the rest with ` +
+                `add-liquidity, or close it to recover the funds. Transactions: ${signatures.join(', ')}`,
+            );
+          }
+          try {
+            await sendStep(
+              await dlmmPool.closePositionIfEmpty({ owner: walletPublicKey, position }),
+              [],
+              'Close the empty position',
+            );
+          } catch (closeError) {
+            throw httpErrors.internalServerError(
+              `The first liquidity chunk failed (${reason}), and closing the empty position ${created} ` +
+                `failed too: ${closeError instanceof Error ? closeError.message : String(closeError)}. It held ` +
+                `nothing when read — close it with close-position. Transactions: ${signatures.join(', ')}`,
+            );
+          }
+          throw httpErrors.internalServerError(
+            `The first liquidity chunk failed: ${reason}. Nothing was deposited; the empty position ${created} ` +
+              `was closed and its rent returned. Transactions: ${signatures.join(', ')}`,
+          );
+        }
         throw httpErrors.internalServerError(
           `Position ${positionKeypair.publicKey.toBase58()} was opened, but only ${i} of ` +
             `${plan.addLiquidityIxs.length} liquidity chunks were funded before ` +
-            `${error instanceof Error ? error.message : String(error)}. The position exists and holds what ` +
+            `${reason}. The position exists and holds what ` +
             `landed — add the rest with add-liquidity, or close it to recover the funds. ` +
             `Transactions: ${signatures.join(', ')}`,
         );
@@ -286,10 +332,10 @@ export async function openPosition(
     // rent out to leave the liquidity added. The transaction fee needs no correction:
     // extractBalanceChangesAndFee nets it out for the fee payer and reports it separately,
     // so subtracting it again would understate the amount by one fee.
-    if (tokenXSymbol === 'SOL') {
+    if (dlmmPool.tokenX.publicKey.equals(NATIVE_MINT)) {
       baseAmountAdded = baseAmountAdded - positionRent;
       if (baseAmountAdded < 0) baseAmountAdded = 0;
-    } else if (tokenYSymbol === 'SOL') {
+    } else if (dlmmPool.tokenY.publicKey.equals(NATIVE_MINT)) {
       quoteAmountAdded = quoteAmountAdded - positionRent;
       if (quoteAmountAdded < 0) quoteAmountAdded = 0;
     }

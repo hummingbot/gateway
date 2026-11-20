@@ -18,6 +18,15 @@ import { OrcaConfig } from '../orca.config';
 import { getCurrentTransferFee } from '../orca.position';
 import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
 
+/** A caller-supplied address as a PublicKey, or a 400 naming which address was malformed. */
+function parsePublicKey(value: string, what: string): PublicKey {
+  try {
+    return new PublicKey(value);
+  } catch {
+    throw httpErrors.badRequest(`Invalid ${what} address: ${value}`);
+  }
+}
+
 export async function addLiquidity(
   network: string,
   walletAddress: string,
@@ -26,13 +35,13 @@ export async function addLiquidity(
   quoteTokenAmount: number,
   slippagePct: number = OrcaConfig.config.slippagePct ?? 1,
 ): Promise<AddLiquidityResponseType> {
-  if ((!baseTokenAmount || baseTokenAmount <= 0) && (!quoteTokenAmount || quoteTokenAmount <= 0)) {
-    throw httpErrors.badRequest('At least one token amount must be provided and greater than 0');
-  }
+  // The amounts were checked by the unified /trading/clmm/add route, this
+  // function's only caller.
+  const walletPublicKey = parsePublicKey(walletAddress, 'wallet');
+  parsePublicKey(positionAddress, 'position');
 
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  const walletPublicKey = new PublicKey(walletAddress);
   const position = await fetchPosition(orca.solanaKitRpc, address(positionAddress));
   const whirlpool = await fetchWhirlpool(orca.solanaKitRpc, position.data.whirlpool);
   const [mintA, mintB] = await fetchAllMint(orca.solanaKitRpc, [whirlpool.data.tokenMintA, whirlpool.data.tokenMintB]);

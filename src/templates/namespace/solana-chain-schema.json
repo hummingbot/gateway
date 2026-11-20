@@ -19,9 +19,9 @@
     },
     "rpcProvider": {
       "type": "string",
-      "enum": ["url", "helius", "chainstack"],
+      "enum": ["url", "helius", "infura", "chainstack"],
       "default": "url",
-      "description": "RPC provider to use: 'url' for standard nodeURL from network config, 'helius' for Helius service, or 'chainstack' for Chainstack Platform API auto-discovery"
+      "description": "RPC provider to use: 'url' for standard nodeURL from network config, 'helius' for Helius service, 'infura' for Infura service (uses apiKeys.infura), or 'chainstack' for Chainstack Platform API auto-discovery"
     }
   },
   "required": ["defaultNetwork", "defaultWallet"],

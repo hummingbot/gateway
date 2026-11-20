@@ -3,6 +3,7 @@ import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
 } from '@solana/spl-token';
 import { PublicKey, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY, Keypair } from '@solana/web3.js';
@@ -19,6 +20,11 @@ import {
   parsePoolTickSpacing,
   MEMO_PROGRAM_ID,
 } from './pancakeswap-sol.parser';
+import {
+  decodeTickArrayBitmaps,
+  getSwapTickArrayStartIndices,
+  getTickArrayBitmapExtensionAddress,
+} from './pancakeswap-sol.tickarrays';
 
 const clmmIdl = require('./idl/clmm.json') as Idl;
 
@@ -166,9 +172,23 @@ export async function buildSwapV2Instruction(
   // tick_current (4 bytes, i32)
   const tickCurrent = data.readInt32LE(offset);
 
-  // Calculate tick array for current tick
-  const tickArrayStartIndex = getTickArrayStartIndexFromTick(tickCurrent, tickSpacing);
-  const tickArrayAddress = getTickArrayAddress(poolPubkey, tickArrayStartIndex);
+  // The tick arrays the swap walks: the first initialized one in the swap direction, then the
+  // next ones that way, found from the pool's bitmap plus its bitmap extension.
+  if (!inputMint.equals(tokenMint0) && !inputMint.equals(tokenMint1)) {
+    throw new Error(`Input mint ${inputMint} is not in pool ${poolAddress}`);
+  }
+  const zeroForOne = inputMint.equals(tokenMint0);
+  const tickArrayBitmapExtension = getTickArrayBitmapExtensionAddress(poolPubkey);
+  const extensionInfo = await solana.connection.getAccountInfo(tickArrayBitmapExtension);
+  if (!extensionInfo) {
+    throw new Error(`Tick array bitmap extension not found for pool ${poolAddress}: ${tickArrayBitmapExtension}`);
+  }
+  const tickArrayStartIndices = getSwapTickArrayStartIndices(
+    decodeTickArrayBitmaps(data, extensionInfo.data),
+    tickCurrent,
+    tickSpacing,
+    zeroForOne,
+  );
 
   // Determine which vault is input/output based on mints
   const inputVault = inputMint.equals(tokenMint0) ? tokenVault0 : tokenVault1;
@@ -188,8 +208,8 @@ export async function buildSwapV2Instruction(
   ]);
 
   // Get user token accounts with correct token programs
-  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, false, inputTokenProgram);
-  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, false, outputTokenProgram);
+  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, true, inputTokenProgram);
+  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, true, outputTokenProgram);
 
   logger.info(`Token accounts: input=${inputTokenAccount.toString()}, output=${outputTokenAccount.toString()}`);
   logger.info(`Token programs: input=${inputTokenProgram.toString()}, output=${outputTokenProgram.toString()}`);
@@ -203,10 +223,6 @@ export async function buildSwapV2Instruction(
     sqrt_price_limit_x64: sqrtPriceLimitX64,
     is_base_input: isBaseInput,
   });
-
-  // TODO: Implement proper tick array discovery
-  // For now, only include tick array if it exists on-chain
-  const tickArrayInfo = await solana.connection.getAccountInfo(tickArrayAddress);
 
   const accounts = [
     { pubkey: walletPubkey, isSigner: true, isWritable: true }, // payer
@@ -224,12 +240,11 @@ export async function buildSwapV2Instruction(
     { pubkey: outputMint, isSigner: false, isWritable: false }, // output_vault_mint
   ];
 
-  // Add tick array as remaining account only if it exists
-  if (tickArrayInfo) {
-    accounts.push({ pubkey: tickArrayAddress, isSigner: false, isWritable: true });
-    logger.info(`Including tick array: ${tickArrayAddress.toString()}`);
-  } else {
-    logger.warn(`Tick array not initialized: ${tickArrayAddress.toString()}, skipping`);
+  // Remaining accounts: the bitmap extension (the program recognizes it by address), then the
+  // tick arrays in the order the swap crosses them.
+  accounts.push({ pubkey: tickArrayBitmapExtension, isSigner: false, isWritable: false });
+  for (const startIndex of tickArrayStartIndices) {
+    accounts.push({ pubkey: getTickArrayAddress(poolPubkey, startIndex), isSigner: false, isWritable: true });
   }
 
   const instruction = new TransactionInstruction({
@@ -243,8 +258,8 @@ export async function buildSwapV2Instruction(
     Accounts: ${instruction.keys.length}
     Tick Current: ${tickCurrent}
     Tick Spacing: ${tickSpacing}
-    Tick Array Start: ${tickArrayStartIndex}
-    Tick Array Address: ${tickArrayAddress.toString()}
+    zeroForOne: ${zeroForOne}
+    Tick Arrays: ${tickArrayStartIndices.join(', ')}
     Instruction Data (hex): ${instructionData.toString('hex')}
     amount: ${amount.toString()}
     otherAmountThreshold: ${otherAmountThreshold.toString()}
@@ -267,13 +282,13 @@ export async function buildClosePositionInstruction(
 
   // Get the position NFT account (try both SPL Token and Token2022)
   // First check Token2022 since PancakeSwap uses it for position NFTs
-  let positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_2022_PROGRAM_ID);
+  let positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_2022_PROGRAM_ID);
   let accountInfo = await solana.connection.getAccountInfo(positionNftAccount);
   let nftTokenProgram = TOKEN_2022_PROGRAM_ID;
 
   // If not found in Token2022, try SPL Token
   if (!accountInfo) {
-    positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+    positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_PROGRAM_ID);
     accountInfo = await solana.connection.getAccountInfo(positionNftAccount);
     nftTokenProgram = TOKEN_PROGRAM_ID;
 
@@ -298,6 +313,66 @@ export async function buildClosePositionInstruction(
     ],
     data: instructionData,
   });
+}
+
+interface ActiveReward {
+  vault: PublicKey;
+  mint: PublicKey;
+  tokenProgram: PublicKey;
+  userAta: PublicKey;
+}
+
+/**
+ * The pool's active rewards (reward_state != 0), each with the wallet's
+ * account for it. `decrease_liquidity_v2` pays rewards out alongside the
+ * fees, so it names these accounts and requires them to exist.
+ *
+ * RewardInfo (169 bytes each, three of them from offset 397 of the pool):
+ * reward_state at 0, token_mint at 57, token_vault at 89.
+ */
+async function activeRewardsOf(solana: Solana, poolData: Buffer, walletPubkey: PublicKey): Promise<ActiveReward[]> {
+  const rewardInfosOffset = 397;
+  const rewardInfoSize = 169;
+  const out: ActiveReward[] = [];
+  for (let i = 0; i < 3; i++) {
+    const at = rewardInfosOffset + i * rewardInfoSize;
+    if (poolData.readUInt8(at) === 0) continue;
+    const mint = new PublicKey(poolData.slice(at + 57, at + 89));
+    const vault = new PublicKey(poolData.slice(at + 89, at + 121));
+    const tokenProgram = await getTokenProgramForMint(solana, mint);
+    out.push({
+      vault,
+      mint,
+      tokenProgram,
+      userAta: getAssociatedTokenAddressSync(mint, walletPubkey, true, tokenProgram),
+    });
+  }
+  return out;
+}
+
+/**
+ * The wallet's accounts for the position's pool rewards, created if missing.
+ * Put before any `decrease_liquidity_v2` on the position: the program pays
+ * rewards into them and fails with AccountNotInitialized if one is absent.
+ */
+export async function buildRewardAccountSetup(
+  solana: Solana,
+  positionNftMint: PublicKey,
+  walletPubkey: PublicKey,
+): Promise<TransactionInstruction[]> {
+  const [personalPosition] = PublicKey.findProgramAddressSync(
+    [Buffer.from('position'), positionNftMint.toBuffer()],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+  const positionAccountInfo = await solana.connection.getAccountInfo(personalPosition);
+  if (!positionAccountInfo) throw new Error(`Position account not found: ${personalPosition.toString()}`);
+  const { poolId } = parsePositionData(positionAccountInfo.data);
+  const poolAccountInfo = await solana.connection.getAccountInfo(poolId);
+  if (!poolAccountInfo) throw new Error(`Pool account not found: ${poolId.toString()}`);
+  const rewards = await activeRewardsOf(solana, poolAccountInfo.data, walletPubkey);
+  return rewards.map((r) =>
+    createAssociatedTokenAccountIdempotentInstruction(walletPubkey, r.userAta, walletPubkey, r.mint, r.tokenProgram),
+  );
 }
 
 export async function buildDecreaseLiquidityV2Instruction(
@@ -342,53 +417,7 @@ export async function buildDecreaseLiquidityV2Instruction(
 
   const tickSpacing = parsePoolTickSpacing(poolData);
 
-  // Parse active reward infos from pool state
-  // reward_infos array is at offset 397 in the pool state (after status + padding)
-  // Each RewardInfo structure:
-  //   - reward_state (u8, offset 0)
-  //   - ... other fields ...
-  //   - token_mint (pubkey, offset 57)
-  //   - token_vault (pubkey, offset 89)
-  // Total size: 169 bytes
-  const rewardInfosOffset = 397;
-  const rewardInfoSize = 169;
-  const rewardStateOffset = 0;
-  const tokenMintOffsetInRewardInfo = 57;
-  const tokenVaultOffsetInRewardInfo = 89;
-
-  // Collect active rewards (reward_state != 0)
-  interface ActiveReward {
-    vault: PublicKey;
-    mint: PublicKey;
-    userAta: PublicKey;
-  }
-  const activeRewards: ActiveReward[] = [];
-
-  for (let i = 0; i < 3; i++) {
-    const rewardOffset = rewardInfosOffset + i * rewardInfoSize;
-    const rewardState = poolData.readUInt8(rewardOffset + rewardStateOffset);
-
-    if (rewardState !== 0) {
-      // Reward is active
-      const mintOffset = rewardOffset + tokenMintOffsetInRewardInfo;
-      const vaultOffset = rewardOffset + tokenVaultOffsetInRewardInfo;
-
-      const rewardMint = new PublicKey(poolData.slice(mintOffset, mintOffset + 32));
-      const rewardVault = new PublicKey(poolData.slice(vaultOffset, vaultOffset + 32));
-
-      // Get token program for reward mint
-      const rewardTokenProgram = await getTokenProgramForMint(solana, rewardMint);
-
-      // Get user's ATA for reward token
-      const userRewardAta = getAssociatedTokenAddressSync(rewardMint, walletPubkey, false, rewardTokenProgram);
-
-      activeRewards.push({
-        vault: rewardVault,
-        mint: rewardMint,
-        userAta: userRewardAta,
-      });
-    }
-  }
+  const activeRewards = await activeRewardsOf(solana, poolData, walletPubkey);
 
   // Calculate tick array addresses
   const tickArrayLowerStartIndex = getTickArrayStartIndexFromTick(tickLowerIndex, tickSpacing);
@@ -409,11 +438,11 @@ export async function buildDecreaseLiquidityV2Instruction(
   );
 
   // Get NFT account (try Token2022 first)
-  let nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_2022_PROGRAM_ID);
+  let nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_2022_PROGRAM_ID);
   const accountInfo = await solana.connection.getAccountInfo(nftAccount);
 
   if (!accountInfo) {
-    nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+    nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_PROGRAM_ID);
   }
 
   // Detect token programs for pool mints
@@ -423,8 +452,8 @@ export async function buildDecreaseLiquidityV2Instruction(
   ]);
 
   // Get recipient token accounts with correct token programs
-  const recipientTokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, tokenProgram0);
-  const recipientTokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, tokenProgram1);
+  const recipientTokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, true, tokenProgram0);
+  const recipientTokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, true, tokenProgram1);
 
   // Create instruction using Anchor coder
   const coder = new BorshCoder(clmmIdl);
@@ -530,11 +559,11 @@ export async function buildIncreaseLiquidityV2Instruction(
   );
 
   // Get NFT account
-  let nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_2022_PROGRAM_ID);
+  let nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_2022_PROGRAM_ID);
   const accountInfo = await solana.connection.getAccountInfo(nftAccount);
 
   if (!accountInfo) {
-    nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+    nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, true, TOKEN_PROGRAM_ID);
   }
 
   // Detect token programs for pool mints
@@ -544,8 +573,8 @@ export async function buildIncreaseLiquidityV2Instruction(
   ]);
 
   // Get user token accounts with correct token programs
-  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, tokenProgram0);
-  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, tokenProgram1);
+  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, true, tokenProgram0);
+  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, true, tokenProgram1);
 
   // Create instruction - use actual liquidity value (like your successful transaction)
   const coder = new BorshCoder(clmmIdl);
@@ -652,7 +681,7 @@ export async function buildOpenPositionWithToken22NftInstruction(
   const positionNftAccount = getAssociatedTokenAddressSync(
     positionNftMint.publicKey,
     walletPubkey,
-    false,
+    true,
     TOKEN_2022_PROGRAM_ID,
   );
 
@@ -663,8 +692,8 @@ export async function buildOpenPositionWithToken22NftInstruction(
   ]);
 
   // Get user token accounts with correct token programs
-  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, tokenProgram0);
-  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, tokenProgram1);
+  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, true, tokenProgram0);
+  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, true, tokenProgram1);
 
   // Log all instruction parameters
   const { logger } = await import('../../services/logger');

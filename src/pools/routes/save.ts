@@ -119,7 +119,7 @@ export const savePoolRoute: FastifyPluginAsync = async (fastify) => {
         if (connector && type) {
           const info = await fetchPoolInfo(connector, type, network, address);
           if (!info) {
-            throw new Error(`Unable to fetch pool-info for ${address} from ${connector} ${type} on ${network}`);
+            throw fastify.httpErrors.notFound(`Pool ${address} not found in ${connector} ${type} on ${network}`);
           }
           facts = info;
           poolConnector = connector;

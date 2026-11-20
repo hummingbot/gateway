@@ -76,6 +76,26 @@ describe('Solana.sendAndConfirmTransaction compute simulation', () => {
     });
     expect(_sendAndConfirmRawTransaction).not.toHaveBeenCalled();
   });
+
+  it('budgets for the compute-budget instructions it adds, not only what simulation reported', async () => {
+    // A plain transfer simulates at ~150 units; the set-limit and set-price
+    // instructions the send adds cost 150 each on top, which a 10% margin cannot cover.
+    const prepareTx = jest.fn(async (tx: Transaction) => tx);
+    const fakeThis = {
+      config: { defaultComputeUnits: 200000 },
+      estimateGasPrice: jest.fn(async () => 0.1),
+      connection: { simulateTransaction: jest.fn(async () => ({ value: { err: null, unitsConsumed: 150 } })) },
+      prepareTx,
+      _sendAndConfirmRawTransaction: jest.fn(async () => ({ confirmed: true, signature: 'sig', txData: {} })),
+      getFee: jest.fn(() => 0.000005),
+    };
+    const tx = legacyTx();
+    tx.serialize = jest.fn(() => Buffer.from([])) as any;
+
+    await sendAndConfirm.call(fakeThis, tx);
+
+    expect(prepareTx).toHaveBeenCalledWith(tx, 0.1, Math.ceil(150 * 1.1) + 450, []);
+  });
 });
 
 describe('Solana.sendAndConfirmTransactionForWallet', () => {
@@ -278,6 +298,15 @@ describe('Solana.throwIfLandedWithError / confirmationTimeoutError', () => {
     const error = confirmationTimeoutError.call({}, 'timeout-sig');
     expect(error.message).toMatch(/timeout-sig was not confirmed before its blockhash expired/);
     expect(confirmationTimeoutError.call({}, '').message).toMatch(/Transaction failed to send/);
+  });
+
+  it('does not claim the blockhash expired when the wait for confirmation was cut short', () => {
+    const error = confirmationTimeoutError.call({}, 'out-sig', 'the RPC rate-limited the status checks');
+    expect(error.code).toBe('TRANSACTION_TIMEOUT');
+    expect(error.message).toBe(
+      'Transaction out-sig was broadcast, but waiting for its confirmation was cut short: the RPC ' +
+        'rate-limited the status checks. It may still land — verify the signature on-chain before retrying.',
+    );
   });
 });
 

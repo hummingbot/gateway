@@ -1,4 +1,5 @@
 import { BN } from '@coral-xyz/anchor';
+import { NATIVE_MINT } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
@@ -118,10 +119,10 @@ export async function closePosition(
       // actually returned. The transaction fee needs no correction: extractBalanceChangesAndFee
       // nets it out for the fee payer and reports it separately, so adding it back here
       // would overstate the amount by one fee.
-      if (tokenXSymbol === 'SOL') {
+      if (dlmmPool.tokenX.publicKey.equals(NATIVE_MINT)) {
         totalTokenXReceived = totalTokenXReceived - positionRentRefunded;
         if (totalTokenXReceived < 0) totalTokenXReceived = 0;
-      } else if (tokenYSymbol === 'SOL') {
+      } else if (dlmmPool.tokenY.publicKey.equals(NATIVE_MINT)) {
         totalTokenYReceived = totalTokenYReceived - positionRentRefunded;
         if (totalTokenYReceived < 0) totalTokenYReceived = 0;
       }

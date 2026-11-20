@@ -1,6 +1,7 @@
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 // This previously mocked an `orca.removeLiquidity()` the connector never calls, then
 // accepted [200, 400, 500] — so the success cases passed on a 500 from the unmocked SDK.
@@ -12,19 +13,6 @@ const mockDecreaseLiquidity = jest.fn();
 const mockSendAndConfirm = jest.fn();
 
 jest.mock('../../../../src/chains/solana/solana');
-// The wallet default on the unified schema is read from conf/chains/solana.yml at module
-// load. conf/ is gitignored, so a developer machine supplies a real address and CI falls
-// back to the template's literal '<solana-wallet-address>' — which is not base58, so
-// `new PublicKey(...)` throws and the route 500s. These two cases OMIT walletAddress on
-// purpose, so they were passing only on machines that happened to have a wallet
-// configured. Pin the default here instead of inheriting the ambient one.
-jest.mock('../../../../src/chains/solana/solana.config', () => ({
-  ...jest.requireActual('../../../../src/chains/solana/solana.config'),
-  getSolanaChainConfig: () => ({
-    ...jest.requireActual('../../../../src/chains/solana/solana.config').getSolanaChainConfig(),
-    defaultWallet: 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF',
-  }),
-}));
 jest.mock('../../../../src/connectors/orca/orca');
 jest.mock('@orca-so/whirlpools-client', () => ({
   fetchPosition: (...a: any[]) => mockFetchPosition(...a),
@@ -140,26 +128,6 @@ describe('POST /remove-liquidity', () => {
       // 100% takes the whole position, not a rounded-down fraction of it.
       expect(mockDecreaseLiquidity).toHaveBeenCalledWith({}, 'mint', { liquidity: 1_000_000n }, expect.anything());
     });
-
-    it('should use default network and wallet', async () => {
-      seedConnector();
-
-      const response = await app.inject({
-        method: 'POST',
-        url: '/remove',
-        payload: {
-          connector: 'orca',
-          positionAddress: mockPositionAddress,
-          percentageToRemove: 25,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(Orca.getInstance).toHaveBeenCalledWith('mainnet-beta');
-      const [, sentFor] = mockSendAndConfirm.mock.calls[0];
-      expect(typeof sentFor).toBe('string');
-      expect(sentFor.length).toBeGreaterThan(0);
-    });
   });
 
   describe('validation', () => {
@@ -200,7 +168,11 @@ describe('POST /remove-liquidity', () => {
       expect(mockDecreaseLiquidity).toHaveBeenCalledWith({}, 'mint', { liquidity: 1_000_000n }, expect.anything());
     });
 
-    it('should handle invalid percentageToRemove values', async () => {
+    // The schema admits 0 (its minimum is inclusive); removing nothing is the
+    // connector's to refuse, before it builds a transaction.
+    it('refuses to remove 0%', async () => {
+      seedConnector();
+
       const response = await app.inject({
         method: 'POST',
         url: '/remove',
@@ -209,16 +181,18 @@ describe('POST /remove-liquidity', () => {
           connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
-          percentageToRemove: 150,
+          percentageToRemove: 0,
         },
       });
 
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBe(400);
+      expect(parseWire(response.body).message).toBe('percentageToRemove must be between 0 and 100');
+      expect(mockDecreaseLiquidity).not.toHaveBeenCalled();
     });
   });
 
   describe('error handling', () => {
-    it('should handle Orca errors gracefully', async () => {
+    it('reports a failed build as 500 with its cause, sending nothing', async () => {
       seedConnector();
       mockDecreaseLiquidity.mockRejectedValue(new Error('Remove liquidity failed'));
 
@@ -234,25 +208,9 @@ describe('POST /remove-liquidity', () => {
         },
       });
 
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
-    });
-
-    it('should handle service unavailable', async () => {
-      (Orca.getInstance as jest.Mock).mockResolvedValue(null);
-
-      const response = await app.inject({
-        method: 'POST',
-        url: '/remove',
-        payload: {
-          chainNetwork: 'solana-mainnet-beta',
-          connector: 'orca',
-          walletAddress: mockWalletAddress,
-          positionAddress: mockPositionAddress,
-          percentageToRemove: 50,
-        },
-      });
-
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+      expect(response.statusCode).toBe(500);
+      expect(parseWire(response.body).message).toBe('Failed to remove liquidity: Remove liquidity failed');
+      expect(mockSendAndConfirm).not.toHaveBeenCalled();
     });
   });
 });

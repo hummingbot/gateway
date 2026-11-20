@@ -46,21 +46,17 @@ const mockUSDC = {
 
 const mockPoolAddress = 'ARwi1S4DaiTG5DX7S4M4ZsrXqpMD1MrTmbu9ue2tpmEq';
 
-const mockWallet = {
-  publicKey: new PublicKey('11111111111111111111111111111111'),
-};
-
 const mockTransaction = {
   signature: 'mocktxsignature123',
   sign: jest.fn(),
 };
 
-const mockSwapQuote = {
-  protocolFee: 1000,
-  amount: 100000000,
-  minOut: 14700000,
-  priceImpact: 0.01,
-  fee: 250000,
+// The SDK's quote shapes, as far as executeSwap reads them.
+const mockExactInQuote = { minOutAmount: 'min-out-14.7-usdc', binArraysPubkey: ['bin-arrays-sell'] };
+const mockExactOutQuote = {
+  outAmount: 'out-0.1-sol',
+  maxInAmount: 'max-in-15.15-usdc',
+  binArraysPubkey: ['bin-arrays-buy'],
 };
 
 const mockDlmmPool = {
@@ -69,11 +65,25 @@ const mockDlmmPool = {
   tokenY: { publicKey: new PublicKey(mockUSDC.address), reserve: 150000000000 },
   activeBin: { id: 0, price: 150 },
   getBinArrayForSwap: jest.fn().mockResolvedValue([]),
-  swapQuote: jest.fn().mockReturnValue(mockSwapQuote),
-  swapQuoteExactOut: jest.fn().mockReturnValue(mockSwapQuote),
+  swapQuote: jest.fn().mockReturnValue(mockExactInQuote),
+  swapQuoteExactOut: jest.fn().mockReturnValue(mockExactOutQuote),
   swap: jest.fn().mockResolvedValue(mockTransaction),
   swapExactOut: jest.fn().mockResolvedValue(mockTransaction),
 };
+
+const mockSolanaWith = (balanceChanges: number[]) => ({
+  getToken: jest.fn((t: string) => {
+    if (t === 'SOL' || t === mockSOL.address) return Promise.resolve(mockSOL);
+    if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
+    return Promise.resolve(null);
+  }),
+  sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
+    signature: mockTransaction.signature,
+    fee: 0.000005,
+  }),
+  getConfirmedTransactionData: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
+  extractBalanceChangesAndFee: jest.fn().mockResolvedValue({ balanceChanges }),
+});
 
 describe('POST /execute-swap', () => {
   let server: any;
@@ -97,56 +107,9 @@ describe('POST /execute-swap', () => {
     jest.clearAllMocks();
   });
 
-  it('should execute a CLMM swap for SELL side', async () => {
-    const mockSolanaInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
-      // Argument-based (the standardized wrapper derives the counter token, so getToken
-      // is called more than twice — an ordered mock would resolve the wrong tokens).
-      getToken: jest.fn((t: string) => {
-        if (t === 'SOL' || t === mockSOL.address) return Promise.resolve(mockSOL);
-        if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
-        return Promise.resolve(null);
-      }),
-      findAssociatedTokenAddress: jest.fn().mockResolvedValue('mock-ata-address'),
-      getTxData: jest.fn().mockResolvedValue({
-        blockTime: Date.now() / 1000,
-        meta: { fee: 5000 },
-        transaction: {},
-      }),
-      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
-        signature: mockTransaction.signature,
-        fee: 0.000005,
-      }),
-      connection: {
-        getTransaction: jest.fn().mockResolvedValue({
-          meta: { fee: 5000 },
-          blockTime: Date.now() / 1000,
-        }),
-      },
-      getConfirmedTransactionData: jest.fn().mockResolvedValue({
-        meta: { fee: 5000 },
-        blockTime: Date.now() / 1000,
-      }),
-      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
-      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
-        balanceChanges: [-0.1, 14.85],
-        fee: 5000,
-      }),
-    };
-    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
-    (Solana.getWalletAddressExample as jest.Mock).mockResolvedValue('11111111111111111111111111111111');
-
-    const mockMeteoraInstance = {
-      getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool),
-      swapBase2Quote: jest.fn().mockResolvedValue({
-        swapOutAmount: 14850000,
-        swapInAmount: 100000000,
-        quote: mockSwapQuote,
-        transaction: mockTransaction,
-        dlmmPool: mockDlmmPool,
-      }),
-    };
-    (Meteora.getInstance as jest.Mock).mockResolvedValue(mockMeteoraInstance);
+  it('sells base through an exact-in swap and reports the balance changes', async () => {
+    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaWith([-0.1, 14.85]));
+    (Meteora.getInstance as jest.Mock).mockResolvedValue({ getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool) });
 
     const response = await server.inject({
       method: 'POST',
@@ -177,13 +140,22 @@ describe('POST /execute-swap', () => {
     expect(body.data).toHaveProperty('tokenOut', mockUSDC.address);
     // The applied slippage is echoed on the execute response.
     expect(body.data).toHaveProperty('slippagePct', 1);
+
+    // SELL is exact-in: base into the pool (X → Y), bounded below by the quote's minimum.
+    expect(mockDlmmPool.swapExactOut).not.toHaveBeenCalled();
+    const [swapArgs] = mockDlmmPool.swap.mock.calls[0];
+    expect(swapArgs.inToken.toBase58()).toBe(mockSOL.address);
+    expect(swapArgs.outToken.toBase58()).toBe(mockUSDC.address);
+    expect(swapArgs.inAmount.toString()).toBe('100000000');
+    expect(swapArgs.minOutAmount).toBe(mockExactInQuote.minOutAmount);
+    expect(swapArgs.binArraysPubkey).toBe(mockExactInQuote.binArraysPubkey);
+    expect(mockDlmmPool.swapQuote.mock.calls[0][1]).toBe(true); // swapForY
   });
 
   it('fails loudly (400 TRANSACTION_FAILED) when the transaction landed on-chain but failed', async () => {
     const { transactionFailed } = jest.requireActual('../../../../src/services/error-handler');
     const extractBalanceChangesAndFee = jest.fn();
     const mockSolanaInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
       getToken: jest.fn((t: string) => {
         if (t === 'SOL' || t === mockSOL.address) return Promise.resolve(mockSOL);
         if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
@@ -230,57 +202,10 @@ describe('POST /execute-swap', () => {
     expect(extractBalanceChangesAndFee).not.toHaveBeenCalled();
   });
 
-  it('should execute a CLMM swap for BUY side', async () => {
-    const mockSolanaInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getToken: jest.fn((t: string) => {
-        if (t === 'SOL' || t === mockSOL.address) return Promise.resolve(mockSOL);
-        if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
-        return Promise.resolve(null);
-      }),
-      findAssociatedTokenAddress: jest.fn().mockResolvedValue('mock-ata-address'),
-      getTxData: jest.fn().mockResolvedValue({
-        blockTime: Date.now() / 1000,
-        meta: { fee: 5000 },
-        transaction: {},
-      }),
-      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
-        signature: mockTransaction.signature,
-        fee: 0.000005,
-      }),
-      connection: {
-        getTransaction: jest.fn().mockResolvedValue({
-          meta: { fee: 5000 },
-          blockTime: Date.now() / 1000,
-        }),
-      },
-      getConfirmedTransactionData: jest.fn().mockResolvedValue({
-        meta: { fee: 5000 },
-        blockTime: Date.now() / 1000,
-      }),
-      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
-      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
-        balanceChanges: [-15, 0.1], // For BUY: first is USDC (negative), second is SOL (positive)
-        fee: 5000,
-      }),
-    };
-    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
-
-    const mockMeteoraInstance = {
-      getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool),
-      swapQuote2Base: jest.fn().mockResolvedValue({
-        swapOutAmount: 100000000, // 0.1 SOL
-        swapInAmount: 15000000, // 15 USDC
-        quote: {
-          ...mockSwapQuote,
-          amount: 15000000, // For BUY, amount is the input (USDC)
-          minOut: 100000000, // For BUY, minOut is the output (SOL)
-        },
-        transaction: mockTransaction,
-        dlmmPool: mockDlmmPool,
-      }),
-    };
-    (Meteora.getInstance as jest.Mock).mockResolvedValue(mockMeteoraInstance);
+  it('buys base through an exact-out swap and reports the balance changes', async () => {
+    // For BUY the input is USDC (spent) and the output SOL (received).
+    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaWith([-15, 0.1]));
+    (Meteora.getInstance as jest.Mock).mockResolvedValue({ getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool) });
 
     const response = await server.inject({
       method: 'POST',
@@ -308,11 +233,22 @@ describe('POST /execute-swap', () => {
     expect(body.data).toHaveProperty('tokenOut', mockSOL.address);
     expect(body.data).toHaveProperty('baseTokenBalanceChange', 0.1); // SOL positive (receiving)
     expect(body.data).toHaveProperty('quoteTokenBalanceChange', -15); // USDC negative (spending)
+
+    // BUY is exact-out: quote into the pool (Y → X), for exactly the base amount asked,
+    // bounded above by the quote's maximum input.
+    expect(mockDlmmPool.swap).not.toHaveBeenCalled();
+    const [swapArgs] = mockDlmmPool.swapExactOut.mock.calls[0];
+    expect(swapArgs.inToken.toBase58()).toBe(mockUSDC.address);
+    expect(swapArgs.outToken.toBase58()).toBe(mockSOL.address);
+    expect(swapArgs.outAmount).toBe(mockExactOutQuote.outAmount);
+    expect(swapArgs.maxInAmount).toBe(mockExactOutQuote.maxInAmount);
+    const [amountBn, swapForY] = mockDlmmPool.swapQuoteExactOut.mock.calls[0];
+    expect(amountBn.toString()).toBe('100000000');
+    expect(swapForY).toBe(false);
   });
 
   it('should return 400 if the base token is not part of the pool', async () => {
     const mockSolanaInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
       getToken: jest.fn((t: string) => {
         if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
         return Promise.resolve(null); // INVALID resolves to nothing
@@ -341,7 +277,7 @@ describe('POST /execute-swap', () => {
     // Standardized wrapper derives the counter token from the pool; an unknown base token that
     // isn't one of the pool's tokens is a bad request (400).
     expect(response.statusCode).toBe(400);
-    expect(parseWire(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body).message).toBe(`Token INVALID is not part of pool ${mockPoolAddress}`);
   });
 });
 

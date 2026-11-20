@@ -16,28 +16,13 @@ export async function quotePosition(
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
   slippagePct: number = RaydiumConfig.config.slippagePct,
-  baseTokenSymbol?: string,
-  quoteTokenSymbol?: string,
 ): Promise<QuotePositionResponseType> {
   try {
     const solana = await Solana.getInstance(network);
     const raydium = await Raydium.getInstance(network);
 
-    // If no pool address provided, find default pool using base and quote tokens
-    let poolAddressToUse = poolAddress;
-    if (!poolAddressToUse) {
-      if (!baseTokenSymbol || !quoteTokenSymbol) {
-        throw new Error('Either poolAddress or both baseToken and quoteToken must be provided');
-      }
-
-      poolAddressToUse = await raydium.findDefaultPool(baseTokenSymbol, quoteTokenSymbol, 'clmm');
-      if (!poolAddressToUse) {
-        throw new Error(`No CLMM pool found for pair ${baseTokenSymbol}-${quoteTokenSymbol}`);
-      }
-    }
-
-    const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddressToUse);
-    const rpcData = await raydium.getClmmPoolfromRPC(poolAddressToUse);
+    const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
+    const rpcData = await raydium.getClmmPoolfromRPC(poolAddress);
     poolInfo.price = rpcData.currentPrice;
 
     const { tick: lowerTick } = TickUtils.getPriceAndTick({
@@ -130,9 +115,7 @@ export async function quotePosition(
     let res;
     let baseLimited = false;
     if (resBase && resQuote) {
-      const baseLiquidity = Number(resBase.liquidity.toString());
-      const quoteLiquidity = Number(resQuote.liquidity.toString());
-      baseLimited = baseLiquidity < quoteLiquidity;
+      baseLimited = resBase.liquidity.lt(resQuote.liquidity);
       res = baseLimited ? resBase : resQuote;
     } else {
       // Otherwise use the one that was calculated
@@ -146,7 +129,7 @@ export async function quotePosition(
       quoteTokenAmount: Number(res.amountB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
       baseTokenAmountMax: Number(res.amountSlippageA.amount.toString()) / 10 ** poolInfo.mintA.decimals,
       quoteTokenAmountMax: Number(res.amountSlippageB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
-      liquidity: res.liquidity,
+      liquidity: res.liquidity.toString(10),
     };
   } catch (error) {
     logger.error(error);

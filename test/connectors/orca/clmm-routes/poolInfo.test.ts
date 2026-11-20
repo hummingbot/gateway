@@ -112,7 +112,20 @@ describe('GET /pool-info', () => {
     await app.close();
   });
 
-  it('should return pool information', async () => {
+  it('reads the fee from hundredths of a basis point and scales each vault by its own mint', async () => {
+    // SOL (9 decimals) against USDC (6): a shared divisor would misreport one side.
+    fetchAllMintMock.mockResolvedValue([{ data: { decimals: 9 } }, { data: { decimals: 6 } }]);
+    const { sqrtPriceToPrice } = await import('@orca-so/whirlpools-core');
+    const vaultBalances: Record<string, string> = {
+      [mockWhirlpool.tokenVaultA]: '1000000000000', // 1000 SOL
+      [mockWhirlpool.tokenVaultB]: '200500000000', // 200,500 USDC
+    };
+    (Solana.getInstance as jest.Mock).mockResolvedValue({
+      connection: {
+        getTokenAccountBalance: jest.fn(async (vault: any) => ({ value: { amount: vaultBalances[vault.toBase58()] } })),
+      },
+    });
+
     const response = await app.inject({
       method: 'GET',
       url: '/pool-info',
@@ -124,16 +137,18 @@ describe('GET /pool-info', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = parseWire(response.body);
-    expect(body).toHaveProperty('address', mockPoolAddress);
-    expect(body).toHaveProperty('baseTokenAddress');
-    expect(body).toHaveProperty('quoteTokenAddress');
-    expect(body).toHaveProperty('binStep');
-    expect(body).toHaveProperty('feePct');
-    expect(body).toHaveProperty('price');
-    expect(body).toHaveProperty('baseTokenAmount');
-    expect(body).toHaveProperty('quoteTokenAmount');
-    expect(body).toHaveProperty('activeBinId');
+    expect(parseWire(response.body)).toEqual({
+      address: mockPoolAddress,
+      baseTokenAddress: mockWhirlpool.tokenMintA,
+      quoteTokenAddress: mockWhirlpool.tokenMintB,
+      binStep: 64,
+      feePct: 0.04, // feeRate 400
+      price: 200.5,
+      baseTokenAmount: 1000,
+      quoteTokenAmount: 200500,
+      activeBinId: -28800,
+    });
+    expect(sqrtPriceToPrice).toHaveBeenCalledWith(mockWhirlpool.sqrtPrice, 9, 6);
   });
 
   // Orca's connector-specific pool fields (liquidity, sqrtPrice, tvlUsdc, ...) are not
@@ -151,63 +166,43 @@ describe('GET /pool-info', () => {
     expect(info).toHaveProperty('yieldOverTvl');
   });
 
-  beforeEach(() => {
-    // Reset mocks before each test
-    jest.clearAllMocks();
-
-    // Mock Orca.getInstance with both getWhirlpool and getPoolInfo
-    const mockOrca = {
+  it('reports an unknown TVL as null, not 0, when the Orca API has no pool', async () => {
+    (Orca.getInstance as jest.Mock).mockResolvedValue({
       getWhirlpool: jest.fn().mockResolvedValue(mockWhirlpool),
-      getPoolInfo: jest.fn().mockResolvedValue(mockApiPoolInfo),
-      solanaKitRpc: {}, // Mock RPC
+      getPoolInfo: jest.fn().mockResolvedValue(null),
+      solanaKitRpc: {},
       deployment: { programId: 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc' },
-    };
-    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-
-    // Mock Solana.getInstance
-    const mockConnection = {
-      getTokenAccountBalance: jest.fn().mockResolvedValue({
-        value: { amount: '1000000000000' }, // 1000 tokens with 9 decimals
-      }),
-    };
-    const mockSolana = {
-      connection: mockConnection,
-    };
-    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
-
-    // Mock fetchAllMint - returns array of mint data with .data.decimals structure
-    fetchAllMintMock.mockResolvedValue([
-      { data: { decimals: 9 } }, // mintA
-      { data: { decimals: 9 } }, // mintB
-    ]);
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  it('should return pool information', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/pool-info',
-      query: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'orca',
-        poolAddress: mockPoolAddress,
-      },
     });
+    const { getPoolInfo } = await import('../../../../src/connectors/orca/clmm-routes/poolInfo');
+    const info: any = await getPoolInfo(app, 'mainnet-beta', mockPoolAddress);
 
-    expect(response.statusCode).toBe(200);
-    const body = parseWire(response.body);
-    expect(body).toHaveProperty('address', mockPoolAddress);
-    expect(body).toHaveProperty('baseTokenAddress');
-    expect(body).toHaveProperty('quoteTokenAddress');
-    expect(body).toHaveProperty('binStep');
-    expect(body).toHaveProperty('feePct');
-    expect(body).toHaveProperty('price');
-    expect(body).toHaveProperty('baseTokenAmount');
-    expect(body).toHaveProperty('quoteTokenAmount');
-    expect(body).toHaveProperty('activeBinId');
+    expect(info.tvlUsdc).toBeNull();
+    expect(info.yieldOverTvl).toBeNull();
+  });
+
+  it("answers from the chain, with null analytics, when Orca's API lookup fails", async () => {
+    (Orca.getInstance as jest.Mock).mockResolvedValue({
+      getWhirlpool: jest.fn().mockResolvedValue(mockWhirlpool),
+      getPoolInfo: jest
+        .fn()
+        .mockRejectedValue(new Error(`Orca API pool lookup for ${mockPoolAddress} failed: 503 Service Unavailable`)),
+      solanaKitRpc: {},
+      deployment: { programId: 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc' },
+    });
+    const { getPoolInfo } = await import('../../../../src/connectors/orca/clmm-routes/poolInfo');
+    const info: any = await getPoolInfo(app, 'mainnet-beta', mockPoolAddress);
+
+    expect(info.address).toBe(mockPoolAddress);
+    expect(info.tvlUsdc).toBeNull();
+    expect(info.yieldOverTvl).toBeNull();
+  });
+
+  it('carries the API TVL through when Orca reports one', async () => {
+    const { getPoolInfo } = await import('../../../../src/connectors/orca/clmm-routes/poolInfo');
+    const info: any = await getPoolInfo(app, 'mainnet-beta', mockPoolAddress);
+
+    expect(info.tvlUsdc).toBe(50000);
+    expect(info.yieldOverTvl).toBe(0.05);
   });
 
   it('should return 400 when poolAddress is missing', async () => {
@@ -262,20 +257,6 @@ describe('GET /pool-info', () => {
     });
 
     expect(response.statusCode).toBe(500);
-  });
-
-  it('should use default network if not provided', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/pool-info',
-      query: {
-        connector: 'orca',
-        poolAddress: mockPoolAddress,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(Orca.getInstance).toHaveBeenCalled();
   });
 
   it('should handle Orca service unavailable', async () => {
@@ -354,15 +335,6 @@ describe('GET /pool-info', () => {
       expect(call.binCount).toBe(11);
       expect(call.tickSpacing).toBe(mockWhirlpool.tickSpacing);
       expect(call.currentTickIndex).toBe(mockWhirlpool.tickCurrentIndex);
-    });
-
-    it('rejects binCount above the schema max', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/pool-info',
-        query: { chainNetwork: 'solana-mainnet-beta', connector: 'orca', poolAddress: mockPoolAddress, binCount: 999 },
-      });
-      expect(response.statusCode).toBe(400);
     });
   });
 

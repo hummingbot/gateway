@@ -277,7 +277,7 @@ describe('Ethereum Wallet Operations', () => {
       expect(mockWallets.ethereum.has(testAddress)).toBe(false);
     });
 
-    it('should fail when removing non-existent wallet', async () => {
+    it('succeeds when removing a wallet that does not exist', async () => {
       (mockFse.pathExists as jest.Mock).mockResolvedValue(false);
 
       const response = await gatewayApp.inject({
@@ -293,7 +293,7 @@ describe('Ethereum Wallet Operations', () => {
       expect(response.statusCode).toBe(200);
     });
 
-    it('should fail with invalid address format', async () => {
+    it('rejects a malformed address with 400', async () => {
       const response = await gatewayApp.inject({
         method: 'DELETE',
         url: '/wallet/remove',
@@ -303,8 +303,8 @@ describe('Ethereum Wallet Operations', () => {
         },
       });
 
-      // Address validation happens and throws 500 on invalid format
-      expect(response.statusCode).toBe(500);
+      expect(response.statusCode).toBe(400);
+      expect(response.json().message).toBe('Invalid Ethereum address format: invalid-address');
     });
   });
 

@@ -66,10 +66,14 @@ describe('POST /create-pool (Orca CLMM)', () => {
     expect(JSON.parse(response.body).message).toMatch(/must be different/);
   });
 
-  it('rejects when tickSpacing is not a positive integer', async () => {
-    (Solana.getInstance as jest.Mock).mockResolvedValue({
-      getToken: jest.fn(() => Promise.resolve(mockSOL)),
-    });
+  // binStep is the unified route's name for Orca's tick spacing; the connector guards it.
+  it.each([
+    ['zero', 0],
+    ['fractional', 1.5],
+    ['omitted', undefined],
+  ])('rejects a %s tick spacing', async (_label, binStep) => {
+    const getToken = jest.fn(() => Promise.resolve(mockSOL));
+    (Solana.getInstance as jest.Mock).mockResolvedValue({ getToken });
 
     const response = await server.inject({
       method: 'POST',
@@ -80,12 +84,14 @@ describe('POST /create-pool (Orca CLMM)', () => {
         walletAddress: mockWallet,
         baseToken: 'SOL',
         quoteToken: 'USDC',
-        tickSpacing: 0,
+        binStep,
         initialPrice: 150,
       },
     });
 
     expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body).message).toBe('tickSpacing must be a positive integer');
+    expect(getToken).not.toHaveBeenCalled();
   });
 
   it('builds with the current SDK and forwards Web3 vault signers', async () => {
