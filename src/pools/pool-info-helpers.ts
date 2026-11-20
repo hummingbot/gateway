@@ -5,6 +5,7 @@
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { connectorsConfig } from '../config/routes/getConnectors';
+import { httpErrors } from '../services/error-handler';
 import { logger } from '../services/logger';
 
 interface PoolInfoResult {
@@ -25,7 +26,11 @@ function getConnectorChain(connector: string): 'solana' | 'ethereum' | null {
 }
 
 /**
- * Fetch pool info from the appropriate connector
+ * Fetch pool info from the appropriate connector.
+ *
+ * null means only "not found": the connector has no such pool, or the address is
+ * another program's. An unsupported connector or pool type is a 400; any failure
+ * reading the pool is a 500 carrying its cause.
  */
 export async function fetchPoolInfo(
   connector: string,
@@ -33,108 +38,114 @@ export async function fetchPoolInfo(
   network: string,
   poolAddress: string,
 ): Promise<PoolInfoResult | null> {
+  const chain = getConnectorChain(connector);
+  if (!chain) {
+    throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
+  }
   try {
-    const chain = getConnectorChain(connector);
+    return await readPoolInfo(chain, connector, type, network, poolAddress);
+  } catch (error: any) {
+    if (error?.statusCode) throw error;
+    throw httpErrors.internalServerError(
+      `Failed to fetch pool info for ${poolAddress} from ${connector} ${type}: ${error?.message ?? error}`,
+    );
+  }
+}
 
-    if (!chain) {
-      logger.error(`Unsupported connector: ${connector}`);
-      return null;
+async function readPoolInfo(
+  chain: 'solana' | 'ethereum',
+  connector: string,
+  type: 'amm' | 'clmm',
+  network: string,
+  poolAddress: string,
+): Promise<PoolInfoResult | null> {
+  let poolInfo;
+
+  if (chain === 'solana') {
+    // Import and get Solana connector instance
+    const connectorModule = await import(`../connectors/${connector}/${connector}`);
+    const ConnectorClass = Object.values(connectorModule).find(
+      (exp: any) => exp.getInstance && typeof exp.getInstance === 'function',
+    ) as any;
+
+    if (!ConnectorClass) {
+      throw httpErrors.badRequest(`Connector class not found for: ${connector}`);
     }
 
-    let poolInfo;
+    const instance = await ConnectorClass.getInstance(network);
 
-    if (chain === 'solana') {
-      // Import and get Solana connector instance
-      const connectorModule = await import(`../connectors/${connector}/${connector}`);
-      const ConnectorClass = Object.values(connectorModule).find(
-        (exp: any) => exp.getInstance && typeof exp.getInstance === 'function',
-      ) as any;
-
-      if (!ConnectorClass) {
-        throw new Error(`Connector class not found for: ${connector}`);
-      }
-
-      const instance = await ConnectorClass.getInstance(network);
-
-      // Call appropriate method based on pool type
-      if (type === 'clmm') {
-        if (instance.getClmmPoolInfo) {
-          poolInfo = await instance.getClmmPoolInfo(poolAddress);
-        } else if (instance.getPoolInfo) {
-          poolInfo = await instance.getPoolInfo(poolAddress);
-        } else {
-          throw new Error(`Connector ${connector} does not support CLMM pool info`);
-        }
-      } else if (type === 'amm') {
-        if (instance.getAmmPoolInfo) {
-          poolInfo = await instance.getAmmPoolInfo(poolAddress);
-        } else {
-          throw new Error(`Connector ${connector} does not support AMM pool info`);
-        }
-      }
-    } else if (chain === 'ethereum') {
-      // Ethereum connectors use utils pattern
-      const { getV2PoolInfo, getV3PoolInfo } = await import(`../connectors/${connector}/${connector}.utils`);
-
-      if (type === 'clmm') {
-        poolInfo = await getV3PoolInfo(poolAddress, network);
+    // Call appropriate method based on pool type
+    if (type === 'clmm') {
+      if (instance.getClmmPoolInfo) {
+        poolInfo = await instance.getClmmPoolInfo(poolAddress);
+      } else if (instance.getPoolInfo) {
+        poolInfo = await instance.getPoolInfo(poolAddress);
       } else {
-        poolInfo = await getV2PoolInfo(poolAddress, network);
+        throw httpErrors.badRequest(`Connector ${connector} does not support CLMM pool info`);
       }
-
-      // For Ethereum, need to fetch fee separately
-      if (poolInfo) {
-        const ethereum = await Ethereum.getInstance(network);
-        const { Contract } = await import('@ethersproject/contracts');
-
-        let feePct: number;
-
-        if (type === 'clmm') {
-          // V3 pools have fee() method
-          const v3PoolABI = [
-            {
-              inputs: [],
-              name: 'fee',
-              outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
-              stateMutability: 'view',
-              type: 'function',
-            },
-          ];
-
-          const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
-          const fee = await poolContract.fee();
-          feePct = fee / 10000; // Convert from basis points to percentage
-        } else {
-          // V2 pairs typically have 0.3% fee (30 basis points)
-          // PancakeSwap V2 has 0.25% fee (25 basis points)
-          // Since the fee isn't exposed on-chain for V2, we use the standard for each DEX
-          feePct = connector === 'pancakeswap' ? 0.25 : 0.3;
-        }
-
-        return {
-          baseTokenAddress: poolInfo.baseTokenAddress,
-          quoteTokenAddress: poolInfo.quoteTokenAddress,
-          feePct: feePct,
-        };
+    } else if (type === 'amm') {
+      if (instance.getAmmPoolInfo) {
+        poolInfo = await instance.getAmmPoolInfo(poolAddress);
+      } else {
+        throw httpErrors.badRequest(`Connector ${connector} does not support AMM pool info`);
       }
+    }
+  } else if (chain === 'ethereum') {
+    // Ethereum connectors use utils pattern
+    const { getV2PoolInfo, getV3PoolInfo } = await import(`../connectors/${connector}/${connector}.utils`);
+
+    if (type === 'clmm') {
+      poolInfo = await getV3PoolInfo(poolAddress, network);
     } else {
-      logger.error(`Unsupported chain: ${chain} for connector: ${connector}`);
-      return null;
+      poolInfo = await getV2PoolInfo(poolAddress, network);
     }
 
-    if (!poolInfo) {
-      return null;
-    }
+    // For Ethereum, need to fetch fee separately
+    if (poolInfo) {
+      const ethereum = await Ethereum.getInstance(network);
+      const { Contract } = await import('@ethersproject/contracts');
 
-    return {
-      baseTokenAddress: poolInfo.baseTokenAddress,
-      quoteTokenAddress: poolInfo.quoteTokenAddress,
-      feePct: poolInfo.feePct,
-    };
-  } catch (error) {
-    logger.error(`Error fetching pool info for ${poolAddress}: ${error.message}`);
+      let feePct: number;
+
+      if (type === 'clmm') {
+        // V3 pools have fee() method
+        const v3PoolABI = [
+          {
+            inputs: [],
+            name: 'fee',
+            outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ];
+
+        const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
+        const fee = await poolContract.fee();
+        feePct = fee / 10000; // Convert from basis points to percentage
+      } else {
+        // V2 pairs typically have 0.3% fee (30 basis points)
+        // PancakeSwap V2 has 0.25% fee (25 basis points)
+        // Since the fee isn't exposed on-chain for V2, we use the standard for each DEX
+        feePct = connector === 'pancakeswap' ? 0.25 : 0.3;
+      }
+
+      return {
+        baseTokenAddress: poolInfo.baseTokenAddress,
+        quoteTokenAddress: poolInfo.quoteTokenAddress,
+        feePct: feePct,
+      };
+    }
+  }
+
+  if (!poolInfo) {
     return null;
   }
+
+  return {
+    baseTokenAddress: poolInfo.baseTokenAddress,
+    quoteTokenAddress: poolInfo.quoteTokenAddress,
+    feePct: poolInfo.feePct,
+  };
 }
 
 /**

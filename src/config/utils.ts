@@ -55,6 +55,41 @@ export const getConfig = (fastify: FastifyInstance, namespace?: string): object 
   return ConfigManagerV2.getInstance().allConfigurations;
 };
 
+/**
+ * A network named in `defaultNetwork` or `defaultNetworks` has to be one this Gateway has
+ * a config for. The JSON schema only says "string" and "array of strings", so a typo was
+ * saved and surfaced later, as a missing namespace on the first balance call that used
+ * it. The Hummingbot client checks the single field before sending; the list, and any
+ * caller that is not the client, reached the file unchecked.
+ */
+function assertKnownNetworks(fastify: FastifyInstance, chain: string, pathParts: string[], value: unknown): void {
+  const [field, ...within] = pathParts;
+  if (field !== 'defaultNetwork' && field !== 'defaultNetworks') {
+    return;
+  }
+  // `defaultNetworks.0` replaces one entry of the list, so its value is one network
+  const oneNetwork = field === 'defaultNetwork' || within.length > 0;
+  // a value of the wrong shape is left to the JSON schema, which names the type
+  if (oneNetwork && typeof value !== 'string') {
+    return;
+  }
+  if (!oneNetwork && !(Array.isArray(value) && value.every((v) => typeof v === 'string'))) {
+    return;
+  }
+  const named: string[] = Array.isArray(value) ? value : [value];
+  const known = ConfigManagerV2.getInstance()
+    .getSupportedChainNetworks()
+    .filter((chainNetwork) => chainNetwork.startsWith(`${chain}-`))
+    .map((chainNetwork) => chainNetwork.slice(chain.length + 1));
+  const unknown = named.filter((network) => !known.includes(network));
+  if (unknown.length > 0) {
+    throw fastify.httpErrors.badRequest(
+      `Unknown ${chain} network${unknown.length > 1 ? 's' : ''}: ${unknown.join(', ')}. ` +
+        `Configured networks: ${known.join(', ')}`,
+    );
+  }
+}
+
 export const updateConfig = (fastify: FastifyInstance, configPath: string, configValue: any): void => {
   logger.info(`Updating config path: ${configPath} with value: ${JSON.stringify(configValue)}`);
 
@@ -72,10 +107,15 @@ export const updateConfig = (fastify: FastifyInstance, configPath: string, confi
         // Route to the chain namespace instead
         const chainConfigPath = `${parsed.chain}.${pathParts.join('.')}`;
         logger.info(`Routing chain-level field to: ${chainConfigPath}`);
+        assertKnownNetworks(fastify, parsed.chain, pathParts, configValue);
         ConfigManagerV2.getInstance().set(chainConfigPath, configValue);
         logger.info(`Successfully updated configuration: ${chainConfigPath}`);
         return;
       }
+    }
+
+    if (KNOWN_CHAINS.includes(namespace) && field) {
+      assertKnownNetworks(fastify, namespace, pathParts, configValue);
     }
 
     // Update the configuration using ConfigManagerV2

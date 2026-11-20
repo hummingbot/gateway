@@ -11,7 +11,7 @@ export async function executeQuote(
   quoteId: string,
 ): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote
-  const quote = quoteCache.get(quoteId);
+  const quote = quoteCache.get(quoteId, 'jupiter');
   if (!quote) {
     throw httpErrors.badRequest('Quote not found or expired');
   }

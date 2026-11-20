@@ -45,13 +45,17 @@ const requestProps = (operation: any) => propertyNames(operation?.requestBody?.c
 
 const signingRoutes: string[] = [];
 const reportingRoutes: string[] = [];
+// A GET that answers with signatures is reading history (a wallet's past transactions),
+// not signing. They are listed exactly below, so a new one has to be looked at rather than
+// slipping through on its method.
+const historyRoutes: string[] = [];
 for (const [route, operations] of Object.entries<any>(spec.paths)) {
   for (const [method, operation] of Object.entries<any>(operations)) {
     if (method === 'parameters') continue;
     if (!responseProps(operation).has('signature')) continue;
-    (requestProps(operation).has('signature') ? reportingRoutes : signingRoutes).push(
-      route.replace(/\{(\w+)\}/g, 'ethereum'),
-    );
+    const path = route.replace(/\{(\w+)\}/g, 'ethereum');
+    if (method === 'get') historyRoutes.push(path);
+    else (requestProps(operation).has('signature') ? reportingRoutes : signingRoutes).push(path);
   }
 }
 
@@ -72,5 +76,10 @@ describe('every route that signs a transaction is behind the API-token gate', ()
     // nothing.
     expect(reportingRoutes).toEqual(['/chains/ethereum/poll']);
     expect(isSensitivePath('/chains/solana/poll')).toBe(false);
+  });
+
+  it('does not gate a read that lists past signatures', () => {
+    expect(historyRoutes.sort()).toEqual(['/chains/ethereum/transactions']);
+    for (const route of historyRoutes) expect(isSensitivePath(route)).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 import { StrategyType } from '@meteora-ag/dlmm';
 import { DecimalUtil } from '@orca-so/common-sdk';
+import { NATIVE_MINT } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -72,21 +73,33 @@ export async function addLiquidity(
   const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
-  // Check balances with transaction buffer
-  const balances = await solana.getBalances(walletPublicKey.toBase58(), [tokenXSymbol, tokenYSymbol, 'SOL']);
-  const requiredBase = baseTokenAmount + (tokenXSymbol === 'SOL' ? SOL_TRANSACTION_BUFFER : 0);
-  const requiredQuote = quoteTokenAmount + (tokenYSymbol === 'SOL' ? SOL_TRANSACTION_BUFFER : 0);
+  // Check balances with transaction buffer. Each side is asked for by the pool's mint (a
+  // token outside the token list has no symbol) and reported under it. The native side is
+  // funded from the SOL balance (the SDK wraps it), so that one is asked for as 'SOL'.
+  const balanceKey = (mint: PublicKey): string => (mint.equals(NATIVE_MINT) ? 'SOL' : mint.toBase58());
+  const balances = await solana.getBalances(walletPublicKey.toBase58(), [
+    balanceKey(dlmmPool.tokenX.publicKey),
+    balanceKey(dlmmPool.tokenY.publicKey),
+  ]);
+  const held = (mint: PublicKey): number => {
+    const address = mint.toBase58();
+    const key = balanceKey(mint);
+    if (balances[key] === undefined) {
+      throw httpErrors.internalServerError(`getBalances returned no balance for ${address} under ${key}`);
+    }
+    return balances[key];
+  };
+  const heldX = held(dlmmPool.tokenX.publicKey);
+  const heldY = held(dlmmPool.tokenY.publicKey);
+  const requiredBase = baseTokenAmount + (dlmmPool.tokenX.publicKey.equals(NATIVE_MINT) ? SOL_TRANSACTION_BUFFER : 0);
+  const requiredQuote = quoteTokenAmount + (dlmmPool.tokenY.publicKey.equals(NATIVE_MINT) ? SOL_TRANSACTION_BUFFER : 0);
 
-  if (balances[tokenXSymbol] < requiredBase) {
-    throw httpErrors.badRequest(
-      INSUFFICIENT_BALANCE_MESSAGE(tokenXSymbol, requiredBase.toString(), balances[tokenXSymbol].toString()),
-    );
+  if (heldX < requiredBase) {
+    throw httpErrors.badRequest(INSUFFICIENT_BALANCE_MESSAGE(tokenXSymbol, requiredBase.toString(), heldX.toString()));
   }
 
-  if (balances[tokenYSymbol] < requiredQuote) {
-    throw httpErrors.badRequest(
-      INSUFFICIENT_BALANCE_MESSAGE(tokenYSymbol, requiredQuote.toString(), balances[tokenYSymbol].toString()),
-    );
+  if (heldY < requiredQuote) {
+    throw httpErrors.badRequest(INSUFFICIENT_BALANCE_MESSAGE(tokenYSymbol, requiredQuote.toString(), heldY.toString()));
   }
 
   logger.info(
@@ -167,9 +180,9 @@ export async function addLiquidity(
 
     // When SOL is base/quote, wallet pays: liquidity + tx fee
     // Subtract fee to get actual liquidity added
-    if (tokenXSymbol === 'SOL') {
+    if (dlmmPool.tokenX.publicKey.equals(NATIVE_MINT)) {
       tokenXAddedAmount -= fee;
-    } else if (tokenYSymbol === 'SOL') {
+    } else if (dlmmPool.tokenY.publicKey.equals(NATIVE_MINT)) {
       tokenYAddedAmount -= fee;
     }
 

@@ -5,6 +5,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
+import { toRawAmount } from '../../../services/raw-amount';
 import { sanitizeErrorMessage, sanitizeString } from '../../../services/sanitize';
 import { approximateBuyViaSellLeg, attemptedRoute, priceImpactPercentFromFraction } from '../../router-utils';
 import { DFlow, DFlowQuoteResponse } from '../dflow';
@@ -41,7 +42,7 @@ export async function quoteSwap(
   let isApproximation = false;
 
   if (side === 'SELL') {
-    const amountRaw = Math.floor(amount * Math.pow(10, baseTokenInfo.decimals)).toString();
+    const amountRaw = toRawAmount(amount, baseTokenInfo.decimals);
     try {
       quoteResponse = await dflow.getQuote(inputToken.address, outputToken.address, amountRaw, slippageBps);
     } catch (error) {
@@ -85,8 +86,7 @@ export async function quoteSwap(
   // Generate quote ID and cache a self-contained quote object (quoteCache returns only
   // the cached value at execute time, so everything needed must live in it)
   const quoteId = uuidv4();
-  quoteCache.set(quoteId, {
-    connector: 'dflow',
+  quoteCache.set(quoteId, 'dflow', {
     network,
     inputToken,
     outputToken,

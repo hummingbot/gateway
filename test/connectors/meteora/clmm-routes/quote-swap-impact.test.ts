@@ -60,16 +60,6 @@ describe('meteora CLMM quote-swap price impact', () => {
     expect(quote.priceImpactPct).toBeCloseTo(3, 6);
   });
 
-  it('reports a percentage, not a fraction', async () => {
-    const { quoteSwap } = await import('../../../../src/connectors/meteora/clmm-routes/quoteSwap');
-
-    const quote = await quoteSwap('mainnet-beta', 'pool', 'SOL', 'SELL', SOLD);
-
-    // The units this whole issue is about: 3 means three percent, not three hundred.
-    expect(quote.priceImpactPct).toBeGreaterThan(1);
-    expect(quote.priceImpactPct).toBeLessThan(10);
-  });
-
   it('reports zero when the quote executes at spot', async () => {
     dlmmPool.getActiveBin.mockResolvedValueOnce({ pricePerToken: String(RECEIVED / SOLD) });
     const { quoteSwap } = await import('../../../../src/connectors/meteora/clmm-routes/quoteSwap');

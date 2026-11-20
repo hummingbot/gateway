@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 
 import { StatusResponseType } from '../../../schemas/chain-schema';
-import { logger } from '../../../services/logger';
+import { logger, redactUrl } from '../../../services/logger';
 import { Solana } from '../solana';
 import { getSolanaChainConfig } from '../solana.config';
 
@@ -20,9 +20,12 @@ export async function getSolanaStatus(fastify: FastifyInstance, network: string)
         rpcUrl = rpcProviderService.getHttpUrl() ?? rpcUrl;
       } catch (error) {
         // If provider URL generation fails, fall back to nodeURL
-        logger.warn(`Failed to get RPC provider URL, using nodeURL: ${error.message}`);
+        logger.warn(`Failed to get RPC provider URL, using nodeURL: ${redactUrl(error.message)}`);
       }
     }
+    // A provider URL carries its API key (Helius in the query, Infura and Chainstack in
+    // the path), and this route is not behind the API token.
+    rpcUrl = redactUrl(rpcUrl);
 
     const nativeCurrency = solana.config.nativeCurrencySymbol;
     const swapProvider = solana.config.swapProvider || '';
@@ -38,7 +41,8 @@ export async function getSolanaStatus(fastify: FastifyInstance, network: string)
       swapProvider,
     };
   } catch (error) {
-    logger.error(`Error getting Solana status: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(`Failed to get Solana status: ${error.message}`);
+    const message = redactUrl(error.message);
+    logger.error(`Error getting Solana status: ${message}`);
+    throw fastify.httpErrors.internalServerError(`Failed to get Solana status: ${message}`);
   }
 }

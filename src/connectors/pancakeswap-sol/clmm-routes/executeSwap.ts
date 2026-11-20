@@ -117,13 +117,7 @@ export async function executeSwap(
   // The slippage protection is handled by otherAmountThreshold
   const sqrtPriceLimitX64 = new BN(0);
 
-  // Get wallet keypair
-  const wallet = await solana.getWallet(walletAddress);
-  const walletPubkey = wallet.publicKey;
-
-  // Get priority fee
-  const priorityFeeInLamports = await solana.estimateGasPrice();
-  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
+  const walletPubkey = new PublicKey(walletAddress);
 
   // Build transaction
   const transaction = await buildSwapTransaction(
@@ -137,19 +131,15 @@ export async function executeSwap(
     sqrtPriceLimitX64,
     isBaseInput,
     600000,
-    priorityFeePerCU,
   );
 
-  // Sign transaction
-  transaction.sign([wallet]);
+  // The wallet chokepoint simulates, sets the compute budget and priority fee, and signs
+  // for the wallet's type (local keypair or Ledger).
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  // Retrying re-fetch; throws the shared landed-but-failed error, so txData means confirmed.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
-  // Simulate transaction
-  await solana.simulateWithErrorHandling(transaction);
-
-  // Send and confirm transaction
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-  if (confirmed && txData) {
+  if (txData) {
     const totalFee = txData.meta.fee;
 
     // Extract balance changes
@@ -175,10 +165,7 @@ export async function executeSwap(
       },
     };
   } else {
-    // A landed-but-failed transaction is terminal: fail loudly instead of returning
-    // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
-    await solana.throwIfLandedWithError(signature, txData);
-
+    // Confirmed, but not yet visible to the re-fetch: report it pending.
     return {
       signature,
       status: 0, // PENDING

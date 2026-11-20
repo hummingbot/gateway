@@ -1,10 +1,10 @@
-import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
+import { executeQuote } from '../../../../src/connectors/0x/router-routes/executeQuote';
+import { quoteSwap } from '../../../../src/connectors/0x/router-routes/quoteSwap';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 
-// Mock the quoteSwap and executeQuote functions
 jest.mock('../../../../src/connectors/0x/router-routes/quoteSwap', () => ({
   quoteSwap: jest.fn(),
 }));
@@ -21,24 +21,9 @@ const buildApp = async () => {
   return server;
 };
 
-const mockWETH = {
-  symbol: 'WETH',
-  address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
-  decimals: 18,
-};
+const WALLET = '0x1234567890123456789012345678901234567890';
 
-const mockUSDC = {
-  symbol: 'USDC',
-  address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-  decimals: 6,
-};
-
-const mockReceipt = {
-  transactionHash: '0xabcdef1234567890',
-  status: 1,
-};
-
-describe('POST /execute-swap', () => {
+describe('POST /execute-swap (0x)', () => {
   let server: any;
 
   beforeAll(async () => {
@@ -49,48 +34,9 @@ describe('POST /execute-swap', () => {
     await server.close();
   });
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should quote and execute a swap in one step for SELL side', async () => {
-    (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue('0x1234567890123456789012345678901234567890');
-
-    // Import the mocked functions
-    const { quoteSwap } = require('../../../../src/connectors/0x/router-routes/quoteSwap');
-    const { executeQuote } = require('../../../../src/connectors/0x/router-routes/executeQuote');
-
-    // Mock quoteSwap to return a quote response
-    quoteSwap.mockResolvedValue({
-      quoteId: 'test-quote-id',
-      tokenIn: mockWETH.address,
-      tokenOut: mockUSDC.address,
-      amountIn: 0.1,
-      amountOut: 150,
-      price: 1500,
-      slippagePct: 0.5,
-      priceWithSlippage: 1492.5,
-      minAmountOut: 149.25,
-      maxAmountIn: 0.1,
-      priceImpactPct: 0.1,
-      gasEstimate: '200000',
-      expirationTime: Date.now() + 30000,
-    });
-
-    // Mock executeQuote to return execution result
-    executeQuote.mockResolvedValue({
-      signature: mockReceipt.transactionHash,
-      status: 1,
-      data: {
-        tokenIn: mockWETH.address,
-        tokenOut: mockUSDC.address,
-        amountIn: 0.1,
-        amountOut: 150,
-        fee: 0.006,
-        baseTokenBalanceChange: -0.1,
-        quoteTokenBalanceChange: 150,
-      },
-    });
+  it('takes a firm quote for the wallet, then executes that quote', async () => {
+    (quoteSwap as jest.Mock).mockResolvedValue({ quoteId: 'firm-quote-id' });
+    (executeQuote as jest.Mock).mockResolvedValue({ signature: '0xabcdef', status: 1 });
 
     const response = await server.inject({
       method: 'POST',
@@ -98,72 +44,7 @@ describe('POST /execute-swap', () => {
       payload: {
         chainNetwork: 'ethereum-mainnet',
         connector: '0x',
-        walletAddress: '0x1234567890123456789012345678901234567890',
-        baseToken: 'WETH',
-        quoteToken: 'USDC',
-        amount: 0.1,
-        side: 'SELL',
-        slippagePct: 0.5,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    const body = parseWire(response.body);
-    expect(body).toHaveProperty('signature', mockReceipt.transactionHash);
-    expect(body).toHaveProperty('status', 1);
-    expect(Number(body.data.amountIn)).toBe(0.1);
-    expect(body.data).toHaveProperty('amountOut', 150);
-    expect(body.data).toHaveProperty('fee', 0.006);
-    expect(body.data).toHaveProperty('baseTokenBalanceChange', -0.1);
-    expect(body.data).toHaveProperty('quoteTokenBalanceChange', 150);
-    expect(body.data).toHaveProperty('tokenIn', mockWETH.address);
-    expect(body.data).toHaveProperty('tokenOut', mockUSDC.address);
-  });
-
-  it('should quote and execute a swap for BUY side', async () => {
-    // Import the mocked functions
-    const { quoteSwap } = require('../../../../src/connectors/0x/router-routes/quoteSwap');
-    const { executeQuote } = require('../../../../src/connectors/0x/router-routes/executeQuote');
-
-    // Mock quoteSwap to return a quote response for BUY side
-    quoteSwap.mockResolvedValue({
-      quoteId: 'test-quote-id-buy',
-      tokenIn: mockUSDC.address,
-      tokenOut: mockWETH.address,
-      amountIn: 150,
-      amountOut: 0.1,
-      price: 0.000667,
-      slippagePct: 0.5,
-      priceWithSlippage: 0.00067,
-      minAmountOut: 0.1,
-      maxAmountIn: 150.75,
-      priceImpactPct: 0.1,
-      gasEstimate: '200000',
-      expirationTime: Date.now() + 30000,
-    });
-
-    // Mock executeQuote to return execution result
-    executeQuote.mockResolvedValue({
-      signature: mockReceipt.transactionHash,
-      status: 1,
-      data: {
-        tokenIn: mockUSDC.address,
-        tokenOut: mockWETH.address,
-        amountIn: 150,
-        amountOut: 0.1,
-        fee: 0.006,
-        baseTokenBalanceChange: 0.1,
-        quoteTokenBalanceChange: -150,
-      },
-    });
-
-    const response = await server.inject({
-      method: 'POST',
-      url: '/execute-swap',
-      payload: {
-        chainNetwork: 'ethereum-mainnet',
-        connector: '0x',
-        walletAddress: '0x1234567890123456789012345678901234567890',
+        walletAddress: WALLET,
         baseToken: 'WETH',
         quoteToken: 'USDC',
         amount: 0.1,
@@ -173,42 +54,10 @@ describe('POST /execute-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = parseWire(response.body);
-    expect(body).toHaveProperty('signature', mockReceipt.transactionHash);
-    expect(body).toHaveProperty('status', 1);
-    expect(Number(body.data.amountIn)).toBe(150);
-    expect(body.data).toHaveProperty('amountOut', 0.1);
-    expect(body.data).toHaveProperty('tokenIn', mockUSDC.address);
-    expect(body.data).toHaveProperty('tokenOut', mockWETH.address);
-  });
-
-  it('should return 400 if token not found', async () => {
-    // Import the mocked functions
-    const { quoteSwap } = require('../../../../src/connectors/0x/router-routes/quoteSwap');
-
-    // Mock quoteSwap to throw a 400 error
-    quoteSwap.mockRejectedValue({
-      statusCode: 400,
-      message: 'Token not found: INVALID',
-    });
-
-    const response = await server.inject({
-      method: 'POST',
-      url: '/execute-swap',
-      payload: {
-        chainNetwork: 'ethereum-mainnet',
-        connector: '0x',
-        walletAddress: '0x1234567890123456789012345678901234567890',
-        baseToken: 'INVALID',
-        quoteToken: 'USDC',
-        amount: 0.1,
-        side: 'SELL',
-        slippagePct: 0.5,
-      },
-    });
-
-    expect(response.statusCode).toBe(400);
-    const body = parseWire(response.body);
-    expect(body).toHaveProperty('message', 'Token not found: INVALID');
+    // A firm quote (indicativePrice=false) with the wallet as taker — an indicative one
+    // carries no transaction to execute.
+    expect(quoteSwap).toHaveBeenCalledWith('mainnet', 'WETH', 'USDC', 0.1, 'BUY', 0.5, false, WALLET);
+    expect(executeQuote).toHaveBeenCalledWith(WALLET, 'mainnet', 'firm-quote-id');
+    expect(parseWire(response.body)).toMatchObject({ signature: '0xabcdef', status: 1 });
   });
 });

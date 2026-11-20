@@ -11,8 +11,11 @@ export const mockLogger = {
   debug: jest.fn(),
 };
 
-// redactUrl mock - returns URL as-is in tests
-export const mockRedactUrl = jest.fn((url: string) => url);
+// redactUrl mock - delegates to the production redactUrl helper while remaining a Jest spy
+export const mockRedactUrl = jest.fn((url: string) => {
+  const { redactUrl } = jest.requireActual('../../src/services/logger') as typeof import('../../src/services/logger');
+  return redactUrl(url);
+});
 
 // ConfigManagerV2 mock with dynamic config storage
 export const mockConfigStorage: Record<string, any> = {

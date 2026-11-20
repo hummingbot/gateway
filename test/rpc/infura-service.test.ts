@@ -1,109 +1,33 @@
 import { InfuraService } from '../../src/rpc/infura-service';
 
 describe('InfuraService', () => {
-  let infuraService: InfuraService;
   const testApiKey = 'test-infura-key-123';
 
-  beforeEach(() => {
-    infuraService = new InfuraService({ apiKey: testApiKey }, { chain: 'ethereum', network: 'mainnet', chainId: 1 });
-  });
+  const serviceFor = (chainId: number, network: string) =>
+    new InfuraService({ apiKey: testApiKey }, { chain: 'ethereum', network, chainId });
 
   describe('getHttpUrl', () => {
-    it('should return mainnet Infura URL for Ethereum mainnet (chainID 1)', () => {
-      const url = infuraService.getHttpUrl();
-
-      expect(url).toBe('https://mainnet.infura.io/v3/test-infura-key-123');
-    });
-
-    it('should return polygon URL for Polygon mainnet (chainID 137)', () => {
-      const polygonService = new InfuraService(
-        { apiKey: 'test-infura-key-123' },
-        { chain: 'ethereum', network: 'polygon', chainId: 137 },
-      );
-
-      const url = polygonService.getHttpUrl();
-
-      expect(url).toBe('https://polygon-mainnet.infura.io/v3/test-infura-key-123');
-    });
-
-    it('should return arbitrum URL for Arbitrum mainnet (chainID 42161)', () => {
-      const arbitrumService = new InfuraService(
-        { apiKey: 'test-infura-key-123' },
-        { chain: 'ethereum', network: 'arbitrum', chainId: 42161 },
-      );
-
-      const url = arbitrumService.getHttpUrl();
-
-      expect(url).toBe('https://arbitrum-mainnet.infura.io/v3/test-infura-key-123');
-    });
-
-    it('should return optimism URL for Optimism mainnet (chainID 10)', () => {
-      const optimismService = new InfuraService(
-        { apiKey: 'test-infura-key-123' },
-        { chain: 'ethereum', network: 'optimism', chainId: 10 },
-      );
-
-      const url = optimismService.getHttpUrl();
-
-      expect(url).toBe('https://optimism-mainnet.infura.io/v3/test-infura-key-123');
-    });
-
-    it('should return base URL for Base mainnet (chainID 8453)', () => {
-      const baseService = new InfuraService(
-        { apiKey: 'test-infura-key-123' },
-        { chain: 'ethereum', network: 'base', chainId: 8453 },
-      );
-
-      const url = baseService.getHttpUrl();
-
-      expect(url).toBe('https://base-mainnet.infura.io/v3/test-infura-key-123');
-    });
-
-    it('should return avalanche URL for Avalanche mainnet (chainID 43114)', () => {
-      const avalancheService = new InfuraService(
-        { apiKey: 'test-infura-key-123' },
-        { chain: 'ethereum', network: 'avalanche', chainId: 43114 },
-      );
-
-      const url = avalancheService.getHttpUrl();
-
-      expect(url).toBe('https://avalanche-mainnet.infura.io/v3/test-infura-key-123');
-    });
-
-    it('should return celo URL for Celo mainnet (chainID 42220)', () => {
-      const celoService = new InfuraService(
-        { apiKey: 'test-infura-key-123' },
-        { chain: 'ethereum', network: 'celo', chainId: 42220 },
-      );
-
-      const url = celoService.getHttpUrl();
-
-      expect(url).toBe('https://celo-mainnet.infura.io/v3/test-infura-key-123');
-    });
-
-    it('should return sepolia URL for Sepolia testnet (chainID 11155111)', () => {
-      const sepoliaService = new InfuraService(
-        { apiKey: 'test-infura-key-123' },
-        { chain: 'ethereum', network: 'sepolia', chainId: 11155111 },
-      );
-
-      const url = sepoliaService.getHttpUrl();
-
-      expect(url).toBe('https://sepolia.infura.io/v3/test-infura-key-123');
+    it.each([
+      [1, 'mainnet', 'mainnet'],
+      [137, 'polygon', 'polygon-mainnet'],
+      [42161, 'arbitrum', 'arbitrum-mainnet'],
+      [10, 'optimism', 'optimism-mainnet'],
+      [8453, 'base', 'base-mainnet'],
+      [43114, 'avalanche', 'avalanche-mainnet'],
+      [42220, 'celo', 'celo-mainnet'],
+      [11155111, 'sepolia', 'sepolia'],
+    ])('chainID %i (%s) uses the %s endpoint', (chainId, network, subdomain) => {
+      expect(serviceFor(chainId, network).getHttpUrl()).toBe(`https://${subdomain}.infura.io/v3/${testApiKey}`);
     });
 
     it('should throw error for unsupported chainID', () => {
-      expect(() => {
-        new InfuraService({ apiKey: 'test-infura-key-123' }, { chain: 'ethereum', network: 'unknown', chainId: 99999 });
-      }).toThrow('Infura network not supported for chainID: 99999');
+      expect(() => serviceFor(99999, 'unknown')).toThrow('Infura network not supported for chainID: 99999');
     });
   });
 
   describe('getWebSocketUrl', () => {
     it('should return null (WebSocket not used for Ethereum)', () => {
-      const wsUrl = infuraService.getWebSocketUrl();
-
-      expect(wsUrl).toBeNull();
+      expect(serviceFor(1, 'mainnet').getWebSocketUrl()).toBeNull();
     });
   });
 });

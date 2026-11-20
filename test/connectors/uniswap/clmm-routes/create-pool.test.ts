@@ -1,5 +1,6 @@
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 
@@ -56,8 +57,10 @@ describe('POST /create-pool (Uniswap V3 CLMM)', () => {
       },
     });
 
-    // The connector rejects an unsupported tier with a 400.
     expect(response.statusCode).toBe(400);
+    expect(parseWire(response.body).message).toBe(
+      'Invalid fee tier 700. Must be one of 100 (0.01%), 500 (0.05%), 3000 (0.30%), 10000 (1.00%)',
+    );
   });
 
   it('rejects baseToken == quoteToken with a clear 400', async () => {

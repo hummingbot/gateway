@@ -1,12 +1,10 @@
-import fs from 'fs';
-import path from 'path';
-
 import { priceImpactPercentFromFraction } from '../../src/connectors/router-utils';
 
 // `QuoteSwapResponse.priceImpactPct` is documented as "Estimated price impact percentage
 // (0-100)". Jupiter's field of the same name is a decimal fraction, and it was passed
 // through unconverted — 100x low, in the direction that makes a bad trade look harmless.
-// Any guard of the form `if (priceImpactPct > 5) reject` could never fire.
+// Any guard of the form `if (priceImpactPct > 5) reject` could never fire. The Jupiter
+// and DFlow quote route tests check the converted value in their responses.
 
 describe('priceImpactPercentFromFraction', () => {
   it('reads a fraction as the percentage the schema documents', () => {
@@ -26,44 +24,5 @@ describe('priceImpactPercentFromFraction', () => {
     expect(priceImpactPercentFromFraction(undefined)).toBe(0);
     expect(priceImpactPercentFromFraction(null)).toBe(0);
     expect(priceImpactPercentFromFraction('')).toBe(0);
-  });
-});
-
-// The regression is a passthrough, not a wrong formula: `parseFloat(x.priceImpactPct)`
-// straight into the unified response. This catches that shape wherever it reappears,
-// including in a connector that does not exist yet.
-describe('no connector publishes a router fraction as a percentage', () => {
-  const connectorsDir = path.join(__dirname, '../../src/connectors');
-
-  const sourceFiles = (dir: string): string[] =>
-    fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) return sourceFiles(full);
-      return entry.isFile() && entry.name.endsWith('.ts') ? [full] : [];
-    });
-
-  it('converts every fraction it publishes', () => {
-    const offenders: string[] = [];
-    for (const file of sourceFiles(connectorsDir)) {
-      for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
-        // The unified field being assigned a parsed router fraction, with no conversion.
-        const assignment = line.match(/^\s*priceImpactPct:\s*(.+)$/);
-        if (!assignment) continue;
-        const rhs = assignment[1];
-        if (/parseFloat\(/.test(rhs) && !/priceImpactPercentFromFraction|\*\s*100/.test(rhs)) {
-          offenders.push(`${path.relative(connectorsDir, file)}: ${line.trim()}`);
-        }
-      }
-    }
-
-    expect(offenders).toEqual([]);
-  });
-
-  it('finds assignments to check, so the check cannot pass vacuously', () => {
-    const assignments = sourceFiles(connectorsDir).filter((file) =>
-      /priceImpactPct:/.test(fs.readFileSync(file, 'utf8')),
-    );
-
-    expect(assignments.length).toBeGreaterThanOrEqual(8);
   });
 });

@@ -1,7 +1,8 @@
 import { FastifyInstance } from 'fastify';
 
 import { BalanceResponseType } from '../../../schemas/chain-schema';
-import { logger } from '../../../services/logger';
+import { logger, redactUrl } from '../../../services/logger';
+import { balanceResponse } from '../../wallet-balances';
 import { Ethereum } from '../ethereum';
 
 export async function getEthereumBalances(
@@ -12,13 +13,14 @@ export async function getEthereumBalances(
 ): Promise<BalanceResponseType> {
   try {
     const ethereum = await Ethereum.getInstance(network);
-    const balances = await ethereum.getBalances(address, tokens);
-    return { balances };
+    return balanceResponse(await ethereum.getTokenBalances(address, tokens));
   } catch (error) {
-    logger.error(`Error getting balances: ${error.message}`);
+    const message = redactUrl(error.message);
+    logger.error(`Error getting balances: ${message}`);
     if (error.statusCode === 429) {
+      error.message = message;
       throw error;
     }
-    throw fastify.httpErrors.internalServerError(`Failed to get balances: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(`Failed to get balances: ${message}`);
   }
 }

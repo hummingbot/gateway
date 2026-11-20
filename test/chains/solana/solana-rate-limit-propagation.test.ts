@@ -53,11 +53,6 @@ describe('Solana Rate Limit Error Propagation', () => {
     solana = await Solana.getInstance('mainnet-beta');
     mockConnection = solana.connection as jest.Mocked<Connection>;
 
-    // Mock heliusService to avoid WebSocket checks
-    (solana as any).heliusService = {
-      isWebSocketConnected: jest.fn().mockReturnValue(false),
-    };
-
     // Mock prepareTx to return the transaction as-is
     jest.spyOn(solana as any, 'prepareTx').mockImplementation((tx: any) => {
       tx.recentBlockhash = 'test-blockhash';
@@ -153,7 +148,7 @@ describe('Solana Rate Limit Error Propagation', () => {
   });
 
   describe('Transaction Polling - Rate Limit Propagation', () => {
-    it('should propagate 429 error during polling loop', async () => {
+    it('reports a 429 during the polling loop as an unconfirmed send with its signature', async () => {
       const error429 = new Error('Too many requests');
       (error429 as any).statusCode = 429;
 
@@ -168,13 +163,19 @@ describe('Solana Rate Limit Error Propagation', () => {
       mockConnection.getSignatureStatuses = jest.fn().mockRejectedValue(error429);
 
       // Test _sendAndConfirmRawTransaction directly
+      // The transaction is out, so this is not the pre-broadcast RATE_LIMITED a client may
+      // simply retry: it is an unconfirmed send, and the callers turn that into
+      // TRANSACTION_TIMEOUT with the signature to reconcile.
       const serializedTx = Buffer.from([1, 2, 3]); // Dummy serialized transaction
-      await expect((solana as any)._sendAndConfirmRawTransaction(serializedTx)).rejects.toMatchObject({
-        statusCode: 429,
+      await expect((solana as any)._sendAndConfirmRawTransaction(serializedTx)).resolves.toEqual({
+        confirmed: false,
+        signature: 'test-signature',
+        txData: null,
+        interruptedBy: 'the RPC rate-limited the status checks',
       });
     });
 
-    it('should propagate 429 error from getBlockHeight during polling', async () => {
+    it('reports a 429 from getBlockHeight during polling the same way', async () => {
       const error429 = new Error('Too many requests');
       (error429 as any).statusCode = 429;
 
@@ -192,8 +193,11 @@ describe('Solana Rate Limit Error Propagation', () => {
       mockConnection.getBlockHeight = jest.fn().mockRejectedValue(error429);
 
       const serializedTx = Buffer.from([1, 2, 3]);
-      await expect((solana as any)._sendAndConfirmRawTransaction(serializedTx)).rejects.toMatchObject({
-        statusCode: 429,
+      await expect((solana as any)._sendAndConfirmRawTransaction(serializedTx)).resolves.toEqual({
+        confirmed: false,
+        signature: 'test-signature',
+        txData: null,
+        interruptedBy: 'the RPC rate-limited the status checks',
       });
     });
 
@@ -231,45 +235,6 @@ describe('Solana Rate Limit Error Propagation', () => {
       expect(result.signature).toBeTruthy();
       expect(result.confirmed).toBe(true);
       expect(attempts).toBeGreaterThanOrEqual(3);
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle 429 error without statusCode property', async () => {
-      // Error has 429 in message but no statusCode property
-      const error = new Error('429 Too Many Requests');
-
-      mockConnection.getBalance = jest.fn().mockRejectedValue(error);
-
-      // Interceptor should add statusCode
-      await expect(solana.getBalances('11111111111111111111111111111112', ['SOL'])).rejects.toMatchObject({
-        statusCode: 429,
-      });
-    });
-
-    it('should handle compound errors with 429', async () => {
-      const error = {
-        statusCode: 429,
-        code: 'RATE_LIMITED',
-        message: 'Too many requests for specific RPC call',
-      };
-
-      mockConnection.getBalance = jest.fn().mockRejectedValue(error);
-
-      await expect(solana.getBalances('11111111111111111111111111111112', ['SOL'])).rejects.toMatchObject({
-        statusCode: 429,
-      });
-    });
-
-    it('should not throw for non-429 status codes (returns 0 balance)', async () => {
-      const error500 = new Error('Internal Server Error');
-      (error500 as any).statusCode = 500;
-
-      mockConnection.getBalance = jest.fn().mockRejectedValue(error500);
-
-      // Non-429 errors should return 0 for SOL balance, not throw
-      const result = await solana.getBalances('11111111111111111111111111111112', ['SOL']);
-      expect(result.SOL).toBe(0);
     });
   });
 });

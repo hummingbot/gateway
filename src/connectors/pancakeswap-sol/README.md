@@ -269,10 +269,11 @@ const instructionData = coder.instruction.encode('swap_v2', {
 - Builds TransactionInstruction with all 13 required accounts
 
 #### Transaction Construction
-- Adds ComputeBudgetProgram instructions (compute units, priority fee)
+- Adds a compute-unit limit for simulation
 - Builds VersionedTransaction with TransactionMessage
-- Signs with wallet keypair
-- Simulates before sending
+- Hands it to `Solana.sendAndConfirmTransactionForWallet`, which simulates, sets the
+  compute budget and priority fee, and signs for the wallet's type (local keypair or
+  Ledger)
 
 ### Price Calculations
 

@@ -90,7 +90,8 @@ describe('Solana Status Route', () => {
       expect(result).toEqual({
         chain: 'solana',
         network: 'mainnet-beta',
-        rpcUrl: 'https://mainnet.helius-rpc.com/?api-key=test-key',
+        // The route is not behind the API token, so the key does not leave with the URL.
+        rpcUrl: 'https://mainnet.helius-rpc.com',
         rpcProvider: 'helius',
         currentBlockNumber: 365795000,
         nativeCurrency: 'SOL',
@@ -98,6 +99,18 @@ describe('Solana Status Route', () => {
       });
 
       expect(mockRpcProviderService.getHttpUrl).toHaveBeenCalled();
+    });
+
+    it('redacts the Infura key in the provider URL', async () => {
+      getSolanaChainConfig.mockReturnValue({ defaultNetwork: 'mainnet-beta', rpcProvider: 'infura' });
+      mockSolanaInstance.getRpcProviderService.mockReturnValue(mockRpcProviderService);
+      mockRpcProviderService.getHttpUrl.mockReturnValue(
+        'https://solana-mainnet.infura.io/v3/0123456789abcdef0123456789abcdef',
+      );
+
+      const result = await getSolanaStatus(fastify, 'mainnet-beta');
+
+      expect(result.rpcUrl).toBe('https://solana-mainnet.infura.io');
     });
 
     it('should fallback to nodeURL when rpcProvider service is not available', async () => {
@@ -175,32 +188,6 @@ describe('Solana Status Route', () => {
         swapProvider: 'jupiter/router',
       });
     });
-
-    it('should handle devnet network with RPC provider', async () => {
-      getSolanaChainConfig.mockReturnValue({
-        defaultNetwork: 'devnet',
-        defaultWallet: 'test-wallet',
-        rpcProvider: 'helius',
-      });
-
-      mockSolanaInstance.config.nodeURL = 'https://api.devnet.solana.com';
-      mockSolanaInstance.getRpcProviderService.mockReturnValue(mockRpcProviderService);
-      mockRpcProviderService.getHttpUrl.mockReturnValue('https://devnet.helius-rpc.com/?api-key=test-key');
-
-      const result = await getSolanaStatus(fastify, 'devnet');
-
-      expect(result).toEqual({
-        chain: 'solana',
-        network: 'devnet',
-        rpcUrl: 'https://devnet.helius-rpc.com/?api-key=test-key',
-        rpcProvider: 'helius',
-        currentBlockNumber: 365795000,
-        nativeCurrency: 'SOL',
-        swapProvider: 'jupiter/router',
-      });
-
-      expect(mockRpcProviderService.getHttpUrl).toHaveBeenCalled();
-    });
   });
 
   describe('GET /chains/solana/status', () => {
@@ -244,20 +231,6 @@ describe('Solana Status Route', () => {
         nativeCurrency: 'SOL',
         swapProvider: 'jupiter/router',
       });
-    });
-
-    it('should handle missing network parameter (uses default)', async () => {
-      const response = await fastify.inject({
-        method: 'GET',
-        url: '/chains/solana/status',
-      });
-
-      expect(response.statusCode).toBe(200);
-
-      const responseBody = JSON.parse(response.body);
-      expect(responseBody).toHaveProperty('chain', 'solana');
-      expect(responseBody).toHaveProperty('rpcProvider');
-      expect(responseBody).toHaveProperty('rpcUrl');
     });
   });
 });

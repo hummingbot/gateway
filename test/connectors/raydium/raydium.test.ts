@@ -47,11 +47,17 @@ jest.mock('../../../src/connectors/raydium/raydium.utils', () => ({
 }));
 
 // Import after mocks
-import { Raydium as RaydiumSDK, TxVersion, getPdaPersonalPositionAddress } from '@raydium-io/raydium-sdk-v2';
+import {
+  CLMM_PROGRAM_ID,
+  Raydium as RaydiumSDK,
+  TxVersion,
+  getPdaPersonalPositionAddress,
+} from '@raydium-io/raydium-sdk-v2';
 
 import { Solana } from '../../../src/chains/solana/solana';
 import { Raydium } from '../../../src/connectors/raydium/raydium';
 import { RaydiumConfig } from '../../../src/connectors/raydium/raydium.config';
+import { isValidClmm } from '../../../src/connectors/raydium/raydium.utils';
 import { logger } from '../../../src/services/logger';
 
 describe('Raydium', () => {
@@ -198,23 +204,6 @@ describe('Raydium', () => {
       expect(logger.info).toHaveBeenCalledWith('Raydium SDK reinitialized with owner');
     });
 
-    it('should update the owner property', async () => {
-      expect((raydiumInstance as any).owner).toBeUndefined();
-
-      await raydiumInstance.setOwner(mockOwner);
-
-      expect((raydiumInstance as any).owner).toBe(mockOwner);
-    });
-
-    it('should update the raydiumSDK instance', async () => {
-      const newMockSDK = { ...mockRaydiumSDK, newInstance: true };
-      (RaydiumSDK.load as jest.Mock).mockResolvedValueOnce(newMockSDK);
-
-      await raydiumInstance.setOwner(mockOwner);
-
-      expect(raydiumInstance.raydiumSDK).toBe(newMockSDK);
-    });
-
     it('should handle setOwner errors', async () => {
       const mockError = new Error('Failed to reinitialize');
       (RaydiumSDK.load as jest.Mock).mockRejectedValueOnce(mockError);
@@ -239,55 +228,6 @@ describe('Raydium', () => {
     });
   });
 
-  describe('transaction execution', () => {
-    let raydiumInstance: Raydium;
-
-    beforeEach(async () => {
-      raydiumInstance = await Raydium.getInstance('mainnet-beta');
-    });
-
-    it('should execute transaction successfully', async () => {
-      const mockExecuteFunc = jest.fn().mockResolvedValue({ txId: 'test-tx-id' });
-
-      const result = await raydiumInstance.executeTransaction(mockExecuteFunc);
-
-      expect(result).toBe('test-tx-id');
-      expect(logger.info).toHaveBeenCalledWith('Transaction executed successfully: test-tx-id');
-    });
-
-    it('should handle insufficient funds error', async () => {
-      const mockExecuteFunc = jest.fn().mockRejectedValue(new Error('insufficient funds for rent'));
-
-      await expect(raydiumInstance.executeTransaction(mockExecuteFunc)).rejects.toThrow(
-        'Insufficient SOL balance for transaction fees',
-      );
-    });
-
-    it('should handle slippage error', async () => {
-      const mockExecuteFunc = jest.fn().mockRejectedValue(new Error('slippage tolerance exceeded'));
-
-      await expect(raydiumInstance.executeTransaction(mockExecuteFunc)).rejects.toThrow(
-        'Transaction failed due to slippage. Try increasing slippage tolerance.',
-      );
-    });
-
-    it('should handle blockhash error', async () => {
-      const mockExecuteFunc = jest.fn().mockRejectedValue(new Error('blockhash not found'));
-
-      await expect(raydiumInstance.executeTransaction(mockExecuteFunc)).rejects.toThrow(
-        'Transaction expired. Please try again.',
-      );
-    });
-
-    it('should rethrow unknown errors', async () => {
-      const mockError = new Error('Unknown error');
-      const mockExecuteFunc = jest.fn().mockRejectedValue(mockError);
-
-      await expect(raydiumInstance.executeTransaction(mockExecuteFunc)).rejects.toThrow('Unknown error');
-      expect(logger.error).toHaveBeenCalledWith('Transaction execution failed:', mockError);
-    });
-  });
-
   describe('pool methods', () => {
     let raydiumInstance: Raydium;
 
@@ -297,7 +237,7 @@ describe('Raydium', () => {
 
     describe('getClmmPoolInfo', () => {
       it('should return CLMM pool info', async () => {
-        const mockPoolAddress = 'test-pool-address';
+        const mockPoolAddress = '2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv';
         const mockRpcData = {
           mintA: { toString: () => 'token-a' },
           mintB: { toString: () => 'token-b' },
@@ -309,27 +249,72 @@ describe('Raydium', () => {
           ammConfig: 'config-address',
         };
 
+        // The AMM config account carries the trade fee rate, in millionths, at offset 47.
+        const configData = Buffer.alloc(100);
+        configData.writeUInt32LE(2500, 47);
+
         mockRaydiumSDK.clmm.getRpcClmmPoolInfo.mockResolvedValue(mockRpcData);
-        mockConnection.getAccountInfo.mockResolvedValue({
-          data: Buffer.from(new Array(100).fill(0)),
-        });
-        mockConnection.getTokenAccountBalance.mockResolvedValue({
-          value: { uiAmount: 1000 },
-        });
+        mockConnection.getAccountInfo
+          .mockResolvedValueOnce({ owner: CLMM_PROGRAM_ID, data: Buffer.alloc(0) })
+          .mockResolvedValueOnce({ owner: CLMM_PROGRAM_ID, data: configData });
+        mockConnection.getTokenAccountBalance
+          .mockResolvedValueOnce({ value: { uiAmount: 1000 } })
+          .mockResolvedValueOnce({ value: { uiAmount: 150500 } });
 
         const result = await raydiumInstance.getClmmPoolInfo(mockPoolAddress);
 
+        expect(mockConnection.getAccountInfo).toHaveBeenLastCalledWith('config-address');
         expect(result).toEqual({
           address: mockPoolAddress,
           baseTokenAddress: 'token-a',
           quoteTokenAddress: 'token-b',
           binStep: 64,
-          feePct: 0, // Updated to match actual behavior
+          feePct: 0.25,
           price: 150.5,
           baseTokenAmount: 1000,
-          quoteTokenAmount: 1000,
+          quoteTokenAmount: 150500,
           activeBinId: 100,
         });
+      });
+
+      it('should not read a pool another program owns, though it decodes as one', async () => {
+        // PancakeSwap's Solana CLMM shares Raydium's account layout.
+        mockRaydiumSDK.clmm.getRpcClmmPoolInfo.mockClear();
+        (isValidClmm as jest.Mock).mockReturnValueOnce(false);
+        mockConnection.getAccountInfo.mockResolvedValue({
+          owner: new PublicKey('HpNfyc2Saw7RKkQd8nEL4khUcuPhQ7WwY1B2qjx8jxFq'),
+          data: Buffer.alloc(1544),
+        });
+
+        const result = await raydiumInstance.getClmmPoolInfo('4QU2NpRaqmKMvPSwVKQDeW4V6JFEKJdkzbzdauumD9qN');
+
+        expect(result).toBeNull();
+        expect(isValidClmm).toHaveBeenCalledWith('HpNfyc2Saw7RKkQd8nEL4khUcuPhQ7WwY1B2qjx8jxFq');
+        expect(mockRaydiumSDK.clmm.getRpcClmmPoolInfo).not.toHaveBeenCalled();
+      });
+
+      it('throws, naming the config and the pool, when the AMM config read fails', async () => {
+        const poolAddress = '2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv';
+        mockRaydiumSDK.clmm.getRpcClmmPoolInfo.mockResolvedValue({ ammConfig: 'config-address' });
+        mockConnection.getAccountInfo
+          .mockResolvedValueOnce({ owner: CLMM_PROGRAM_ID, data: Buffer.alloc(0) })
+          .mockRejectedValueOnce(new Error('429 Too Many Requests'));
+
+        await expect(raydiumInstance.getClmmPoolInfo(poolAddress)).rejects.toThrow(
+          `could not read Raydium CLMM config config-address for pool ${poolAddress}: 429 Too Many Requests`,
+        );
+      });
+
+      it('throws when the AMM config account does not exist', async () => {
+        const poolAddress = '2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv';
+        mockRaydiumSDK.clmm.getRpcClmmPoolInfo.mockResolvedValue({ ammConfig: 'config-address' });
+        mockConnection.getAccountInfo
+          .mockResolvedValueOnce({ owner: CLMM_PROGRAM_ID, data: Buffer.alloc(0) })
+          .mockResolvedValueOnce(null);
+
+        await expect(raydiumInstance.getClmmPoolInfo(poolAddress)).rejects.toThrow(
+          `could not read Raydium CLMM config config-address for pool ${poolAddress}: account not found`,
+        );
       });
 
       it('should handle pool not found', async () => {
@@ -343,21 +328,16 @@ describe('Raydium', () => {
     });
 
     describe('getAmmPoolInfo', () => {
+      const AMM_V4 = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
+      const CPMM = new PublicKey('CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C');
+
       it('should return AMM pool info', async () => {
-        // Import the utility functions to mock them
-        const { isValidAmm, isValidClmm, isValidCpmm } = require('../../../src/connectors/raydium/raydium.utils');
-
-        const mockPoolAddress = 'amm-pool-address';
-        const mockPoolInfo = {
-          programId: '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8', // AMM program ID
-        };
-
-        // Mock the utility functions
-        isValidClmm.mockReturnValue(false);
+        const { isValidAmm, isValidCpmm } = require('../../../src/connectors/raydium/raydium.utils');
         isValidAmm.mockReturnValue(true);
         isValidCpmm.mockReturnValue(false);
 
-        mockRaydiumSDK.api.fetchPoolById.mockResolvedValue([mockPoolInfo]);
+        const mockPoolAddress = '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2';
+        mockConnection.getAccountInfo.mockResolvedValue({ owner: AMM_V4, data: Buffer.alloc(0) });
         mockRaydiumSDK.liquidity.getRpcPoolInfos.mockResolvedValue({
           [mockPoolAddress]: {
             baseMint: { toString: () => 'base-token' },
@@ -374,6 +354,7 @@ describe('Raydium', () => {
 
         const result = await raydiumInstance.getAmmPoolInfo(mockPoolAddress);
 
+        expect(isValidAmm).toHaveBeenCalledWith(AMM_V4.toBase58());
         expect(result).toEqual({
           address: mockPoolAddress,
           baseTokenAddress: 'base-token',
@@ -388,20 +369,12 @@ describe('Raydium', () => {
       });
 
       it('should return CPMM pool info', async () => {
-        // Import the utility functions to mock them
-        const { isValidAmm, isValidClmm, isValidCpmm } = require('../../../src/connectors/raydium/raydium.utils');
-
-        const mockPoolAddress = 'cpmm-pool-address';
-        const mockPoolInfo = {
-          programId: 'CPMDWBwJDtYax9qW7AyRuVC19Cc4L4Vcy4n2BHAbHkCW', // CPMM program ID
-        };
-
-        // Mock the utility functions
-        isValidClmm.mockReturnValue(false);
+        const { isValidAmm, isValidCpmm } = require('../../../src/connectors/raydium/raydium.utils');
         isValidAmm.mockReturnValue(false);
         isValidCpmm.mockReturnValue(true);
 
-        mockRaydiumSDK.api.fetchPoolById.mockResolvedValue([mockPoolInfo]);
+        const mockPoolAddress = '47hq28mcL7q5GhBg7epyGF2dnuJd4MKFt8QhT7CzYUp4';
+        mockConnection.getAccountInfo.mockResolvedValue({ owner: CPMM, data: Buffer.alloc(0) });
         mockRaydiumSDK.cpmm.getRpcPoolInfos.mockResolvedValue({
           [mockPoolAddress]: {
             mintA: { toString: () => 'base-token' },
@@ -417,6 +390,8 @@ describe('Raydium', () => {
 
         const result = await raydiumInstance.getAmmPoolInfo(mockPoolAddress);
 
+        // The fee lives on the config account, so the read asks for it.
+        expect(mockRaydiumSDK.cpmm.getRpcPoolInfos).toHaveBeenCalledWith([mockPoolAddress], true);
         expect(result).toEqual({
           address: mockPoolAddress,
           baseTokenAddress: 'base-token',
@@ -428,6 +403,76 @@ describe('Raydium', () => {
           quoteTokenAmount: 400,
           poolType: 'cpmm',
         });
+      });
+    });
+
+    describe('getAmmPoolFromRpc', () => {
+      const poolAddress = '47hq28mcL7q5GhBg7epyGF2dnuJd4MKFt8QhT7CzYUp4';
+
+      it('reads a CPMM pool with cpmm.getPoolInfoFromRpc, chosen by the account owner', async () => {
+        const { isValidAmm, isValidCpmm } = require('../../../src/connectors/raydium/raydium.utils');
+        isValidAmm.mockReturnValue(false);
+        isValidCpmm.mockReturnValue(true);
+        const owner = new PublicKey('CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C');
+        mockConnection.getAccountInfo.mockResolvedValue({ owner, data: Buffer.alloc(0) });
+        const fromRpc = { poolInfo: { id: poolAddress }, poolKeys: { id: poolAddress }, rpcData: { lpAmount: 1 } };
+        mockRaydiumSDK.cpmm.getPoolInfoFromRpc = jest.fn().mockResolvedValue(fromRpc);
+
+        const pool = await raydiumInstance.getAmmPoolFromRpc(poolAddress);
+
+        expect(isValidCpmm).toHaveBeenCalledWith(owner.toBase58());
+        expect(mockRaydiumSDK.cpmm.getPoolInfoFromRpc).toHaveBeenCalledWith(poolAddress);
+        expect(mockRaydiumSDK.liquidity.getPoolInfoFromRpc).not.toHaveBeenCalled();
+        expect(mockRaydiumSDK.api.fetchPoolById).not.toHaveBeenCalled();
+        expect(pool).toEqual({ poolType: 'cpmm', ...fromRpc });
+      });
+
+      it('reads an AMM v4 pool with liquidity.getPoolInfoFromRpc, chosen by the account owner', async () => {
+        const { isValidAmm, isValidCpmm } = require('../../../src/connectors/raydium/raydium.utils');
+        isValidAmm.mockReturnValue(true);
+        isValidCpmm.mockReturnValue(false);
+        mockConnection.getAccountInfo.mockResolvedValue({
+          owner: new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'),
+          data: Buffer.alloc(0),
+        });
+        mockRaydiumSDK.liquidity.getPoolInfoFromRpc.mockResolvedValue({
+          poolInfo: { id: poolAddress },
+          poolKeys: { id: poolAddress },
+          poolRpcData: { lpReserve: 1 },
+        });
+
+        const pool = await raydiumInstance.getAmmPoolFromRpc(poolAddress);
+
+        expect(mockRaydiumSDK.liquidity.getPoolInfoFromRpc).toHaveBeenCalledWith({ poolId: poolAddress });
+        expect(mockRaydiumSDK.api.fetchPoolById).not.toHaveBeenCalled();
+        expect(pool).toEqual({
+          poolType: 'amm',
+          poolInfo: { id: poolAddress },
+          poolKeys: { id: poolAddress },
+          rpcData: { lpReserve: 1 },
+        });
+      });
+
+      it('refuses a pool owned by neither AMM v4 nor CPMM', async () => {
+        const { isValidAmm, isValidCpmm } = require('../../../src/connectors/raydium/raydium.utils');
+        isValidAmm.mockReturnValue(false);
+        isValidCpmm.mockReturnValue(false);
+        mockConnection.getAccountInfo.mockResolvedValue({
+          owner: new PublicKey('CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'),
+          data: Buffer.alloc(0),
+        });
+
+        await expect(raydiumInstance.getAmmPoolFromRpc(poolAddress)).rejects.toThrow(
+          'owned by program CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK, which is neither Raydium AMM v4 nor Raydium CPMM',
+        );
+      });
+
+      it('refuses a pool account that does not exist', async () => {
+        mockConnection.getAccountInfo.mockResolvedValue(null);
+
+        await expect(raydiumInstance.getAmmPoolFromRpc(poolAddress)).rejects.toThrow(
+          `Pool account not found: ${poolAddress}`,
+        );
       });
     });
   });
@@ -518,28 +563,6 @@ describe('Raydium', () => {
       for (const [programId] of (getPdaPersonalPositionAddress as jest.Mock).mock.calls) {
         expect(programId.toBase58()).toBe(expectedProgramId);
       }
-    });
-  });
-
-  describe('property access', () => {
-    it('should have public solana property', async () => {
-      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
-      expect(raydiumInstance.solana).toBe(mockSolanaInstance);
-    });
-
-    it('should have public raydiumSDK property', async () => {
-      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
-      expect(raydiumInstance.raydiumSDK).toBe(mockRaydiumSDK);
-    });
-
-    it('should have public config property', async () => {
-      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
-      expect(raydiumInstance.config).toBe(RaydiumConfig.config);
-    });
-
-    it('should have public txVersion property', async () => {
-      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
-      expect(raydiumInstance.txVersion).toBe(TxVersion.V0);
     });
   });
 });

@@ -1,4 +1,5 @@
 import { BN } from '@coral-xyz/anchor';
+import { NATIVE_MINT } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
@@ -108,9 +109,9 @@ export async function removeLiquidity(
 
     // When SOL is base/quote, wallet receives: liquidity - tx fee
     // Add back the fee to get actual liquidity removed
-    if (tokenXSymbol === 'SOL') {
+    if (dlmmPool.tokenX.publicKey.equals(NATIVE_MINT)) {
       tokenXRemovedAmount += fee;
-    } else if (tokenYSymbol === 'SOL') {
+    } else if (dlmmPool.tokenY.publicKey.equals(NATIVE_MINT)) {
       tokenYRemovedAmount += fee;
     }
 

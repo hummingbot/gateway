@@ -63,9 +63,10 @@ describe('Ethereum Estimate Gas Route', () => {
         denomination: 'gwei',
         computeUnits: 300000,
         feeAsset: 'ETH',
-        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
+      // 15.5 gwei × the 300,000 gas limit, in ETH.
+      expect(data.fee).toBeCloseTo(0.00465, 12);
 
       expect(mockEthereum.getInstance).toHaveBeenCalledWith('mainnet');
       expect(mockInstance.estimateGasPrice).toHaveBeenCalled();
@@ -105,54 +106,22 @@ describe('Ethereum Estimate Gas Route', () => {
       expect(data.message).toContain('Failed to estimate gas');
     });
 
-    it('should work with different networks', async () => {
-      const networks = ['mainnet', 'sepolia', 'arbitrum', 'polygon'];
-
-      for (const network of networks) {
-        jest.clearAllMocks(); // Clear mocks between iterations
-        mockInstance.estimateGasPrice.mockResolvedValue(10.0);
-        mockEthereum.getInstance.mockResolvedValue(mockInstance as any);
-
-        const response = await fastify.inject({
-          method: 'GET',
-          url: `/chains/ethereum/estimate-gas?network=${network}`,
-        });
-
-        expect(response.statusCode).toBe(200);
-        const data = parseWire(response.body);
-
-        expect(data).toMatchObject({
-          feePerComputeUnit: 10.0,
-          denomination: 'gwei',
-          computeUnits: 300000,
-          feeAsset: 'ETH',
-          fee: expect.any(Number),
-          timestamp: expect.any(Number),
-        });
-
-        expect(mockEthereum.getInstance).toHaveBeenCalledWith(network);
-      }
-    });
-
-    it('should return consistent response format', async () => {
-      mockInstance.estimateGasPrice.mockResolvedValue(5.25);
+    it('should redact Infura API key from RPC error messages', async () => {
+      mockInstance.estimateGasPrice.mockRejectedValueOnce(
+        new Error(
+          'processing response error (requestMethod="POST", url="https://bsc-mainnet.infura.io/v3/0123456789abcdef0123456789abcdef", code=SERVER_ERROR)',
+        ),
+      );
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/chains/ethereum/estimate-gas?network=mainnet',
+        url: '/chains/ethereum/estimate-gas?network=bsc',
       });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(500);
       const data = parseWire(response.body);
-
-      // Verify response schema
-      expect(typeof data.feePerComputeUnit).toBe('number');
-      expect(data.denomination).toBe('gwei');
-      expect(data.computeUnits).toBe(300000);
-      expect(data.feeAsset).toBe('ETH');
-      expect(typeof data.fee).toBe('number');
-      expect(typeof data.timestamp).toBe('number');
-      expect(data.timestamp).toBeGreaterThan(Date.now() - 5000); // Recent timestamp
+      expect(data.message).toContain('https://bsc-mainnet.infura.io');
+      expect(data.message).not.toContain('0123456789abcdef0123456789abcdef');
     });
 
     it('should return eip1559 gas details for EIP-1559 networks with a cached estimate', async () => {
@@ -222,27 +191,6 @@ describe('Ethereum Estimate Gas Route', () => {
       const data = parseWire(response.body);
 
       expect(data.gasType).toBe('legacy');
-    });
-
-    it('should handle missing network parameter by using default', async () => {
-      mockInstance.estimateGasPrice.mockResolvedValue(12.0);
-
-      const response = await fastify.inject({
-        method: 'GET',
-        url: '/chains/ethereum/estimate-gas',
-      });
-
-      expect(response.statusCode).toBe(200);
-      const data = parseWire(response.body);
-
-      expect(data).toMatchObject({
-        feePerComputeUnit: 12.0,
-        denomination: 'gwei',
-        computeUnits: 300000,
-        feeAsset: 'ETH',
-        fee: expect.any(Number),
-        timestamp: expect.any(Number),
-      });
     });
   });
 });

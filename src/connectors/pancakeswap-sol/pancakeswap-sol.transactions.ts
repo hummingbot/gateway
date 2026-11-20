@@ -1,4 +1,9 @@
-import { NATIVE_MINT, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
+import {
+  NATIVE_MINT,
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountIdempotentInstruction,
+  createAssociatedTokenAccountInstruction,
+} from '@solana/spl-token';
 import {
   PublicKey,
   TransactionInstruction,
@@ -16,6 +21,7 @@ import {
   buildSwapV2Instruction,
   buildClosePositionInstruction,
   buildDecreaseLiquidityV2Instruction,
+  buildRewardAccountSetup,
   buildIncreaseLiquidityV2Instruction,
   buildOpenPositionWithToken22NftInstruction,
 } from './pancakeswap-sol.instructions';
@@ -32,20 +38,12 @@ export async function buildSwapTransaction(
   sqrtPriceLimitX64: BN,
   isBaseInput: boolean,
   computeUnits: number = 600000,
-  priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
   const instructions: TransactionInstruction[] = [];
 
-  // Add compute budget instructions
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
-
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    instructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
 
   // Detect token programs for input/output mints
   const [inputTokenProgram, outputTokenProgram] = await Promise.all([
@@ -54,8 +52,8 @@ export async function buildSwapTransaction(
   ]);
 
   // Get token accounts with correct token programs
-  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, false, inputTokenProgram);
-  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, false, outputTokenProgram);
+  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, true, inputTokenProgram);
+  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, true, outputTokenProgram);
 
   // Check if token accounts exist
   const [inputAccountInfo, outputAccountInfo] = await Promise.all([
@@ -66,8 +64,8 @@ export async function buildSwapTransaction(
   // Track if we're using WSOL (to close it after swap)
   const isInputSOL = inputMint.equals(NATIVE_MINT);
 
-  // Create input token account if needed
-  if (!inputAccountInfo) {
+  // Create input token account if needed; for native SOL, wrapSOL creates it.
+  if (!inputAccountInfo && !isInputSOL) {
     instructions.push(
       createAssociatedTokenAccountInstruction(
         walletPubkey, // payer
@@ -137,22 +135,14 @@ export async function buildClosePositionTransaction(
   positionNftMint: PublicKey,
   walletPubkey: PublicKey,
   computeUnits: number = 400000,
-  priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
   const closePositionIx = await buildClosePositionInstruction(solana, positionNftMint, walletPubkey);
 
   const instructions: TransactionInstruction[] = [];
 
-  // Add compute budget instructions
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
-
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    instructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
 
   // Add close position instruction
   instructions.push(closePositionIx);
@@ -196,25 +186,40 @@ export function buildUnwrapSolInstructions(
   return hasNativeSide ? [solana.unwrapSOL(walletPubkey)] : [];
 }
 
+/**
+ * The wallet's token accounts for a pool's two mints, created if they are missing.
+ *
+ * `decrease_liquidity_v2` pays into the wallet's associated token accounts and fails with
+ * AccountNotInitialized when one is not there. The wrapped-SOL one usually is not: every
+ * route here that pays out SOL closes it again to unwrap. The instruction is the
+ * idempotent one, so an account that already exists is left alone.
+ */
+export async function buildRecipientAccountSetup(
+  solana: Solana,
+  walletPubkey: PublicKey,
+  mints: string[],
+): Promise<TransactionInstruction[]> {
+  return Promise.all(
+    mints.map(async (address) => {
+      const mint = new PublicKey(address);
+      const tokenProgram = await getTokenProgramForMint(solana, mint);
+      const account = getAssociatedTokenAddressSync(mint, walletPubkey, true, tokenProgram);
+      return createAssociatedTokenAccountIdempotentInstruction(walletPubkey, account, walletPubkey, mint, tokenProgram);
+    }),
+  );
+}
+
 export async function buildTransactionWithInstructions(
   solana: Solana,
   walletPubkey: PublicKey,
   instructions: TransactionInstruction[],
   computeUnits: number = 600000,
-  priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
   const allInstructions: TransactionInstruction[] = [];
 
-  // Add compute budget instructions
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   allInstructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
-
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    allInstructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
 
   // Add provided instructions
   allInstructions.push(...instructions);
@@ -241,7 +246,6 @@ export async function buildRemoveLiquidityTransaction(
   amount1Min: BN,
   poolMints: string[],
   computeUnits: number = 600000,
-  priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
   const removeLiqIx = await buildDecreaseLiquidityV2Instruction(
     solana,
@@ -254,18 +258,13 @@ export async function buildRemoveLiquidityTransaction(
 
   const instructions: TransactionInstruction[] = [];
 
-  // Add compute budget instructions
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
 
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    instructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
-
-  // Add remove liquidity instruction
+  // The wallet's token and reward accounts, which the decrease pays into, then the decrease.
+  instructions.push(...(await buildRecipientAccountSetup(solana, walletPubkey, poolMints)));
+  instructions.push(...(await buildRewardAccountSetup(solana, positionNftMint, walletPubkey)));
   instructions.push(removeLiqIx);
 
   // What the program just paid out in WSOL, back to SOL.
@@ -292,7 +291,6 @@ export async function buildAddLiquidityTransaction(
   amount0Max: BN,
   amount1Max: BN,
   computeUnits: number = 600000,
-  priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
   // Get position account to extract pool info
   const [personalPosition] = PublicKey.findProgramAddressSync(
@@ -324,8 +322,8 @@ export async function buildAddLiquidityTransaction(
   ]);
 
   // Get token accounts
-  const token0Account = getAssociatedTokenAddressSync(token0Mint, walletPubkey, false, token0Program);
-  const token1Account = getAssociatedTokenAddressSync(token1Mint, walletPubkey, false, token1Program);
+  const token0Account = getAssociatedTokenAddressSync(token0Mint, walletPubkey, true, token0Program);
+  const token1Account = getAssociatedTokenAddressSync(token1Mint, walletPubkey, true, token1Program);
 
   // Check if token accounts exist
   const [token0AccountInfo, token1AccountInfo] = await Promise.all([
@@ -335,15 +333,9 @@ export async function buildAddLiquidityTransaction(
 
   const instructions: TransactionInstruction[] = [];
 
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
-
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    instructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
 
   // Handle token0 (create ATA if needed, wrap SOL if native)
   const isToken0SOL = token0Mint.equals(NATIVE_MINT);
@@ -404,7 +396,6 @@ export async function buildOpenPositionTransaction(
   baseFlag: boolean | null,
   liquidity: BN,
   computeUnits: number = 800000,
-  priorityFeePerCU?: number,
 ): Promise<{ transaction: VersionedTransaction; positionNftMint: Keypair }> {
   // Generate new keypair for NFT mint
   const positionNftMint = Keypair.generate();
@@ -426,8 +417,8 @@ export async function buildOpenPositionTransaction(
   ]);
 
   // Get token accounts
-  const token0Account = getAssociatedTokenAddressSync(token0Mint, walletPubkey, false, token0Program);
-  const token1Account = getAssociatedTokenAddressSync(token1Mint, walletPubkey, false, token1Program);
+  const token0Account = getAssociatedTokenAddressSync(token0Mint, walletPubkey, true, token0Program);
+  const token1Account = getAssociatedTokenAddressSync(token1Mint, walletPubkey, true, token1Program);
 
   // Check if token accounts exist
   const [token0AccountInfo, token1AccountInfo] = await Promise.all([
@@ -437,15 +428,9 @@ export async function buildOpenPositionTransaction(
 
   const instructions: TransactionInstruction[] = [];
 
+  // A limit for the pre-flight simulation only: the wallet chokepoint replaces it with
+  // one sized from that simulation, and adds the compute-unit price.
   instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
-
-  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
-    instructions.push(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: priorityFeePerCU,
-      }),
-    );
-  }
 
   // Handle token0 (create ATA if needed, wrap SOL if native)
   const isToken0SOL = token0Mint.equals(NATIVE_MINT);

@@ -1,6 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-
 jest.mock('../../src/connectors/meteora/clmm-routes/addLiquidity', () => ({
   addLiquidity: jest.fn().mockResolvedValue({ signature: 'sig', status: 0 }),
 }));
@@ -131,24 +128,77 @@ describe('the chain a liquidity route was given is the chain it acts on', () => 
     expect(response.statusCode).toBe(200);
     expect((meteoraClmmAddLiquidity as jest.Mock).mock.calls[0][0]).toBe('mainnet-beta');
   });
+});
 
-  /**
-   * The guard above is on one route; the hole was on fifteen. This is what stops a
-   * sixteenth from reopening it: a route that names one connector for one pool must
-   * resolve its selector through resolveChainNetwork, which checks the pair. Calling
-   * parseChainNetwork and keeping only `network` is exactly the shape of the bug.
-   */
-  it('leaves no liquidity route parsing its own chainNetwork', () => {
-    const dirs = ['src/trading/trading-amm-routes', 'src/trading/trading-clmm-routes'];
-    const offenders = dirs.flatMap((dir) => {
-      const abs = path.resolve(__dirname, '../..', dir);
-      return fs
-        .readdirSync(abs)
-        .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
-        .filter((f) => fs.readFileSync(path.join(abs, f), 'utf8').includes('const { network } = parseChainNetwork('))
-        .map((f) => `${dir}/${f}`);
+/**
+ * The guard above is on one route; the hole was on fifteen. This is what stops a
+ * sixteenth from reopening it: every liquidity route that takes a connector and a
+ * chainNetwork is sent a Solana connector with an Ethereum selector — a request that
+ * passes the schema — and must refuse it before any connector runs.
+ */
+describe('every liquidity route checks the connector against the chain', () => {
+  // A value that satisfies a property's schema, from its enum, type and bounds.
+  const sample = (spec: any): unknown => {
+    if (spec.enum) return spec.enum[0];
+    if (spec.anyOf) return sample(spec.anyOf[0]);
+    switch (spec.type) {
+      case 'number':
+      case 'integer':
+        return spec.minimum ?? (spec.exclusiveMinimum !== undefined ? spec.exclusiveMinimum + 1 : 1);
+      case 'boolean':
+        return true;
+      case 'array':
+        return [];
+      case 'object':
+        return {};
+      default:
+        return 'X';
+    }
+  };
+
+  const collectRoutes = async (plugin: any, prefix: string) => {
+    const routes: Array<{ method: string; url: string; part: 'body' | 'querystring'; schema: any }> = [];
+    const server = fastifyWithTypeProvider();
+    await server.register(require('@fastify/sensible'));
+    server.addHook('onRoute', (route) => {
+      for (const part of ['body', 'querystring'] as const) {
+        const schema: any = route.schema?.[part];
+        if (route.method !== 'HEAD' && schema?.properties?.connector && schema.properties.chainNetwork) {
+          routes.push({ method: [route.method].flat()[0], url: route.url, part, schema });
+        }
+      }
     });
+    await server.register(plugin, { prefix });
+    await server.ready();
+    return { server, routes };
+  };
 
-    expect(offenders).toEqual([]);
+  it.each([
+    [tradingClmmRoutes, '/trading/clmm'],
+    [tradingAmmRoutes, '/trading/amm'],
+  ])('%#: refuses a Solana connector on an Ethereum selector, on every route', async (plugin, prefix) => {
+    const { server, routes } = await collectRoutes(plugin, prefix);
+    expect(routes.length).toBeGreaterThan(5);
+
+    const answers: Record<string, string> = {};
+    for (const { method, url, part, schema } of routes) {
+      const request: Record<string, unknown> = {};
+      for (const field of schema.required ?? []) request[field] = sample(schema.properties[field]);
+      Object.assign(request, { connector: 'meteora', chainNetwork: 'ethereum-mainnet' });
+
+      const response = await server.inject({
+        method: method as any,
+        url,
+        ...(part === 'body' ? { payload: request } : { query: request as Record<string, string> }),
+      });
+      answers[`${method} ${url}`] = `${response.statusCode} ${response.body}`;
+    }
+
+    for (const [route, answer] of Object.entries(answers)) {
+      expect(`${route} → ${answer}`).toMatch(
+        /→ 400 .*(runs on solana, not ethereum|Unsupported Ethereum \w+ connector: meteora)/,
+      );
+    }
+    await server.close();
   });
 });

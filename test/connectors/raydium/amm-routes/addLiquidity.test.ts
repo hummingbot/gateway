@@ -84,20 +84,8 @@ const mockPoolKeys = {
   // Mock pool keys
 };
 
-const mockAmmPoolInfo = {
-  address: mockPoolAddress,
-  baseTokenAddress: mockSOL.address,
-  quoteTokenAddress: mockUSDC.address,
-  feePct: 0.0025,
-  price: 150,
-  baseTokenAmount: 1000,
-  quoteTokenAmount: 150000,
-  poolType: 'amm',
-  lpMint: {
-    address: 'lp-mint-address',
-    decimals: 9,
-  },
-};
+// Pool state as the connector reads it from the chain
+const mockPoolFromRpc = { poolType: 'amm', poolInfo: mockPoolInfo, poolKeys: mockPoolKeys, rpcData: {} };
 
 const mockVersionedTransaction = () =>
   new VersionedTransaction(
@@ -134,8 +122,7 @@ const buildSolanaMock = (overrides: any = {}) => ({
 
 const buildRaydiumMock = (overrides: any = {}) => ({
   setOwner: jest.fn().mockResolvedValue(undefined),
-  getAmmPoolInfo: jest.fn().mockResolvedValue(mockAmmPoolInfo),
-  getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, mockPoolKeys]),
+  getAmmPoolFromRpc: jest.fn().mockResolvedValue(mockPoolFromRpc),
   raydiumSDK: {
     liquidity: {
       addLiquidity: jest.fn().mockResolvedValue({ transaction: mockVersionedTransaction() }),
@@ -257,7 +244,7 @@ describe('POST /add-liquidity', () => {
     expect(body.data.quoteTokenAmountAdded).toBe(0.848971);
   });
 
-  it('should handle base-limited liquidity addition', async () => {
+  it('fixes the base side and bounds the quote side by the quoted amount when base limits', async () => {
     const { quoteLiquidity } = require('../../../../src/connectors/raydium/amm-routes/quoteLiquidity');
     quoteLiquidity.mockResolvedValue({
       baseLimited: true,
@@ -291,7 +278,13 @@ describe('POST /add-liquidity', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalled();
+    // The user's 1 SOL is the fixed side; the quote side may reach the quoted 150 USDC
+    // plus 1% slippage, never the 200 offered, and must not fall below 150 minus 1%.
+    const [args] = mockRaydiumInstance.raydiumSDK.liquidity.addLiquidity.mock.calls[0];
+    expect(args.fixedSide).toBe('a');
+    expect(args.amountInA.raw.toString()).toBe('1000000000');
+    expect(args.amountInB.raw.toString()).toBe('151500000');
+    expect(args.otherAmountMin.raw.toString()).toBe('148500000');
   });
 
   it('should return an error when sending the transaction fails', async () => {
@@ -328,142 +321,5 @@ describe('POST /add-liquidity', () => {
 
     expect(response.statusCode).toBe(500);
     expect(mockRaydiumInstance.setOwner).toHaveBeenCalled();
-  });
-
-  it('should handle pool not found error', async () => {
-    const { quoteLiquidity } = require('../../../../src/connectors/raydium/amm-routes/quoteLiquidity');
-    quoteLiquidity.mockResolvedValue({
-      baseLimited: true,
-      baseTokenAmount: 1,
-      quoteTokenAmount: 150,
-      baseTokenAmountMax: 1.01,
-      quoteTokenAmountMax: 151.5,
-      lpTokenAmount: 12.24,
-    });
-
-    const mockSolanaInstance = buildSolanaMock();
-    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
-
-    const mockRaydiumInstance = buildRaydiumMock({
-      getAmmPoolInfo: jest.fn().mockResolvedValue(null),
-      getPoolfromAPI: jest.fn().mockResolvedValue(null),
-    });
-    (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
-
-    const response = await server.inject({
-      method: 'POST',
-      url: '/add',
-      body: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        walletAddress: mockWalletAddress,
-        poolAddress: 'invalid-pool',
-        baseTokenAmount: 1,
-        quoteTokenAmount: 150,
-      },
-    });
-
-    expect(response.statusCode).toBe(404);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalled();
-  });
-
-  it('should use default compute units', async () => {
-    const { quoteLiquidity } = require('../../../../src/connectors/raydium/amm-routes/quoteLiquidity');
-    quoteLiquidity.mockResolvedValue({
-      baseLimited: true,
-      baseTokenAmount: 1,
-      quoteTokenAmount: 150,
-      baseTokenAmountMax: 1.01,
-      quoteTokenAmountMax: 151.5,
-      lpTokenAmount: 12.24,
-    });
-
-    const mockSolanaInstance = buildSolanaMock({
-      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({ balanceChanges: [-1, -150] }),
-    });
-    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
-
-    const mockAddLiquidityFunc = jest.fn().mockResolvedValue({ transaction: mockVersionedTransaction() });
-    const mockRaydiumInstance = buildRaydiumMock({
-      raydiumSDK: {
-        liquidity: { addLiquidity: mockAddLiquidityFunc },
-        cpmm: { addLiquidity: jest.fn() },
-      },
-    });
-    (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
-
-    const response = await server.inject({
-      method: 'POST',
-      url: '/add',
-      body: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        walletAddress: mockWalletAddress,
-        poolAddress: mockPoolAddress,
-        baseTokenAmount: 1,
-        quoteTokenAmount: 150,
-        slippagePct: 1,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalled();
-
-    // Verify that addLiquidity was called with the default compute units (400000)
-    const addLiquidityCall = mockAddLiquidityFunc.mock.calls[0];
-    expect(addLiquidityCall[0].computeBudgetConfig.units).toBe(400000); // Using hardcoded COMPUTE_UNITS
-  });
-
-  it('should verify setOwner is called before SDK operations', async () => {
-    const { quoteLiquidity } = require('../../../../src/connectors/raydium/amm-routes/quoteLiquidity');
-    quoteLiquidity.mockResolvedValue({
-      baseLimited: true,
-      baseTokenAmount: 1,
-      quoteTokenAmount: 150,
-      baseTokenAmountMax: 1.01,
-      quoteTokenAmountMax: 151.5,
-      lpTokenAmount: 12.24,
-    });
-
-    const mockSolanaInstance = buildSolanaMock({
-      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({ balanceChanges: [-1, -150] }),
-    });
-    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
-
-    let setOwnerCallOrder = 0;
-    let getAmmPoolInfoCallOrder = 0;
-    let callCounter = 0;
-
-    const mockRaydiumInstance = buildRaydiumMock({
-      setOwner: jest.fn().mockImplementation(() => {
-        setOwnerCallOrder = ++callCounter;
-        return Promise.resolve(undefined);
-      }),
-      getAmmPoolInfo: jest.fn().mockImplementation(() => {
-        getAmmPoolInfoCallOrder = ++callCounter;
-        return Promise.resolve(mockAmmPoolInfo);
-      }),
-    });
-    (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
-
-    const response = await server.inject({
-      method: 'POST',
-      url: '/add',
-      body: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        walletAddress: mockWalletAddress,
-        poolAddress: mockPoolAddress,
-        baseTokenAmount: 1,
-        quoteTokenAmount: 150,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-
-    // Verify setOwner was called before getAmmPoolInfo
-    expect(setOwnerCallOrder).toBeLessThan(getAmmPoolInfoCallOrder);
-    expect(setOwnerCallOrder).toBe(1);
-    expect(getAmmPoolInfoCallOrder).toBe(2);
   });
 });

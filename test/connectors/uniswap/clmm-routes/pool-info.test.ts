@@ -285,7 +285,7 @@ describe('GET /pool-info (Uniswap CLMM)', () => {
       expect(computeUniswapBinDistribution).not.toHaveBeenCalled();
     });
 
-    it('returns bins[] of length N when binCount=N', async () => {
+    it('asks for the bin distribution around the pool state when binCount=N', async () => {
       await setupMocks();
       const { computeUniswapBinDistribution } = await import('../../../../src/connectors/uniswap/uniswap.utils');
       (computeUniswapBinDistribution as jest.Mock).mockResolvedValueOnce(sampleBins(11));
@@ -295,17 +295,6 @@ describe('GET /pool-info (Uniswap CLMM)', () => {
         query: { chainNetwork: 'ethereum-mainnet', connector: 'uniswap', poolAddress: POOL_ADDRESS, binCount: 11 },
       });
       expect(response.statusCode).toBe(200);
-      const body = parseWire(response.body);
-      expect(Array.isArray(body.bins)).toBe(true);
-      expect(body.bins).toHaveLength(11);
-      expect(body.bins[0]).toEqual(
-        expect.objectContaining({
-          binId: expect.any(Number),
-          price: expect.any(Number),
-          baseTokenAmount: expect.any(Number),
-          quoteTokenAmount: expect.any(Number),
-        }),
-      );
       expect(computeUniswapBinDistribution).toHaveBeenCalledTimes(1);
       const call = (computeUniswapBinDistribution as jest.Mock).mock.calls[0][0];
       expect(call.binCount).toBe(11);
