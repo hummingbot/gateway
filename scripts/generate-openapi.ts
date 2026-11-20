@@ -75,6 +75,14 @@ async function main() {
   // The document describes Gateway, not this checkout of it.
   spec.servers = [{ url: `http://localhost:${templateServerPort()}` }];
 
+  // Likewise the version: `dev-2.18.0` on development and `2.18.0` on a release branch are
+  // the same API. Writing the build label in made every release bump change this file, and
+  // a bump that did not regenerate it failed the CI check on the release PR.
+  if (!/^(dev-)?\d+\.\d+\.\d+$/.test(spec.info.version)) {
+    throw new Error(`Unexpected Gateway version '${spec.info.version}'; expected X.Y.Z or dev-X.Y.Z.`);
+  }
+  spec.info.version = spec.info.version.replace(/^dev-/, '');
+
   const outPath = path.resolve(__dirname, '..', 'openapi.json');
   fs.writeFileSync(outPath, `${withoutLocalWallets(JSON.stringify(spec, null, 2))}\n`);
 
