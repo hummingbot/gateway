@@ -1,4 +1,4 @@
-import { PoolUtils, TickUtils } from '@raydium-io/raydium-sdk-v2';
+import { PoolUtils } from '@raydium-io/raydium-sdk-v2';
 import BN from 'bn.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
@@ -9,9 +9,15 @@ import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/chains/solana/solana', () => ({ Solana: { getInstance: jest.fn() } }));
 jest.mock('../../../../src/connectors/raydium/raydium', () => ({ Raydium: { getInstance: jest.fn() } }));
-jest.mock('@raydium-io/raydium-sdk-v2', () => ({
-  PoolUtils: { getLiquidityAmountOutFromAmountIn: jest.fn() },
-  TickUtils: { getPriceAndTick: jest.fn() },
+// Keep the real SDK (raydium.utils reads constants from it at load) and replace only
+// the liquidity quote. The price-to-tick conversion is Gateway's own since SDK 0.2.
+jest.mock('@raydium-io/raydium-sdk-v2', () => {
+  const actual = jest.requireActual('@raydium-io/raydium-sdk-v2');
+  return { ...actual, PoolUtils: { ...actual.PoolUtils, getLiquidityAmountOutFromAmountIn: jest.fn() } };
+});
+jest.mock('../../../../src/connectors/raydium/raydium.utils', () => ({
+  ...jest.requireActual('../../../../src/connectors/raydium/raydium.utils'),
+  priceToTick: jest.fn().mockReturnValue(1),
 }));
 
 const sdkQuote = (liquidity: string, amount: number) => ({
@@ -30,10 +36,11 @@ describe('Raydium CLMM liquidity precision', () => {
       connection: { getEpochInfo: jest.fn().mockResolvedValue({}) },
     });
     (Raydium.getInstance as jest.Mock).mockResolvedValue({
-      getClmmPoolfromAPI: jest.fn().mockResolvedValue([{ mintA: { decimals: 0 }, mintB: { decimals: 0 } }]),
+      getClmmPoolfromAPI: jest
+        .fn()
+        .mockResolvedValue([{ mintA: { decimals: 0 }, mintB: { decimals: 0 }, config: { tickSpacing: 1 } }]),
       getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 2 }),
     });
-    (TickUtils.getPriceAndTick as jest.Mock).mockReturnValue({ tick: 1 });
   });
 
   afterEach(() => jest.restoreAllMocks());

@@ -59,6 +59,16 @@ class QuoteCache {
       logger.debug(`Quote cache: Deleted quote ${quoteId}`);
     }
   }
+
+  public clear(): void {
+    this.cache.clear();
+  }
+
+  public size(): number {
+    return this.cache.size;
+  }
 }
 
 export const quoteCache = QuoteCache.getInstance();
+
+export { QuoteCache };

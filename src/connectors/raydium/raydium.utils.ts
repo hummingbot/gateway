@@ -4,13 +4,12 @@ import {
   CLMM_PROGRAM_ID,
   DEVNET_PROGRAM_ID,
   CREATE_CPMM_POOL_PROGRAM,
-  DEV_CREATE_CPMM_POOL_PROGRAM,
+  LiquidityMathUtil,
   PoolUtils,
-  TickUtils,
+  TickArrayUtil,
+  TickUtil,
   ApiV3PoolInfoConcentratedItem,
   ClmmKeys,
-  // V3 sqrt-price math (BN-based, identical structure to Uniswap V3's)
-  // Internally exported under the SDK's clmm/utils/math module.
 } from '@raydium-io/raydium-sdk-v2';
 
 const VALID_AMM_PROGRAM_ID = new Set([
@@ -22,11 +21,42 @@ const VALID_AMM_PROGRAM_ID = new Set([
 
 const VALID_CLMM_PROGRAM_ID = new Set([CLMM_PROGRAM_ID.toBase58(), DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID.toBase58()]);
 
-const VALID_CPMM_PROGRAM_ID = new Set([CREATE_CPMM_POOL_PROGRAM.toBase58(), DEV_CREATE_CPMM_POOL_PROGRAM.toBase58()]);
+const VALID_CPMM_PROGRAM_ID = new Set([
+  CREATE_CPMM_POOL_PROGRAM.toBase58(),
+  DEVNET_PROGRAM_ID.CREATE_CPMM_POOL_PROGRAM.toBase58(),
+]);
 
 export const isValidClmm = (id: string) => VALID_CLMM_PROGRAM_ID.has(id);
 export const isValidAmm = (id: string) => VALID_AMM_PROGRAM_ID.has(id);
 export const isValidCpmm = (id: string) => VALID_CPMM_PROGRAM_ID.has(id);
+
+/**
+ * The tick a price maps to on a CLMM pool, rounded onto the pool's tick
+ * spacing AWAY from zero (a positive tick rounds up, a negative one down).
+ * This is the rounding Gateway has always opened positions with; the SDK's own
+ * `TickUtil.getPriceAndTick` floors instead, which would move a range's bound
+ * by one spacing for every positive tick.
+ */
+export function priceToTick(price: Decimal, tickSpacing: number, decimalsA: number, decimalsB: number): number {
+  const sqrtPriceX64 = new BN(
+    price
+      .mul(Decimal.pow(10, decimalsB - decimalsA))
+      .sqrt()
+      .mul(Decimal.pow(2, 64))
+      .floor()
+      .toFixed(),
+  );
+  const ratio = TickUtil.getTickAtSqrtPrice(sqrtPriceX64) / tickSpacing;
+  return (ratio < 0 ? Math.floor(ratio) : Math.ceil(ratio)) * tickSpacing;
+}
+
+/** A tick's price (quote per base) at full precision; the SDK's `tickToPrice` truncates tiny prices. */
+export function tickToPrice(tick: number, decimalsA: number, decimalsB: number): Decimal {
+  return new Decimal(TickUtil.getSqrtPriceAtTick(tick).toString())
+    .div(Decimal.pow(2, 64))
+    .pow(2)
+    .mul(Decimal.pow(10, decimalsA - decimalsB));
+}
 
 /**
  * Find a pool address for a token pair in the configured pools
@@ -53,12 +83,9 @@ export const findPoolAddress = (
 
 import { Connection, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
+import { Decimal } from 'decimal.js';
 
 import { logger } from '../../services/logger';
-
-// The SDK exports the math classes through these subpath imports.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { SqrtPriceMath, LiquidityMath } = require('@raydium-io/raydium-sdk-v2');
 
 /**
  * Per-bin liquidity distribution around the current tick for a Raydium V3
@@ -77,7 +104,7 @@ const { SqrtPriceMath, LiquidityMath } = require('@raydium-io/raydium-sdk-v2');
  * 3. Propagate L outward from the current bin (`pool.liquidity` at currentTick).
  *    Per V3 spec: crossing a tick going UP adds liquidityNet, going DOWN
  *    subtracts it.
- * 4. Apply V3 sqrt-price math via `LiquidityMath.getTokenAmount{A,B}FromLiquidity`
+ * 4. Apply V3 sqrt-price math via `LiquidityMathUtil.getDeltaAmount{A,B}Unsigned`
  *    splitting at the active sqrtPrice when the bin contains the current tick.
  */
 export interface RaydiumBinDistributionEntry {
@@ -146,10 +173,10 @@ export async function computeRaydiumBinDistribution(args: {
   // return a neutral { liquidityNet: 0 }.
   const tickAt = (tickIndex: number): { liquidityNet: BN } => {
     try {
-      const startIndex = TickUtils.getTickArrayStartIndexByTick(tickIndex, tickSpacing);
+      const startIndex = TickArrayUtil.getTickArrayStartIndex(tickIndex, tickSpacing);
       const arr = poolTickArrays[startIndex];
       if (!arr || !arr.ticks) return { liquidityNet: new BN(0) };
-      const offset = TickUtils.getTickOffsetInArray(tickIndex, tickSpacing);
+      const offset = TickArrayUtil.getTickOffsetInArray(tickIndex, tickSpacing);
       const t = arr.ticks?.[offset];
       if (!t || !t.liquidityNet) return { liquidityNet: new BN(0) };
       return { liquidityNet: t.liquidityNet };
@@ -185,15 +212,15 @@ export async function computeRaydiumBinDistribution(args: {
     let rawA: BN = zero;
     let rawB: BN = zero;
     if (L.gt(zero)) {
-      const sqrtA: BN = SqrtPriceMath.getSqrtPriceX64FromTick(tickStart);
-      const sqrtB: BN = SqrtPriceMath.getSqrtPriceX64FromTick(tickEnd);
+      const sqrtA: BN = TickUtil.getSqrtPriceAtTick(tickStart);
+      const sqrtB: BN = TickUtil.getSqrtPriceAtTick(tickEnd);
       if (currentTick >= tickEnd) {
-        rawB = LiquidityMath.getTokenAmountBFromLiquidity(sqrtA, sqrtB, L, false);
+        rawB = LiquidityMathUtil.getDeltaAmountBUnsigned(sqrtA, sqrtB, L, false);
       } else if (currentTick < tickStart) {
-        rawA = LiquidityMath.getTokenAmountAFromLiquidity(sqrtA, sqrtB, L, false);
+        rawA = LiquidityMathUtil.getDeltaAmountAUnsigned(sqrtA, sqrtB, L, false);
       } else {
-        rawA = LiquidityMath.getTokenAmountAFromLiquidity(currentSqrtPriceX64, sqrtB, L, false);
-        rawB = LiquidityMath.getTokenAmountBFromLiquidity(sqrtA, currentSqrtPriceX64, L, false);
+        rawA = LiquidityMathUtil.getDeltaAmountAUnsigned(currentSqrtPriceX64, sqrtB, L, false);
+        rawB = LiquidityMathUtil.getDeltaAmountBUnsigned(sqrtA, currentSqrtPriceX64, L, false);
       }
     }
     bins.push({

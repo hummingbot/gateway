@@ -48,6 +48,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         switch (connector) {
           case 'meteora':
             return await meteoraGetPositionsOwned(fastify, network, walletAddress);
+          case 'pump':
           case 'raydium':
           case 'uniswap':
           case 'pancakeswap':

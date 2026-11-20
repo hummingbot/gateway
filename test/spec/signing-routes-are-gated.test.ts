@@ -45,8 +45,8 @@ const requestProps = (operation: any) => propertyNames(operation?.requestBody?.c
 
 const signingRoutes: string[] = [];
 const reportingRoutes: string[] = [];
-// A GET that answers with signatures is reading history (a wallet's past transactions),
-// not signing. They are listed exactly below, so a new one has to be looked at rather than
+// A GET that answers with signatures is reading history (a wallet's past transactions, a
+// launch's past trades), not signing. They are listed exactly below, so a new one has to be looked at rather than
 // slipping through on its method.
 const historyRoutes: string[] = [];
 for (const [route, operations] of Object.entries<any>(spec.paths)) {
@@ -79,7 +79,7 @@ describe('every route that signs a transaction is behind the API-token gate', ()
   });
 
   it('does not gate a read that lists past signatures', () => {
-    expect(historyRoutes.sort()).toEqual(['/chains/ethereum/transactions']);
+    expect(historyRoutes.sort()).toEqual(['/chains/ethereum/transactions', '/trading/launch/launch-history']);
     for (const route of historyRoutes) expect(isSensitivePath(route)).toBe(false);
   });
 });

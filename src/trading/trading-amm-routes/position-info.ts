@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { getPositionInfo as meteoraGetPositionInfo } from '../../connectors/meteora/amm-routes/positionInfo';
 import { getPositionInfo as pancakeswapGetPositionInfo } from '../../connectors/pancakeswap/amm-routes/positionInfo';
+import { getPositionInfo as pumpGetPositionInfo } from '../../connectors/pump/amm-routes/positionInfo';
 import { getPositionInfo as raydiumGetPositionInfo } from '../../connectors/raydium/amm-routes/positionInfo';
 import { getPositionInfo as uniswapGetPositionInfo } from '../../connectors/uniswap/amm-routes/positionInfo';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/amm-schema';
@@ -49,6 +50,8 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         switch (connector) {
           case 'meteora':
             return await meteoraGetPositionInfo(network, poolAddress, walletAddress);
+          case 'pump':
+            return await pumpGetPositionInfo(network, poolAddress, walletAddress);
           case 'raydium':
             return await raydiumGetPositionInfo(network, poolAddress, walletAddress);
           case 'uniswap':

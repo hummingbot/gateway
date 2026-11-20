@@ -42,12 +42,8 @@ jest.mock('../../../../src/connectors/raydium/clmm-routes/quotePosition', () => 
   }),
 }));
 
-// Mock TickUtils
 jest.mock('@raydium-io/raydium-sdk-v2', () => ({
   ...jest.requireActual('@raydium-io/raydium-sdk-v2'),
-  TickUtils: {
-    getPriceAndTick: jest.fn(() => ({ tick: 100, price: 150 })),
-  },
   TxVersion: { V0: 0 },
 }));
 
@@ -92,7 +88,7 @@ const mockApiPoolInfo = {
   mintA: { address: mockSOL.address, decimals: 9 },
   mintB: { address: mockUSDC.address, decimals: 6 },
   price: 150,
-  tickSpacing: 10,
+  config: { tickSpacing: 10 },
   tickCurrent: 100,
   programId: 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK',
 };

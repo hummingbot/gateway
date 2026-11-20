@@ -1,8 +1,10 @@
 import { executeQuote as zeroX } from '../../src/connectors/0x/router-routes/executeQuote';
 import { executeQuote as dflow } from '../../src/connectors/dflow/router-routes/executeQuote';
 import { executeQuote as jupiter } from '../../src/connectors/jupiter/router-routes/executeQuote';
+import { executeQuote as meteoraDbc } from '../../src/connectors/meteora/launch-routes/executeQuote';
 import { executeQuote as okx } from '../../src/connectors/okx/router-routes/executeQuote';
 import { executeQuote as pancakeswap } from '../../src/connectors/pancakeswap/router-routes/executeQuote';
+import { executeQuote as pump } from '../../src/connectors/pump/router-routes/executeQuote';
 import { executeQuote as titan } from '../../src/connectors/titan/router-routes/executeQuote';
 import { executeQuote as uniswap } from '../../src/connectors/uniswap/router-routes/executeQuote';
 import { quoteCache } from '../../src/services/quote-cache';
@@ -17,8 +19,10 @@ describe('executeQuote refuses a quote another connector cached', () => {
     ['0x', zeroX],
     ['dflow', dflow],
     ['jupiter', jupiter],
+    ['meteora-dbc', meteoraDbc],
     ['okx', okx],
     ['pancakeswap', pancakeswap],
+    ['pump', pump],
     ['titan', titan],
     ['uniswap', uniswap],
   ];

@@ -5,15 +5,14 @@ import {
   AmmRpcData,
   ComputeAmountOutParam,
   CpmmKeys,
-  CpmmRpcData,
-  PositionInfoLayout,
+  CpmmParsedRpcData,
+  PersonalPositionLayout,
   CLMM_PROGRAM_ID,
   DEVNET_PROGRAM_ID,
   getPdaPersonalPositionAddress,
-  PositionUtils,
-  TickUtils,
+  PoolUtils,
   ClmmKeys,
-  ClmmRpcData,
+  ClmmParsedRpcData,
   TxVersion,
   AmmV4Keys,
   AmmV5Keys,
@@ -29,7 +28,7 @@ import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 import { RaydiumConfig } from './raydium.config';
-import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils';
+import { isValidClmm, isValidAmm, isValidCpmm, tickToPrice } from './raydium.utils';
 
 // Chain-read state of a Raydium AMM v4 or CPMM pool, as the SDK's builders take it.
 export type RaydiumAmmPool =
@@ -43,7 +42,7 @@ export type RaydiumAmmPool =
       poolType: 'cpmm';
       poolInfo: ApiV3PoolInfoStandardItemCpmm;
       poolKeys: CpmmKeys;
-      rpcData: CpmmRpcData;
+      rpcData: CpmmParsedRpcData;
     };
 
 // Internal type that includes poolType for internal use
@@ -161,8 +160,8 @@ export class Raydium {
     logger.info('Raydium SDK reinitialized with owner');
   }
 
-  async getClmmPoolfromRPC(poolAddress: string): Promise<ClmmRpcData | null> {
-    const poolInfoResponse: ClmmRpcData = await this.raydiumSDK.clmm.getRpcClmmPoolInfo({ poolId: poolAddress });
+  async getClmmPoolfromRPC(poolAddress: string): Promise<ClmmParsedRpcData | null> {
+    const poolInfoResponse: ClmmParsedRpcData = await this.raydiumSDK.clmm.getRpcClmmPoolInfo({ poolId: poolAddress });
     return poolInfoResponse;
   }
 
@@ -191,7 +190,7 @@ export class Raydium {
   }
 
   async getClmmPoolInfo(poolAddress: string): Promise<ClmmPoolInfo | null> {
-    let rawPool: ClmmRpcData;
+    let rawPool: ClmmParsedRpcData;
     let vaultABalance: number | null;
     let vaultBBalance: number | null;
     try {
@@ -208,7 +207,7 @@ export class Raydium {
     }
 
     // The pool is Raydium's; a fee it cannot read is an error, not a missing field.
-    const feePct = await this.readClmmTradeFeePct(rawPool.ammConfig, poolAddress);
+    const feePct = await this.readClmmTradeFeePct(rawPool.configId, poolAddress);
 
     return {
       address: poolAddress,
@@ -257,7 +256,7 @@ export class Raydium {
       return null;
     }
 
-    const position = PositionInfoLayout.decode(positionAccount.data);
+    const position = PersonalPositionLayout.decode(positionAccount.data);
     return position;
   }
 
@@ -283,20 +282,13 @@ export class Raydium {
 
       const epochInfo = await this.solana.connection.getEpochInfo();
 
-      const priceLower = TickUtils.getTickPrice({
-        poolInfo,
-        tick: position.tickLower,
-        baseIn: true,
-      });
-      const priceUpper = TickUtils.getTickPrice({
-        poolInfo,
-        tick: position.tickUpper,
-        baseIn: true,
-      });
+      const priceLower = tickToPrice(position.tickLower, poolInfo.mintA.decimals, poolInfo.mintB.decimals);
+      const priceUpper = tickToPrice(position.tickUpper, poolInfo.mintA.decimals, poolInfo.mintB.decimals);
 
-      const amounts = PositionUtils.getAmountsFromLiquidity({
-        poolInfo: poolInfo,
-        ownerPosition: position,
+      const amounts = await PoolUtils.getAmountsFromLiquidity({
+        poolInfo,
+        tickLower: position.tickLower,
+        tickUpper: position.tickUpper,
         liquidity: position.liquidity,
         slippage: 0,
         add: false,
@@ -309,8 +301,8 @@ export class Raydium {
         poolAddress: poolIdString,
         baseTokenAddress: poolInfo.mintA.address,
         quoteTokenAddress: poolInfo.mintB.address,
-        lowerPrice: Number(priceLower.price),
-        upperPrice: Number(priceUpper.price),
+        lowerPrice: priceLower.toNumber(),
+        upperPrice: priceUpper.toNumber(),
         price: Number(poolInfo.price),
         baseTokenAmount: Number(amountA.amount) / 10 ** Number(poolInfo.mintA.decimals),
         quoteTokenAmount: Number(amountB.amount) / 10 ** Number(poolInfo.mintB.decimals),
