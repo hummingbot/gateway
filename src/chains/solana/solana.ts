@@ -15,6 +15,7 @@ import {
   Connection,
   ConnectionConfig,
   Keypair,
+  LAMPORTS_PER_SOL,
   PublicKey,
   ComputeBudgetProgram,
   MessageV0,
@@ -86,9 +87,6 @@ export const SEND_OPTIONS: SendOptions = { skipPreflight: false, preflightCommit
  * maxRetries 0 the RPC sends it to the leader once; a dropped send is not retried.
  */
 export const REBROADCAST_INTERVAL_MS = 2000;
-// Divide by this; do not multiply by 1e-9, which is inexact in binary floating point
-// (230919729 * 1e-9 = 0.23091972900000002, not 0.230919729).
-const LAMPORTS_PER_SOL = 1e9;
 
 // Interface for token account data
 interface TokenAccount {
@@ -2016,8 +2014,10 @@ export class Solana {
         // twice. Selling SOL previously overstated amountIn by the fee and understated
         // realized price; collecting SOL-denominated fees understated the amount.
         const lamportChange = postBalances[accountIndex] - preBalances[accountIndex];
-        const solChange = lamportChange / LAMPORTS_PER_SOL;
-        return accountIndex === 0 ? solChange + fee : solChange;
+        // Add the fee back in whole lamports, then divide once: adding two already-divided
+        // SOL values would bring the float noise back.
+        const feeLamports = accountIndex === 0 ? txDetails.meta?.fee || 0 : 0;
+        return (lamportChange + feeLamports) / LAMPORTS_PER_SOL;
       } else {
         // Token mint address provided - get SPL token balance change
         const preBalance =

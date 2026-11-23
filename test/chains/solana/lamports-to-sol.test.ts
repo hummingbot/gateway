@@ -59,6 +59,30 @@ describe('lamports to SOL conversion', () => {
     });
   });
 
+  // When the owner is the fee payer (account 0) the fee is added back to the lamport change.
+  // That has to happen before the division: adding two separately divided SOL values brings the
+  // noise back (-100005000 / 1e9 + 5000 / 1e9 = -0.09999999999999999).
+  describe.each([
+    [-100005000, 5000, -0.1],
+    [-230924729, 5000, -0.230919729],
+    [-1000010000, 10000, -1],
+  ])('fee payer with a %i lamport change and a %i lamport fee', (lamportChange, fee, sol) => {
+    it('extractBalanceChangesAndFee returns the exact decimal SOL value', async () => {
+      const owner = Keypair.generate().publicKey;
+      const instance = solanaWith(0) as any;
+      instance._fetchTransactionWithRetry = jest.fn().mockResolvedValue({
+        meta: { fee, preBalances: [2000000000], postBalances: [2000000000 + lamportChange], preTokenBalances: [] },
+        transaction: { message: { accountKeys: [{ pubkey: owner }] } },
+      });
+
+      const { balanceChanges } = await instance.extractBalanceChangesAndFee('sig', owner.toBase58(), [
+        'So11111111111111111111111111111111111111112',
+      ]);
+
+      expect(balanceChanges[0]).toBe(sol);
+    });
+  });
+
   // estimateGas is base fee (5000 lamports) plus the priority fee, so it needs at least 5000.
   describe.each(CASES.filter(([lamports]) => lamports >= 5000))('%i lamports of gas', (lamports, sol) => {
     it('estimateGas returns exactly the decimal SOL value', async () => {
