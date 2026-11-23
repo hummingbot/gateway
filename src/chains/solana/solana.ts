@@ -15,6 +15,7 @@ import {
   Connection,
   ConnectionConfig,
   Keypair,
+  LAMPORTS_PER_SOL,
   PublicKey,
   ComputeBudgetProgram,
   MessageV0,
@@ -86,7 +87,6 @@ export const SEND_OPTIONS: SendOptions = { skipPreflight: false, preflightCommit
  * maxRetries 0 the RPC sends it to the leader once; a dropped send is not retried.
  */
 export const REBROADCAST_INTERVAL_MS = 2000;
-const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 
 // Interface for token account data
 interface TokenAccount {
@@ -787,7 +787,7 @@ export class Solana {
   private async getSolBalance(publicKey: PublicKey): Promise<number> {
     try {
       const solBalance = await this.connection.getBalance(publicKey);
-      return solBalance * LAMPORT_TO_SOL;
+      return solBalance / LAMPORTS_PER_SOL;
     } catch (error) {
       logger.error(`Error fetching SOL balance: ${error.message}`);
 
@@ -1103,7 +1103,7 @@ export class Solana {
 
     // Add base fee (in lamports) and convert total to SOL
     const totalLamports = BASE_FEE + priorityFee;
-    const gasCost = totalLamports * LAMPORT_TO_SOL;
+    const gasCost = totalLamports / LAMPORTS_PER_SOL;
 
     return gasCost;
   }
@@ -1214,7 +1214,7 @@ export class Solana {
     // meta.fee is the TOTAL fee paid (already includes base fee + priority fee)
     // Solana RPC returns the complete fee in this field
     const totalFeeLamports = txData.meta.fee || 0;
-    const totalFee = totalFeeLamports * LAMPORT_TO_SOL;
+    const totalFee = totalFeeLamports / LAMPORTS_PER_SOL;
 
     logger.info(`Transaction fee: ${totalFeeLamports} lamports (${totalFee.toFixed(9)} SOL)`);
 
@@ -1289,7 +1289,7 @@ export class Solana {
 
     const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
     logger.info(
-      `Sending transaction with ${currentPriorityFee} lamports/CU priority fee and total priority fee of ${(basePriorityFeeLamports * LAMPORT_TO_SOL).toFixed(6)} SOL`,
+      `Sending transaction with ${currentPriorityFee} lamports/CU priority fee and total priority fee of ${(basePriorityFeeLamports / LAMPORTS_PER_SOL).toFixed(6)} SOL`,
     );
 
     // Prepare transaction with compute budget
@@ -2014,8 +2014,10 @@ export class Solana {
         // twice. Selling SOL previously overstated amountIn by the fee and understated
         // realized price; collecting SOL-denominated fees understated the amount.
         const lamportChange = postBalances[accountIndex] - preBalances[accountIndex];
-        const solChange = lamportChange * LAMPORT_TO_SOL;
-        return accountIndex === 0 ? solChange + fee : solChange;
+        // Add the fee back in whole lamports, then divide once: adding two already-divided
+        // SOL values would bring the float noise back.
+        const feeLamports = accountIndex === 0 ? txDetails.meta?.fee || 0 : 0;
+        return (lamportChange + feeLamports) / LAMPORTS_PER_SOL;
       } else {
         // Token mint address provided - get SPL token balance change
         const preBalance =

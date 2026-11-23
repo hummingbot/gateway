@@ -119,7 +119,7 @@ export async function closePosition(
       throw httpErrors.internalServerError('Transaction failed to confirm');
     }
 
-    const fee = (txData.meta?.fee || 0) * (1 / Math.pow(10, 9)); // Convert lamports to SOL
+    const fee = (txData.meta?.fee || 0) / 1e9; // Convert lamports to SOL
 
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
       'So11111111111111111111111111111111111111112',
