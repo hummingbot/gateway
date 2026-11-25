@@ -3,11 +3,11 @@
     "connector": "uniswap",
     "type": "amm",
     "network": "base",
-    "baseSymbol": "AERO",
+    "baseSymbol": "WETH",
     "quoteSymbol": "USDC",
-    "address": "0x6cdcb1c4a4d1c3c6d054b27ac5b77e89eafb971d",
-    "baseTokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-    "quoteTokenAddress": "0x940181a94A35A4569E4529A3CDfB74e38FD98631",
+    "address": "0x88a43bbdf9d098eec7bceda4e2494615dfd9bb9c",
+    "baseTokenAddress": "0x4200000000000000000000000000000000000006",
+    "quoteTokenAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "feePct": 0.3
   },
   {
