@@ -5,9 +5,9 @@
     "network": "arbitrum",
     "baseSymbol": "ARB",
     "quoteSymbol": "USDC",
-    "address": "0xcda53b1f66614552f834ceef361a8d12a0b8dad8",
+    "address": "0x011f31d20c8778c8beb1093b73e3a5690ee6271b",
     "baseTokenAddress": "0x912CE59144191C1204E64559FE8253a0e49E6548",
-    "quoteTokenAddress": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    "quoteTokenAddress": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
     "feePct": 0.3
   },
   {
