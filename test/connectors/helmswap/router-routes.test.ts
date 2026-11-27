@@ -5,6 +5,7 @@ import { executeQuote } from '../../../src/connectors/helmswap/router-routes/exe
 import { executeSwap } from '../../../src/connectors/helmswap/router-routes/executeSwap';
 import { quoteSwap } from '../../../src/connectors/helmswap/router-routes/quoteSwap';
 import { quoteCache } from '../../../src/services/quote-cache';
+import { INDICATIVE_PRICE_CONNECTORS } from '../../../src/trading/connector-registry';
 
 jest.mock('../../../src/chains/ethereum/ethereum');
 jest.mock('../../../src/connectors/helmswap/helmswap');
@@ -14,6 +15,8 @@ const RealHelmswap = jest.requireActual('../../../src/connectors/helmswap/helmsw
 const WALLET = '0x1234567890123456789012345678901234567890';
 const ETH = { symbol: 'ETH', address: 'ETH', decimals: 18 };
 const USDC = { symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6 };
+const WETH = { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006', decimals: 18 };
+const WBNB = { symbol: 'WBNB', address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', decimals: 18 };
 
 const API_QUOTE = {
   ok: true,
@@ -22,9 +25,9 @@ const API_QUOTE = {
   quoteTicket: { id: 't', expiresAt: 1800000000 },
 };
 
-const mockHelm = () => {
+const mockHelm = (chainId = 8453) => {
   const helm = {
-    chainId: 8453,
+    chainId,
     referrer: undefined,
     api: { quote: jest.fn().mockResolvedValue(API_QUOTE), buildTx: jest.fn() },
     parseTokenAmount: RealHelmswap.prototype.parseTokenAmount,
@@ -35,11 +38,12 @@ const mockHelm = () => {
   return helm;
 };
 
-const mockEthereum = () => {
-  const tokens: Record<string, any> = { ETH, USDC };
+const mockEthereum = (opts: { nativeTokenSymbol?: string; tokens?: Record<string, any> } = {}) => {
+  // Production lists include WETH/WBNB, not the native currencies themselves.
+  const tokens: Record<string, any> = { USDC, WETH, ...(opts.tokens ?? {}) };
   const wallet = { address: WALLET, sendTransaction: jest.fn().mockResolvedValue({ hash: '0xabc' }) };
   const ethereum = {
-    nativeTokenSymbol: 'ETH',
+    nativeTokenSymbol: opts.nativeTokenSymbol ?? 'ETH',
     getToken: jest.fn(async (s: string) => tokens[s]),
     getWallet: jest.fn().mockResolvedValue(wallet),
     handleTransactionExecution: jest.fn().mockResolvedValue({ transactionHash: '0xabc', status: 1 }),
@@ -119,7 +123,7 @@ describe('HelmSwap EVM router routes', () => {
       0.05,
       150,
       undefined,
-      undefined,
+      '0xabc',
       0.5,
     );
     const [params, cached, recipient] = helm.api.buildTx.mock.calls[0];
@@ -155,6 +159,85 @@ describe('HelmSwap EVM router routes', () => {
   });
 });
 
+it('resolves native ETH and BNB without a token-list entry, and keeps that identity in the request', async () => {
+  const helm = mockHelm();
+  const ethereum = mockEthereum();
+  await quoteSwap('base', 'eth', 'USDC', 0.05, 'SELL', 0.5);
+  expect(ethereum.getToken).not.toHaveBeenCalledWith('eth');
+  expect(helm.api.quote).toHaveBeenCalledWith(expect.objectContaining({ tokenIn: 'ETH', tokenOut: USDC.address }));
+
+  const out = await quoteSwap('base', 'USDC', 'ETH', 1, 'SELL', 0.5);
+  expect(helm.api.quote).toHaveBeenLastCalledWith(expect.objectContaining({ tokenIn: USDC.address, tokenOut: 'ETH' }));
+  expect(out.tokenOut).toBe('ETH');
+
+  const bscHelm = mockHelm(56);
+  mockEthereum({ nativeTokenSymbol: 'BNB', tokens: { WBNB } });
+  await quoteSwap('bsc', 'BNB', 'USDC', 0.05, 'SELL', 0.5);
+  expect(bscHelm.api.quote).toHaveBeenCalledWith(expect.objectContaining({ chain: 56, tokenIn: 'BNB' }));
+});
+
+it('does not rewrite wrapped native tokens to the native symbol', async () => {
+  const helm = mockHelm();
+  mockEthereum();
+  await quoteSwap('base', 'WETH', 'USDC', 0.05, 'SELL', 0.5);
+  expect(helm.api.quote).toHaveBeenCalledWith(
+    expect.objectContaining({ tokenIn: WETH.address, tokenOut: USDC.address }),
+  );
+});
+
+it('rejects executing a quote on a different network before building or sending', async () => {
+  const helm = mockHelm();
+  const ethereum = mockEthereum();
+  const quoteId = (await quoteSwap('base', 'ETH', 'USDC', 0.05, 'SELL', 0.5, false, WALLET)).quoteId;
+  await expect(executeQuote(WALLET, 'mainnet', quoteId)).rejects.toThrow(/created on base, not mainnet/);
+  expect(helm.api.buildTx).not.toHaveBeenCalled();
+  expect(ethereum.getWallet).not.toHaveBeenCalled();
+  expect(ethereum.wallet.sendTransaction).not.toHaveBeenCalled();
+});
+
+it('passes the broadcast hash when the swap is still pending', async () => {
+  const helm = mockHelm();
+  const ethereum = mockEthereum();
+  helm.api.buildTx.mockResolvedValue({ ok: true, tx: { to: '0xrouter', data: '0xswap' } });
+  ethereum.handleTransactionExecution.mockResolvedValueOnce(null);
+  ethereum.handleExecuteQuoteTransactionConfirmation.mockReturnValueOnce({ signature: '0xabc', status: 0 });
+  const quoteId = (await quoteSwap('base', 'ETH', 'USDC', 0.05, 'SELL', 0.5, false, WALLET)).quoteId;
+  const result = await executeQuote(WALLET, 'base', quoteId);
+  expect(result).toMatchObject({ signature: '0xabc', status: 0 });
+  expect(ethereum.handleExecuteQuoteTransactionConfirmation).toHaveBeenCalledWith(
+    null,
+    'ETH',
+    USDC.address,
+    0.05,
+    150,
+    undefined,
+    '0xabc',
+    0.5,
+  );
+  expect(quoteCache.get(quoteId, 'helmswap')).toBeDefined();
+});
+
+it('reads confirmed output from quotedOutNet when netOutAmount is absent', async () => {
+  const helm = mockHelm();
+  const ethereum = mockEthereum();
+  helm.api.quote.mockResolvedValueOnce({
+    ok: true,
+    quoteTicket: { id: 't', expiresAt: 1800000000, quotedOutNet: '150000000' },
+  });
+  helm.api.buildTx.mockResolvedValue({ ok: true, tx: { to: '0xrouter', data: '0xswap' } });
+  await executeSwap(WALLET, 'base', 'ETH', 'USDC', 0.05, 'SELL', 0.5);
+  expect(ethereum.handleExecuteQuoteTransactionConfirmation).toHaveBeenCalledWith(
+    { transactionHash: '0xabc', status: 1 },
+    'ETH',
+    USDC.address,
+    0.05,
+    150,
+    undefined,
+    '0xabc',
+    0.5,
+  );
+});
+
 describe('Helmswap connector class', () => {
   it('maps networks to chain ids and validates slippage', async () => {
     const helm = await RealHelmswap.getInstance('base');
@@ -166,5 +249,11 @@ describe('Helmswap connector class', () => {
     expect(() => RealHelmswap.getSlippageBps(11)).toThrow();
     expect(helm.parseTokenAmount(1.5, 6)).toBe('1500000');
     expect(helm.formatTokenAmount('1500000', 6)).toBe('1.5');
+  });
+});
+
+describe('indicative price capability', () => {
+  it('lists helmswap among connectors that accept indicativePrice', () => {
+    expect(INDICATIVE_PRICE_CONNECTORS).toEqual(expect.arrayContaining(['0x', 'helmswap']));
   });
 });

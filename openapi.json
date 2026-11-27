@@ -3309,7 +3309,8 @@
           "indicativePrice": {
             "description": "Return an indicative price instead of a firm, executable quote. An indicative quote cannot be executed with /trading/router/execute-quote.",
             "x-connectors": [
-              "0x"
+              "0x",
+              "helmswap"
             ],
             "type": "boolean"
           }
@@ -6613,7 +6614,8 @@
           {
             "schema": {
               "x-connectors": [
-                "0x"
+                "0x",
+                "helmswap"
               ],
               "type": "boolean"
             },

@@ -18,6 +18,7 @@ export async function executeQuote(
     throw httpErrors.badRequest('Quote not found or expired');
   }
   const request = quoteCache.getRequest(quoteId, 'helmswap-sol') as {
+    network?: string;
     params: any;
     inputToken: { symbol: string; address: string };
     outputToken: { symbol: string; address: string };
@@ -25,6 +26,12 @@ export async function executeQuote(
   };
   if (!request?.params) {
     throw httpErrors.badRequest('Quote request metadata not found or expired');
+  }
+
+  if (request.network !== network) {
+    throw httpErrors.badRequest(
+      `Quote was created on ${request.network ?? 'an unknown network'}, not ${network}. Execute it on the same network.`,
+    );
   }
 
   const solana = await Solana.getInstance(network);

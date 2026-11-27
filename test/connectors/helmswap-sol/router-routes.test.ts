@@ -93,6 +93,14 @@ describe('HelmSwap Solana router routes', () => {
     );
   });
 
+  it('rejects executing a quote on a different network before building or sending', async () => {
+    const { helm, solana } = setup();
+    const quoteId = (await quoteSwap('mainnet-beta', 'SOL', 'USDC', 0.1, 'SELL', 0.5)).quoteId;
+    await expect(executeQuote(WALLET, 'devnet', quoteId)).rejects.toThrow(/created on mainnet-beta, not devnet/);
+    expect(helm.api.buildTx).not.toHaveBeenCalled();
+    expect(solana.sendAndConfirmTransactionForWallet).not.toHaveBeenCalled();
+  });
+
   it('handles missing quotes, build errors and empty builds', async () => {
     const { helm } = setup();
     await expect(executeQuote(WALLET, 'mainnet-beta', 'missing')).rejects.toThrow(/not found or expired/);

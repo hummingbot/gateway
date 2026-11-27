@@ -12,9 +12,36 @@ import { HelmswapConfig } from '../helmswap.config';
 import { mapHelmQuoteToRouter } from '../map-quote';
 import { HelmswapQuoteSwapResponse } from '../schemas';
 
-function nativeSymbolFor(network: string): string {
-  if (network === 'bsc') return 'BNB';
-  return 'ETH';
+type ResolvedToken = { symbol: string; address: string; decimals: number };
+
+const NATIVE_DECIMALS = 18;
+
+function isNativeCurrency(token: string, nativeSymbol: string): boolean {
+  return token.trim().toUpperCase() === nativeSymbol.toUpperCase();
+}
+
+function nativeCurrencyInfo(nativeSymbol: string): ResolvedToken {
+  return { symbol: nativeSymbol, address: nativeSymbol, decimals: NATIVE_DECIMALS };
+}
+
+/**
+ * Native currencies are not in the shipped token lists (`WETH`/`WBNB` are).
+ * Resolve them before `getToken()` so ETH/BNB quotes reach HelmSwap, and keep
+ * the native symbol as the API token identity rather than the wrapped address.
+ */
+async function resolveToken(ethereum: Ethereum, token: string): Promise<ResolvedToken | undefined> {
+  const nativeSymbol = ethereum.nativeTokenSymbol;
+  if (isNativeCurrency(token, nativeSymbol)) {
+    return nativeCurrencyInfo(nativeSymbol);
+  }
+  return ethereum.getToken(token);
+}
+
+function apiTokenId(token: ResolvedToken, nativeSymbol: string): string {
+  if (isNativeCurrency(token.symbol, nativeSymbol) || isNativeCurrency(token.address, nativeSymbol)) {
+    return nativeSymbol;
+  }
+  return token.address;
 }
 
 export async function quoteSwap(
@@ -33,18 +60,16 @@ export async function quoteSwap(
 
   const ethereum = await Ethereum.getInstance(network);
   const helm = await Helmswap.getInstance(network);
-  const native = nativeSymbolFor(network);
+  const nativeSymbol = ethereum.nativeTokenSymbol;
 
-  const baseTokenInfo = await ethereum.getToken(baseToken);
-  const quoteTokenInfo = await ethereum.getToken(quoteToken);
+  const baseTokenInfo = await resolveToken(ethereum, baseToken);
+  const quoteTokenInfo = await resolveToken(ethereum, quoteToken);
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw httpErrors.badRequest(sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken));
   }
 
-  const sellIsNative = baseTokenInfo.symbol === native || baseTokenInfo.address === ethereum.nativeTokenSymbol;
-  const buyIsNative = quoteTokenInfo.symbol === native || quoteTokenInfo.address === ethereum.nativeTokenSymbol;
-  const sellToken = sellIsNative ? native : baseTokenInfo.address;
-  const buyToken = buyIsNative ? native : quoteTokenInfo.address;
+  const sellToken = apiTokenId(baseTokenInfo, nativeSymbol);
+  const buyToken = apiTokenId(quoteTokenInfo, nativeSymbol);
   const amountIn = helm.parseTokenAmount(amount, baseTokenInfo.decimals);
   const slippageBps = Helmswap.getSlippageBps(slippagePct);
 

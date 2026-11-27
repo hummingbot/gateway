@@ -84,8 +84,38 @@ export function isLiveBuildChain(chain: 'solana' | number): boolean {
   return chain === 'solana' || (LIVE_EVM_CHAIN_IDS as readonly number[]).includes(chain as number);
 }
 
-export function toBaseUnits(amount: string | number, decimals: number): string {
+/**
+ * Expand a decimal or scientific-notation amount into plain decimal digits.
+ * `String(0.0000001)` is `1e-7`, which the digit parser would otherwise reject.
+ */
+function toPlainDecimal(amount: string | number): string {
   const trimmed = String(amount).trim();
+  if (!trimmed || trimmed.startsWith('-')) {
+    throw new Error('amount must be greater than zero');
+  }
+  if (!/e/i.test(trimmed)) {
+    return trimmed;
+  }
+  const match = trimmed.match(/^(\d+(?:\.\d*)?|\.\d+)e([+-]?\d+)$/i);
+  if (!match) {
+    throw new Error('amount must be a positive number');
+  }
+  const mantissa = match[1];
+  const exponent = Number(match[2]);
+  const [integerPart, fractionPart = ''] = mantissa.split('.');
+  const digits = integerPart + fractionPart;
+  const point = integerPart.length + exponent;
+  if (point <= 0) {
+    return `0.${'0'.repeat(-point)}${digits}`;
+  }
+  if (point >= digits.length) {
+    return `${digits}${'0'.repeat(point - digits.length)}`;
+  }
+  return `${digits.slice(0, point)}.${digits.slice(point)}`;
+}
+
+export function toBaseUnits(amount: string | number, decimals: number): string {
+  const trimmed = toPlainDecimal(amount);
   if (!trimmed || trimmed.startsWith('-')) throw new Error('amount must be greater than zero');
   const [whole, frac = ''] = trimmed.split('.');
   if (!/^\d+$/.test(whole) || !/^\d*$/.test(frac)) {

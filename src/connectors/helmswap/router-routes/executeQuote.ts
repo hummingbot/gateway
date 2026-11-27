@@ -4,7 +4,15 @@ import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { Helmswap } from '../helmswap';
-import { HelmswapApiError } from '../helmswap-api';
+import { HelmswapApiError, netOutAmount } from '../helmswap-api';
+
+type CachedQuoteRequest = {
+  network?: string;
+  params: any;
+  baseTokenInfo: { symbol: string; address: string; decimals: number };
+  quoteTokenInfo: { symbol: string; address: string; decimals: number };
+  slippagePct?: number;
+};
 
 export async function executeQuote(
   walletAddress: string,
@@ -16,14 +24,15 @@ export async function executeQuote(
     throw httpErrors.badRequest('Quote not found or expired');
   }
 
-  const request = quoteCache.getRequest(quoteId, 'helmswap') as {
-    params: any;
-    baseTokenInfo: { symbol: string; address: string; decimals: number };
-    quoteTokenInfo: { symbol: string; address: string; decimals: number };
-    slippagePct?: number;
-  };
+  const request = quoteCache.getRequest(quoteId, 'helmswap') as CachedQuoteRequest | undefined;
   if (!request?.params) {
     throw httpErrors.badRequest('Quote request metadata not found or expired');
+  }
+
+  if (request.network !== network) {
+    throw httpErrors.badRequest(
+      `Quote was created on ${request.network ?? 'an unknown network'}, not ${network}. Execute it on the same network.`,
+    );
   }
 
   const ethereum = await Ethereum.getInstance(network);
@@ -69,9 +78,15 @@ export async function executeQuote(
   const sellInfo = request.baseTokenInfo;
   const buyInfo = request.quoteTokenInfo;
   const expectedIn = parseFloat(helm.formatTokenAmount(String(request.params.amountIn), sellInfo.decimals));
-  const inner = (cached.quote ?? {}) as Record<string, unknown>;
-  const net = String(inner.netOutAmount ?? cached.netOutAmount ?? '');
-  const expectedOut = net ? parseFloat(helm.formatTokenAmount(net, buyInfo.decimals)) : expectedIn;
+  let expectedOut: number;
+  try {
+    expectedOut = parseFloat(helm.formatTokenAmount(netOutAmount(cached), buyInfo.decimals));
+  } catch (err) {
+    if (err instanceof HelmswapApiError) {
+      throw httpErrors.badRequest(err.message);
+    }
+    throw err;
+  }
 
   const result = ethereum.handleExecuteQuoteTransactionConfirmation(
     txReceipt,
@@ -80,7 +95,7 @@ export async function executeQuote(
     expectedIn,
     expectedOut,
     undefined,
-    undefined,
+    txResponse.hash,
     request.slippagePct,
   );
 

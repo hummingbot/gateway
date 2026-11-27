@@ -443,7 +443,7 @@ export const FETCH_POOLS_CONNECTORS = Object.entries(CLMM_REGISTRY)
   .map(([name]) => name);
 
 /** Routers that price an indicative (non-executable) quote on request. */
-export const INDICATIVE_PRICE_CONNECTORS = ['0x'];
+export const INDICATIVE_PRICE_CONNECTORS = ['0x', 'helmswap'];
 
 /** Solana routers accept `approximateIfNoExactOut`; every other connector ignores it. */
 export const APPROXIMATE_IF_NO_EXACT_OUT_CONNECTORS = Object.entries(ROUTER_REGISTRY)

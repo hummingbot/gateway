@@ -57,6 +57,16 @@ describe('HelmSwap API helpers', () => {
     expect(() => fromBaseUnits('1.5', 6)).toThrow();
   });
 
+  it('converts small amounts written in exponent form', () => {
+    // 0.0000001 of an 8-decimal token is 10 base units; String(0.0000001) is "1e-7".
+    expect(toBaseUnits(0.0000001, 8)).toBe('10');
+    expect(toBaseUnits('1e-7', 8)).toBe('10');
+    expect(toBaseUnits('1.5e-6', 8)).toBe('150');
+    expect(toBaseUnits('1e-9', 18)).toBe('1000000000');
+    expect(() => toBaseUnits(1e-7, 6)).toThrow(/greater than zero/);
+    expect(() => toBaseUnits('1e', 8)).toThrow(/positive number/);
+  });
+
   it('builds Solana and EVM quote queries', () => {
     expect(quoteQuery({ chain: 'solana', tokenIn: 'SOL', tokenOut: 'MINT', amountIn: '10', slippageBps: 50 })).toEqual({
       chain: 'solana',
