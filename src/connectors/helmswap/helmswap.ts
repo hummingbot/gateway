@@ -8,7 +8,7 @@ export class Helmswap {
   public readonly slippagePct: number;
   public readonly referrer?: string;
 
-  private constructor(network: string, chainId: number) {
+  private constructor(chainId: number) {
     this.chainId = chainId;
     this.slippagePct = HelmswapConfig.config.slippagePct;
     this.referrer = HelmswapConfig.config.referrer || undefined;
@@ -26,7 +26,7 @@ export class Helmswap {
           `HelmSwap does not support Gateway network "${network}". Supported: ${HelmswapConfig.networks.join(', ')}.`,
         );
       }
-      Helmswap.instances.set(network, new Helmswap(network, chainId));
+      Helmswap.instances.set(network, new Helmswap(chainId));
     }
     return Helmswap.instances.get(network)!;
   }

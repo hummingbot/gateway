@@ -42,7 +42,9 @@ export async function executeQuote(
     throw err;
   }
 
-  const approvals = Array.isArray(built.approvals) ? (built.approvals as Array<{ to: string; data: string; value?: string }>) : [];
+  const approvals = Array.isArray(built.approvals)
+    ? (built.approvals as Array<{ to: string; data: string; value?: string }>)
+    : [];
   for (const approval of approvals) {
     const approvalTx = await wallet.sendTransaction({
       to: approval.to,

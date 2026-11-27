@@ -13,15 +13,6 @@ export async function executeSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number = HelmswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
-  const quoteResult = await quoteSwap(
-    network,
-    baseToken,
-    quoteToken,
-    amount,
-    side,
-    slippagePct,
-    false,
-    walletAddress,
-  );
+  const quoteResult = await quoteSwap(network, baseToken, quoteToken, amount, side, slippagePct, false, walletAddress);
   return executeQuote(walletAddress, network, quoteResult.quoteId);
 }

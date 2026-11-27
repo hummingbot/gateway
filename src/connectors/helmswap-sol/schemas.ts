@@ -10,6 +10,8 @@ export const HelmswapSolQuoteSwapResponse = Type.Object({
   priceImpactPct: Type.Number({ description: 'Estimated price impact percentage (0-100)' }),
   minAmountOut: Type.Number({ description: 'Minimum amount of tokenOut that will be accepted' }),
   maxAmountIn: Type.Number({ description: 'Maximum amount of tokenIn that will be spent' }),
-  expirationTime: Type.Optional(Type.Number({ description: 'Unix timestamp when this quote expires (firm quotes only)' })),
+  expirationTime: Type.Optional(
+    Type.Number({ description: 'Unix timestamp when this quote expires (firm quotes only)' }),
+  ),
   feeBps: Type.Optional(Type.Number({ description: 'Disclosed HelmSwap fee in basis points, as returned by the API' })),
 });

@@ -47,7 +47,7 @@ export async function executeQuote(
     throw httpErrors.internalServerError('HelmSwap build-tx returned no unsigned Solana transaction.');
   }
 
-  const transaction = VersionedTransaction.deserialize(Buffer.from(tx.transactionBase64, 'base64'));
+  const transaction = VersionedTransaction.deserialize(new Uint8Array(Buffer.from(tx.transactionBase64, 'base64')));
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
   const txData = await solana.getConfirmedTransactionData(signature);
   const result = await solana.handleConfirmation(

@@ -28,9 +28,7 @@ export async function quoteSwap(
   takerAddress?: string,
 ): Promise<Static<typeof HelmswapQuoteSwapResponse>> {
   if (side === 'BUY') {
-    throw httpErrors.badRequest(
-      'HelmSwap quotes are exact-input only. Use side=SELL; amount is the token you spend.',
-    );
+    throw httpErrors.badRequest('HelmSwap quotes are exact-input only. Use side=SELL; amount is the token you spend.');
   }
 
   const ethereum = await Ethereum.getInstance(network);

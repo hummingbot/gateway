@@ -3094,7 +3094,9 @@
               "titan",
               "uniswap",
               "pancakeswap",
-              "0x"
+              "0x",
+              "helmswap",
+              "helmswap-sol"
             ],
             "type": "string",
             "example": "jupiter"
@@ -3148,7 +3150,9 @@
               "titan",
               "uniswap",
               "pancakeswap",
-              "0x"
+              "0x",
+              "helmswap",
+              "helmswap-sol"
             ],
             "type": "string",
             "example": "jupiter"
@@ -3197,7 +3201,8 @@
               "jupiter",
               "dflow",
               "okx",
-              "titan"
+              "titan",
+              "helmswap-sol"
             ],
             "type": "boolean"
           }
@@ -3245,7 +3250,9 @@
               "titan",
               "uniswap",
               "pancakeswap",
-              "0x"
+              "0x",
+              "helmswap",
+              "helmswap-sol"
             ],
             "type": "string",
             "example": "jupiter"
@@ -3294,7 +3301,8 @@
               "jupiter",
               "dflow",
               "okx",
-              "titan"
+              "titan",
+              "helmswap-sol"
             ],
             "type": "boolean"
           },
@@ -6506,7 +6514,9 @@
                 "titan",
                 "uniswap",
                 "pancakeswap",
-                "0x"
+                "0x",
+                "helmswap",
+                "helmswap-sol"
               ],
               "type": "string"
             },
@@ -6590,7 +6600,8 @@
                 "jupiter",
                 "dflow",
                 "okx",
-                "titan"
+                "titan",
+                "helmswap-sol"
               ],
               "type": "boolean"
             },
