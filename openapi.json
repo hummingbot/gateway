@@ -3094,7 +3094,9 @@
               "titan",
               "uniswap",
               "pancakeswap",
-              "0x"
+              "0x",
+              "helmswap",
+              "helmswap-sol"
             ],
             "type": "string",
             "example": "jupiter"
@@ -3148,7 +3150,9 @@
               "titan",
               "uniswap",
               "pancakeswap",
-              "0x"
+              "0x",
+              "helmswap",
+              "helmswap-sol"
             ],
             "type": "string",
             "example": "jupiter"
@@ -3197,7 +3201,8 @@
               "jupiter",
               "dflow",
               "okx",
-              "titan"
+              "titan",
+              "helmswap-sol"
             ],
             "type": "boolean"
           }
@@ -3245,7 +3250,9 @@
               "titan",
               "uniswap",
               "pancakeswap",
-              "0x"
+              "0x",
+              "helmswap",
+              "helmswap-sol"
             ],
             "type": "string",
             "example": "jupiter"
@@ -3294,14 +3301,16 @@
               "jupiter",
               "dflow",
               "okx",
-              "titan"
+              "titan",
+              "helmswap-sol"
             ],
             "type": "boolean"
           },
           "indicativePrice": {
             "description": "Return an indicative price instead of a firm, executable quote. An indicative quote cannot be executed with /trading/router/execute-quote.",
             "x-connectors": [
-              "0x"
+              "0x",
+              "helmswap"
             ],
             "type": "boolean"
           }
@@ -6506,7 +6515,9 @@
                 "titan",
                 "uniswap",
                 "pancakeswap",
-                "0x"
+                "0x",
+                "helmswap",
+                "helmswap-sol"
               ],
               "type": "string"
             },
@@ -6590,7 +6601,8 @@
                 "jupiter",
                 "dflow",
                 "okx",
-                "titan"
+                "titan",
+                "helmswap-sol"
               ],
               "type": "boolean"
             },
@@ -6602,7 +6614,8 @@
           {
             "schema": {
               "x-connectors": [
-                "0x"
+                "0x",
+                "helmswap"
               ],
               "type": "boolean"
             },

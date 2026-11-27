@@ -3,6 +3,8 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { ZeroXConfig } from '../../connectors/0x/0x.config';
 import { DFlowConfig } from '../../connectors/dflow/dflow.config';
+import { HelmswapConfig } from '../../connectors/helmswap/helmswap.config';
+import { HelmswapSolConfig } from '../../connectors/helmswap-sol/helmswap-sol.config';
 import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
 import { MeteoraConfig } from '../../connectors/meteora/meteora.config';
 import { OkxConfig } from '../../connectors/okx/okx.config';
@@ -96,6 +98,18 @@ export const connectorsConfig = [
     trading_types: [...TitanConfig.tradingTypes],
     chain: TitanConfig.chain,
     networks: [...TitanConfig.networks],
+  },
+  {
+    name: 'helmswap',
+    trading_types: [...HelmswapConfig.tradingTypes],
+    chain: HelmswapConfig.chain,
+    networks: [...HelmswapConfig.networks],
+  },
+  {
+    name: 'helmswap-sol',
+    trading_types: [...HelmswapSolConfig.tradingTypes],
+    chain: HelmswapSolConfig.chain,
+    networks: [...HelmswapSolConfig.networks],
   },
 ];
 

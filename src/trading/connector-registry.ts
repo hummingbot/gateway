@@ -21,6 +21,12 @@ import { quoteSwap as zeroXQuoteSwap } from '../connectors/0x/router-routes/quot
 import { executeQuote as dflowExecuteQuote } from '../connectors/dflow/router-routes/executeQuote';
 import { executeSwap as dflowExecuteSwap } from '../connectors/dflow/router-routes/executeSwap';
 import { quoteSwap as dflowQuoteSwap } from '../connectors/dflow/router-routes/quoteSwap';
+import { executeQuote as helmswapExecuteQuote } from '../connectors/helmswap/router-routes/executeQuote';
+import { executeSwap as helmswapExecuteSwap } from '../connectors/helmswap/router-routes/executeSwap';
+import { quoteSwap as helmswapQuoteSwap } from '../connectors/helmswap/router-routes/quoteSwap';
+import { executeQuote as helmswapSolExecuteQuote } from '../connectors/helmswap-sol/router-routes/executeQuote';
+import { executeSwap as helmswapSolExecuteSwap } from '../connectors/helmswap-sol/router-routes/executeSwap';
+import { quoteSwap as helmswapSolQuoteSwap } from '../connectors/helmswap-sol/router-routes/quoteSwap';
 import { executeQuote as jupiterExecuteQuote } from '../connectors/jupiter/router-routes/executeQuote';
 import { executeSwap as jupiterExecuteSwap } from '../connectors/jupiter/router-routes/executeSwap';
 import { quoteSwap as jupiterQuoteSwap } from '../connectors/jupiter/router-routes/quoteSwap';
@@ -259,6 +265,48 @@ const ROUTER_REGISTRY: Record<string, RouterOps> = {
       zeroXExecuteSwap(a.walletAddress, a.network, a.baseToken, a.quoteToken, a.amount, a.side, a.slippagePct),
     executeQuote: zeroXExecuteQuote,
   },
+  helmswap: {
+    chain: 'ethereum',
+    quoteSwap: (a) =>
+      helmswapQuoteSwap(
+        a.network,
+        a.baseToken,
+        a.quoteToken,
+        a.amount,
+        a.side,
+        a.slippagePct,
+        a.indicativePrice,
+        a.walletAddress,
+      ),
+    executeSwap: (a) =>
+      helmswapExecuteSwap(a.walletAddress, a.network, a.baseToken, a.quoteToken, a.amount, a.side, a.slippagePct),
+    executeQuote: helmswapExecuteQuote,
+  },
+  'helmswap-sol': {
+    chain: 'solana',
+    quoteSwap: (a) =>
+      helmswapSolQuoteSwap(
+        a.network,
+        a.baseToken,
+        a.quoteToken,
+        a.amount,
+        a.side,
+        a.slippagePct,
+        a.approximateIfNoExactOut,
+      ),
+    executeSwap: (a) =>
+      helmswapSolExecuteSwap(
+        a.walletAddress,
+        a.network,
+        a.baseToken,
+        a.quoteToken,
+        a.amount,
+        a.side,
+        a.slippagePct,
+        a.approximateIfNoExactOut,
+      ),
+    executeQuote: helmswapSolExecuteQuote,
+  },
 };
 
 // ============================================
@@ -395,7 +443,7 @@ export const FETCH_POOLS_CONNECTORS = Object.entries(CLMM_REGISTRY)
   .map(([name]) => name);
 
 /** Routers that price an indicative (non-executable) quote on request. */
-export const INDICATIVE_PRICE_CONNECTORS = ['0x'];
+export const INDICATIVE_PRICE_CONNECTORS = ['0x', 'helmswap'];
 
 /** Solana routers accept `approximateIfNoExactOut`; every other connector ignores it. */
 export const APPROXIMATE_IF_NO_EXACT_OUT_CONNECTORS = Object.entries(ROUTER_REGISTRY)
