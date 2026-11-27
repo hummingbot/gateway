@@ -12,6 +12,8 @@ import { PancakeswapSolConfig } from '../../connectors/pancakeswap-sol/pancakesw
 import { RaydiumConfig } from '../../connectors/raydium/raydium.config';
 import { TitanConfig } from '../../connectors/titan/titan.config';
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
+import { HelmswapConfig } from '../../connectors/helmswap/helmswap.config';
+import { HelmswapSolConfig } from '../../connectors/helmswap-sol/helmswap-sol.config';
 import { logger } from '../../services/logger';
 
 // Define the schema using Typebox
@@ -96,6 +98,18 @@ export const connectorsConfig = [
     trading_types: [...TitanConfig.tradingTypes],
     chain: TitanConfig.chain,
     networks: [...TitanConfig.networks],
+  },
+  {
+    name: 'helmswap',
+    trading_types: [...HelmswapConfig.tradingTypes],
+    chain: HelmswapConfig.chain,
+    networks: [...HelmswapConfig.networks],
+  },
+  {
+    name: 'helmswap-sol',
+    trading_types: [...HelmswapSolConfig.tradingTypes],
+    chain: HelmswapSolConfig.chain,
+    networks: [...HelmswapSolConfig.networks],
   },
 ];
 

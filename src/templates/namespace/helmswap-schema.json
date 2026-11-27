@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "slippagePct": {
+      "type": "number",
+      "description": "Default slippage percentage for swaps (e.g., 0.5 = 0.5%)",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "baseUrl": {
+      "type": "string",
+      "description": "HelmSwap API origin"
+    },
+    "apiKey": {
+      "type": "string",
+      "description": "Optional free API key from https://helmswap.com/developers. Never a wallet private key."
+    },
+    "referrer": {
+      "type": "string",
+      "description": "Optional payout address. Address only, never a key."
+    }
+  },
+  "required": ["slippagePct"],
+  "additionalProperties": false
+}

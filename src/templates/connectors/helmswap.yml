@@ -1,0 +1,16 @@
+# HelmSwap EVM router (Ethereum, Base, BNB Chain)
+# Quotes and unsigned transactions come from https://helmswap.com
+# Gateway signs and sends with the configured wallet. HelmSwap never holds keys.
+
+slippagePct: 0.5
+
+# API origin
+baseUrl: 'https://helmswap.com'
+
+# Optional free API key from https://helmswap.com/developers
+# On EVM this only selects the bot / API fee tier disclosed in the quote.
+# Never a wallet private key.
+apiKey: ''
+
+# Optional payout address (0x...). Address only, never a key.
+referrer: ''

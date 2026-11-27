@@ -1,0 +1,14 @@
+# HelmSwap Solana router
+# Quotes and unsigned transactions come from https://helmswap.com
+# Gateway signs and sends with the configured wallet. HelmSwap never holds keys.
+
+slippagePct: 0.5
+
+baseUrl: 'https://helmswap.com'
+
+# Free API key from https://helmswap.com/developers.
+# Required to build Solana transactions. Never a wallet private key.
+apiKey: ''
+
+# Optional payout address (Solana base58). Address only, never a key.
+referrer: ''
